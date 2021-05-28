@@ -1,0 +1,13 @@
+> 2021-05-28T14:26:32.236Z (Runtime.init)[error] : SyntaxError: unknown: Invalid regular expression flag. (1:9)
+
+[0m[31m[1m>[22m[39m[90m 1 |[39m [33m/[39m[33mUsers[39m[33m/[39msrgooglo[33m/[39mrepos[33m/[39mrelic[33m/[39mpackages[33m/[39mrelic[33m/[39msrc[0m
+[0m [90m   |[39m          [31m[1m^[22m[39m[0m 
+	 Runtime.init (/Users/srgooglo/.config/yarn/global/node_modules/corenode/dist/index.js:169:8)
+> 2021-05-28T14:26:35.207Z (Runtime.init)[error] : Error: Cannot find module '@babel/runtime/helpers/interopRequireDefault'
+Require stack:
+- /Users/srgooglo/repos/relic 
+	 Runtime.init (/Users/srgooglo/.config/yarn/global/node_modules/corenode/dist/index.js:169:8)
+> 2021-05-28T14:36:18.443Z (Runtime.init)[error] : Error: Cannot find module '@babel/runtime/helpers/interopRequireDefault'
+Require stack:
+- /Users/srgooglo/repos/relic 
+	 Runtime.init (/Users/srgooglo/.config/yarn/global/node_modules/corenode/dist/index.js:169:8)

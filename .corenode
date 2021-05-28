@@ -1,0 +1,6 @@
+{
+  "devRuntime": {
+    "headPackage": "relic"
+  },
+  "version": "0.1.2"
+}

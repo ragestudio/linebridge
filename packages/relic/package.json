@@ -1,0 +1,18 @@
+{
+  "name": "@ragestudio/relic",
+  "version": "0.1.2",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "load.addon.js"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^0.21.1",
+    "websocket": "^1.0.34"
+  }
+}

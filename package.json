@@ -1,0 +1,14 @@
+{
+  "private": true,
+  "name": "relic",
+  "version": "0.1.2",
+  "author": "RageStudio",
+  "license": "ISC",
+  "workspaces": [
+    "packages/*"
+  ],
+  "dependencies": {
+    "corenode": "^0.23.1",
+    "@babel/runtime": "^7.14.0"
+  }
+}
