@@ -10,5 +10,10 @@
     "dist",
     "load.addon.js"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^0.21.1",
+    "websocket": "^1.0.34",
+    "express": "^4.17.1"
+  }
 }
