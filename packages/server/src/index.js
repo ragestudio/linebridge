@@ -3,11 +3,33 @@ const express = require("express")
 const { objectToArrayMap } = require("@corenode/utils")
 const uuid = require("uuid")
 
+const fs = require("fs")
+const path = require("path")
+
 const http = require("http")
 const wsServer = require('websocket').server
 const wsFrame = require('websocket').frame
 
 const SERVER_VERSION = runtime.helpers.getVersion()
+
+function fetchController(key) {
+    try {
+        const controllersPath = global.controllersPath ?? path.resolve(process.cwd(), `controllers`)
+        const controllerPath = path.join(controllersPath, key)
+
+        if (fs.existsSync(controllerPath)) {
+            import(controllerPath)
+                .then((controller) => {
+                    return controller
+                })
+        }
+
+    } catch (error) {
+        runtime.logger.dump(error)
+        console.error(`Failed to load controller [${key}] > ${error.message}`)
+    }
+}
+
 class Controller {
     constructor(key, exec, params) {
         this.params = params
@@ -19,25 +41,26 @@ class Controller {
 
     exec(req, res) {
         res.send(`Im alive!`)
-        console.log(`This is an default controller function`)
+
     }
 }
 
 class RequestServer {
-    constructor(params) {
+    constructor(params, endpoints) {
+        this.usid = uuid.v4() // unique session identifier
         this.params = params ?? {}
 
-        this.endpoints = {}
+        this.endpoints = { ...endpoints }
         this.endpointsAddress = []
         this.routes = []
 
-        this.headers = {
+        this.headers = {
             "Access-Control-Allow-Headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "GET, POST, OPTIONS, PUT, PATCH, DELETE",
             "Access-Control-Allow-Credentials": "true"
         }
-        
+
         this._everyRequest = null
         this._onRequest = {}
 
@@ -96,7 +119,21 @@ class RequestServer {
         }
     }
 
+    getLocalEndpoints = () => {
+        try {
+            const localEndpointsFile = path.resolve(process.cwd(), `endpoints.json`)
+            if (fs.existsSync(localEndpointsFile)) {
+                return JSON.parse(fs.readFileSync(localEndpointsFile, 'utf-8'))
+            }
+            return false
+        } catch (error) {
+            return false
+        }
+    }
+
     init() {
+        const localEndpoints = this.getLocalEndpoints()
+
         this.httpServer.use(express.json())
         this.httpServer.use(express.urlencoded({ extended: true }))
 
@@ -108,15 +145,31 @@ class RequestServer {
             next()
         })
 
-        // todo: read endponts.json and itterate
+        if (localEndpoints && Array.isArray(localEndpoints)) {
+            localEndpoints.forEach((endpoint) => {
+                try {
+                    const { method, route, controller } = endpoint
+                    fetchController(controller)
+                    this.registerEndpoint(method, route, controller)
+                } catch (error) {
+                    
+                }
+                
+            })
+        }
 
         // register root resolver
         this.registerEndpoint("get", "/", (req, res) => {
             // here server origin resolver
             res.json({
-                uuid: uuid.v4(),
+                usid: this.usid,
                 originID: this.params.oid ?? "RelicServer",
-                version: SERVER_VERSION,
+                version: SERVER_VERSION
+            })
+        })
+
+        this.registerEndpoint("get", "/map", (req, res) => {
+            res.json({
                 routes: this.routes
             })
         })
