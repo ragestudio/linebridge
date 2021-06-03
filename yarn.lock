@@ -905,10 +905,10 @@
     "@babel/helper-validator-identifier" "^7.14.0"
     to-fast-properties "^2.0.0"
 
-"@corenode/builder@0.23.5":
-  version "0.23.5"
-  resolved "https://registry.yarnpkg.com/@corenode/builder/-/builder-0.23.5.tgz#30b4d9fddf3007b7ed97ec81d8966dc25b0891ee"
-  integrity sha512-zELPZqENIWU51q2VkSVh+TNkwKqIZQ1BbBIGzmx+/gHSTxDsuiE+4rNO6n3J4JRV+gumGvmbBzFVAO/QV0wP3g==
+"@corenode/builder@0.24.4":
+  version "0.24.4"
+  resolved "https://registry.yarnpkg.com/@corenode/builder/-/builder-0.24.4.tgz#2d9551ffd88dc0a644bcb1a7c62ca05031a3869e"
+  integrity sha512-W6xhDnula0fKMuuncbmY8xbBGP+FgbJY9pOd44t0Vx12oTNmREXYnGMKQUuM/rInNhqtwkxf6sEvO+OE3SKRyQ==
   dependencies:
     "@babel/core" "^7.13.14"
     "@babel/plugin-proposal-class-properties" "7.13.0"
@@ -918,7 +918,7 @@
     "@babel/preset-env" "7.13.12"
     "@babel/preset-typescript" "7.13.0"
     "@babel/runtime" "7.13.10"
-    "@corenode/utils" "0.23.5"
+    "@corenode/utils" "0.24.4"
     cli-progress "^3.9.0"
     map-stream "^0.0.7"
     rimraf "^3.0.2"
@@ -927,17 +927,17 @@
     through2 "^4.0.2"
     vinyl-fs "^3.0.3"
 
-"@corenode/git-lib@0.23.5":
-  version "0.23.5"
-  resolved "https://registry.yarnpkg.com/@corenode/git-lib/-/git-lib-0.23.5.tgz#5a802de2fe73ccb31c95e7ab460409bfbb47da03"
-  integrity sha512-GZaSik3xLeKn9c82Ym7zz4CN0T8mSWk6/uyZF/K51mRI9u2+SaTZ0oVM0wPgGhjETVaEVvlE/3cMeddIb1Iumg==
+"@corenode/git-lib@0.24.4":
+  version "0.24.4"
+  resolved "https://registry.yarnpkg.com/@corenode/git-lib/-/git-lib-0.24.4.tgz#630001a391cf74b25f02c507a13ee0971ab4faa6"
+  integrity sha512-OtsL+N2Jr/5SBJtBdpsRl/IGKknXf/xgXGS5UObOGYUDWN8yaK1lZEshZubengpREEyQrTNFBZVnYn1uH6y1Tw==
   dependencies:
     execa "^5.0.0"
 
-"@corenode/utils@0.23.5":
-  version "0.23.5"
-  resolved "https://registry.yarnpkg.com/@corenode/utils/-/utils-0.23.5.tgz#f42c055e674be7898caccda11c3e930536b800a8"
-  integrity sha512-Efhrb2e9+d3Q9XB0yBlwSqCUT3dXRb3Mn/X0zj02EroHc+QbQS1OuYovf8WGlxroMv9x62RLaB4rvWtoFUIC3g==
+"@corenode/utils@0.24.4":
+  version "0.24.4"
+  resolved "https://registry.yarnpkg.com/@corenode/utils/-/utils-0.24.4.tgz#9a2ce06965dabd812af3b933b6ee55faac564b99"
+  integrity sha512-GW8XE+tVYiRFiamI5mJAKO3tpLbvq1MGCiRfcq4ls19NwpToIcrYPwnct08oEfi5XSiEye7ioqexbysYBQpUQg==
   dependencies:
     axios "^0.21.1"
     chalk "^4.1.0"
@@ -1346,23 +1346,21 @@ core-util-is@~1.0.0:
   resolved "https://registry.yarnpkg.com/core-util-is/-/core-util-is-1.0.2.tgz#b5fd54220aa2bc5ab57aab7140c940754503c1a7"
   integrity sha1-tf1UIgqivFq1eqtxQMlAdUUDwac=
 
-corenode@^0.23.5:
-  version "0.23.5"
-  resolved "https://registry.yarnpkg.com/corenode/-/corenode-0.23.5.tgz#afc27f28473024ecdb7278e1290bdf727731f805"
-  integrity sha512-0P5jdV7r8X838597M/GWQJAnpiFUsLiGYNEn+kc2jQaDxgehB3K19Lfy42TKGhHavgauAkponJaFBVrxgFFw+Q==
+corenode@^0.24.4:
+  version "0.24.4"
+  resolved "https://registry.yarnpkg.com/corenode/-/corenode-0.24.4.tgz#0c45f5c026c8d307fcf2cea1e5ea4f5284f4c501"
+  integrity sha512-hNGyOTfYrprBY4ViV7fhydyCKLaNy9HpjUvxUQ1CyZX/4g75NXpsK4xjOilPqSd1MmjX9BWLQ0Kxb2uecQ5h8A==
   dependencies:
     "@babel/runtime" "^7.13.10"
-    "@corenode/builder" "0.23.5"
-    "@corenode/git-lib" "0.23.5"
-    "@corenode/utils" "0.23.5"
+    "@corenode/builder" "0.24.4"
+    "@corenode/git-lib" "0.24.4"
+    "@corenode/utils" "0.24.4"
     escape-goat "^3.0.0"
     execa "5.0.0"
     filesize "^6.3.0"
-    import-from "^3.0.0"
     listr "0.14.3"
     lodash "^4.17.21"
     open "^8.0.8"
-    resolve-package-path "^4.0.0"
     rimraf "^3.0.2"
     stacktrace-js "^2.0.2"
     winston "^3.3.3"
@@ -1831,13 +1829,6 @@ iconv-lite@0.4.24:
   integrity sha512-v3MXnZAcvnywkTUEZomIActle7RXXeedOR31wwl7VlyoXO4Qi9arvSenNQWne1TcRwhCL1HwLI21bEqdpj8/rA==
   dependencies:
     safer-buffer ">= 2.1.2 < 3"
-
-import-from@^3.0.0:
-  version "3.0.0"
-  resolved "https://registry.yarnpkg.com/import-from/-/import-from-3.0.0.tgz#055cfec38cd5a27d8057ca51376d7d3bf0891966"
-  integrity sha512-CiuXOFFSzkU5x/CR0+z7T91Iht4CXgfCxVOFRhh2Zyhg5wOpWvvDLQUsWl+gcN+QscYBjez8hDCt85O7RLDttQ==
-  dependencies:
-    resolve-from "^5.0.0"
 
 indent-string@^3.0.0:
   version "3.2.0"
@@ -2372,18 +2363,6 @@ path-parse@^1.0.6:
   resolved "https://registry.yarnpkg.com/path-parse/-/path-parse-1.0.7.tgz#fbc114b60ca42b30d9daf5858e4bd68bbedb6735"
   integrity sha512-LDJzPVEEEPR+y48z93A0Ed0yXb8pAByGWo/k5YYdYgpY2/2EsOsksJrq7lOHxryrVOn1ejG6oAp8ahvOIQD8sw==
 
-path-root-regex@^0.1.0:
-  version "0.1.2"
-  resolved "https://registry.yarnpkg.com/path-root-regex/-/path-root-regex-0.1.2.tgz#bfccdc8df5b12dc52c8b43ec38d18d72c04ba96d"
-  integrity sha1-v8zcjfWxLcUsi0PsONGNcsBLqW0=
-
-path-root@^0.1.1:
-  version "0.1.1"
-  resolved "https://registry.yarnpkg.com/path-root/-/path-root-0.1.1.tgz#9a4a6814cac1c0cd73360a95f32083c8ea4745b7"
-  integrity sha1-mkpoFMrBwM1zNgqV8yCDyOpHRbc=
-  dependencies:
-    path-root-regex "^0.1.0"
-
 path-to-regexp@0.1.7:
   version "0.1.7"
   resolved "https://registry.yarnpkg.com/path-to-regexp/-/path-to-regexp-0.1.7.tgz#df604178005f522f15eb4490e7247a1bfaa67f8c"
@@ -2541,24 +2520,12 @@ require-directory@^2.1.1:
   resolved "https://registry.yarnpkg.com/require-directory/-/require-directory-2.1.1.tgz#8c64ad5fd30dab1c976e2344ffe7f792a6a6df42"
   integrity sha1-jGStX9MNqxyXbiNE/+f3kqam30I=
 
-resolve-from@^5.0.0:
-  version "5.0.0"
-  resolved "https://registry.yarnpkg.com/resolve-from/-/resolve-from-5.0.0.tgz#c35225843df8f776df21c57557bc087e9dfdfc69"
-  integrity sha512-qYg9KP24dD5qka9J47d0aVky0N+b4fTU89LN9iDnjB5waksiC49rvMB0PrUJQGoTmH50XPiqOvAjDfaijGxYZw==
-
 resolve-options@^1.1.0:
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/resolve-options/-/resolve-options-1.1.0.tgz#32bb9e39c06d67338dc9378c0d6d6074566ad131"
   integrity sha1-MrueOcBtZzONyTeMDW1gdFZq0TE=
   dependencies:
     value-or-function "^3.0.0"
-
-resolve-package-path@^4.0.0:
-  version "4.0.0"
-  resolved "https://registry.yarnpkg.com/resolve-package-path/-/resolve-package-path-4.0.0.tgz#7e42ef2de08e286264b6559a903308f91df90a44"
-  integrity sha512-juqRKZDx2txh3eYU1DCOVXVO58FPn+E0G/Q7wrtDhbZLVbYAs3nPGuIQ916QgOkwobtwHMLO5R7gxhrTEXOwiA==
-  dependencies:
-    path-root "^0.1.1"
 
 resolve@^1.14.2:
   version "1.20.0"

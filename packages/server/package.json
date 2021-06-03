@@ -3,6 +3,10 @@
   "version": "0.1.2",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "scripts": {
+    "start": "corenode ./src/index.js",
+    "dev": "corenode dev --file='./src/index.js'"
+  },
   "publishConfig": {
     "access": "public"
   },
@@ -13,7 +17,7 @@
   "license": "MIT",
   "dependencies": {
     "uuid": "^8.3.2",
-    "corenode": "^0.23.5",
+    "corenode": "^0.24.4",
     "axios": "^0.21.1",
     "websocket": "^1.0.34",
     "express": "^4.17.1"
