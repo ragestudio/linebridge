@@ -4,8 +4,8 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "start": "corenode ./src/index.js",
-    "dev": "corenode dev --file='./src/index.js'"
+    "start": "corenode ./dist/index.js",
+    "dev": "nodemon --ignore dist/ --exec 'corenode build && corenode' dist/index.js"
   },
   "publishConfig": {
     "access": "public"
@@ -16,10 +16,13 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "uuid": "^8.3.2",
-    "corenode": "^0.24.4",
     "axios": "^0.21.1",
-    "websocket": "^1.0.34",
-    "express": "^4.17.1"
+    "corenode": "^0.24.7",
+    "express": "^4.17.1",
+    "uuid": "^8.3.2",
+    "websocket": "^1.0.34"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.7"
   }
 }

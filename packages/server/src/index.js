@@ -10,40 +10,9 @@ const http = require("http")
 const wsServer = require('websocket').server
 const wsFrame = require('websocket').frame
 
-const SERVER_VERSION = runtime.helpers.getVersion()
-
-function fetchController(key) {
-    try {
-        const controllersPath = global.controllersPath ?? path.resolve(process.cwd(), `controllers`)
-        const controllerPath = path.join(controllersPath, key)
-
-        if (fs.existsSync(controllerPath)) {
-            import(controllerPath)
-                .then((controller) => {
-                    return controller
-                })
-        }
-
-    } catch (error) {
-        runtime.logger.dump(error)
-        console.error(`Failed to load controller [${key}] > ${error.message}`)
-    }
-}
-
-class Controller {
-    constructor(key, exec, params) {
-        this.params = params
-
-        if (typeof exec === "function") {
-            this.exec = exec
-        }
-    }
-
-    exec(req, res) {
-        res.send(`Im alive!`)
-
-    }
-}
+const { Controller } = require("./classes/Controller")
+const { getLocalEndpoints, fetchController } = require("./lib/helpers")
+const SERVER_VERSION = global.SERVER_VERSION = runtime.helpers.getVersion()
 
 class RequestServer {
     constructor(params, endpoints) {
@@ -51,14 +20,14 @@ class RequestServer {
         this.params = params ?? {}
 
         this.endpoints = { ...endpoints }
-        this.endpointsAddress = []
         this.routes = []
 
         this.headers = {
             "Access-Control-Allow-Headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "GET, POST, OPTIONS, PUT, PATCH, DELETE",
-            "Access-Control-Allow-Credentials": "true"
+            "Access-Control-Allow-Credentials": "true",
+            ...this.params.headers
         }
 
         this._everyRequest = null
@@ -95,44 +64,33 @@ class RequestServer {
             controller = new Controller(route, controller)
         }
 
-        this.routes.push(route)
-        this.endpoints[route] = { method: method, route: route, controller: controller }
-        this.endpointsAddress.push(this.endpoints[route])
+        const endpoint = { method: method, route: route, controller: controller }
 
-        this.httpServer[method](route, (req, res) => this.httpRequest(req, res, this.endpoints[route]))
+        this.routes.push(route)
+        this.endpoints[route] = endpoint
+
+        this.httpServer[method](route, (req, res, next) => this.httpRequest(req, res, next, endpoint))
     }
 
-    httpRequest = (req, res, endpoint) => {
+    httpRequest = (req, res, next, endpoint) => {
         const { route, method, controller } = endpoint
 
         // exec controller
         if (typeof controller.exec === "function") {
-            controller.exec(req, res)
+            controller.exec(req, res, next)
         }
 
         // on events
         if (typeof this._everyRequest === "function") {
-            this._everyRequest(req, res)
+            this._everyRequest(req, res, next)
         }
         if (typeof this._onRequest[route] === "function") {
-            this._onRequest[route](req, res)
-        }
-    }
-
-    getLocalEndpoints = () => {
-        try {
-            const localEndpointsFile = path.resolve(process.cwd(), `endpoints.json`)
-            if (fs.existsSync(localEndpointsFile)) {
-                return JSON.parse(fs.readFileSync(localEndpointsFile, 'utf-8'))
-            }
-            return false
-        } catch (error) {
-            return false
+            this._onRequest[route](req, res, next)
         }
     }
 
     init() {
-        const localEndpoints = this.getLocalEndpoints()
+        const localEndpoints = getLocalEndpoints()
 
         this.httpServer.use(express.json())
         this.httpServer.use(express.urlencoded({ extended: true }))
@@ -147,14 +105,26 @@ class RequestServer {
 
         if (localEndpoints && Array.isArray(localEndpoints)) {
             localEndpoints.forEach((endpoint) => {
-                try {
-                    const { method, route, controller } = endpoint
-                    fetchController(controller)
-                    this.registerEndpoint(method, route, controller)
-                } catch (error) {
-                    
+                if (!endpoint || !endpoint.route || !endpoint.controller) {
+                    throw new Error(`Invalid endpoint!`)
                 }
-                
+                try {
+                    let { method, route, controller, fn } = endpoint
+                    controller = fetchController(controller)
+
+                    if (typeof method === "undefined") {
+                        method = "GET"
+                    }
+
+                    if (typeof fn === "undefined") {
+                        fn = "default"
+                    }
+
+                    this.registerEndpoint(method, route, new Controller(route, controller[fn]))
+                } catch (error) {
+                    runtime.logger.dump(error)
+                    console.error(`🆘  Failed to load endpoint > ${error.message}`)
+                }
             })
         }
 
@@ -162,6 +132,7 @@ class RequestServer {
         this.registerEndpoint("get", "/", (req, res) => {
             // here server origin resolver
             res.json({
+                time: new Date().getTime(),
                 usid: this.usid,
                 originID: this.params.oid ?? "RelicServer",
                 version: SERVER_VERSION
@@ -175,7 +146,7 @@ class RequestServer {
         })
 
         this.httpServer.listen(this.params.port, () => {
-            console.log(`Ready on port ${this.params.port}!`)
+            console.log(`✅  Ready on port ${this.params.port}!`)
         })
     }
 }
