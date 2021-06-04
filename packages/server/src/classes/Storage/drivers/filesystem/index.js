@@ -8,7 +8,7 @@ class FilesystemDriver {
         this.root = this.params.root ?? path.resolve(process.cwd(), 'storage')
     }
 
-    set = () => {
+    set = (key, value, options) => {
 
     }
 

@@ -1,39 +1,51 @@
-const axios = require("axios")
 const express = require("express")
 const { objectToArrayMap } = require("@corenode/utils")
 const uuid = require("uuid")
-
-const fs = require("fs")
-const path = require("path")
-
-const http = require("http")
-const wsServer = require('websocket').server
-const wsFrame = require('websocket').frame
 
 const { Controller } = require("./classes/Controller")
 const { getLocalEndpoints, fetchController } = require("./lib/helpers")
 const SERVER_VERSION = global.SERVER_VERSION = runtime.helpers.getVersion()
 
+const defaultMiddlewares = [
+    require('cors')(),
+    require('morgan')("dev"),
+    require('express-fileupload')({
+        createParentPath: true
+    })
+]
+const defaultHeaders = { 
+    "Access-Control-Allow-Headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS, PUT, PATCH, DELETE",
+    "Access-Control-Allow-Credentials": "true",
+}
+
 class RequestServer {
-    constructor(params, endpoints) {
-        this.usid = uuid.v4() // unique session identifier
+    constructor(params, endpoints, middlewares) {
         this.params = params ?? {}
 
-        this.endpoints = { ...endpoints }
+        // set params jails
         this.routes = []
-
+        this.endpoints = { ...endpoints }
+        this.middlewares = [...defaultMiddlewares]
         this.headers = {
-            "Access-Control-Allow-Headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET, POST, OPTIONS, PUT, PATCH, DELETE",
-            "Access-Control-Allow-Credentials": "true",
+            ...defaultHeaders,
             ...this.params.headers
         }
 
+        // process params
+        if (typeof middlewares !== "undefined" && Array.isArray(middlewares)) {
+            middlewares.forEach((middleware) => {
+                this.middlewares.push(middleware)
+            })
+        }
+
+        // set server basics
+        this.httpServer = require("express")()
+        this.usid = uuid.v4() // unique session identifier
+
         this._everyRequest = null
         this._onRequest = {}
-
-        this.httpServer = require("express")()
 
         if (typeof this.params.port === "undefined") {
             this.params.port = 3010
@@ -69,7 +81,7 @@ class RequestServer {
         this.routes.push(route)
         this.endpoints[route] = endpoint
 
-        this.httpServer[method](route, (req, res, next) => this.httpRequest(req, res, next, endpoint))
+        this.httpServer[method.toLowerCase()](route, (req, res, next) => this.httpRequest(req, res, next, endpoint))
     }
 
     httpRequest = (req, res, next, endpoint) => {
@@ -103,6 +115,12 @@ class RequestServer {
             next()
         })
 
+        if (Array.isArray(this.middlewares)) {
+            this.middlewares.forEach((middleware) => {
+                this.httpServer.use(middleware)
+            })
+        }
+
         if (localEndpoints && Array.isArray(localEndpoints)) {
             localEndpoints.forEach((endpoint) => {
                 if (!endpoint || !endpoint.route || !endpoint.controller) {
@@ -123,6 +141,7 @@ class RequestServer {
                     this.registerEndpoint(method, route, new Controller(route, controller[fn]))
                 } catch (error) {
                     runtime.logger.dump(error)
+                    console.error(error)
                     console.error(`🆘  Failed to load endpoint > ${error.message}`)
                 }
             })

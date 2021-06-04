@@ -1,0 +1,7 @@
+[
+    {
+        "method": "PUT",
+        "route": "/upload",
+        "controller": "upload"
+    }
+]

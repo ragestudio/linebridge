@@ -1,0 +1,5 @@
+{
+    "modulesAliases": {
+        "@@classes": "./dist/classes"
+    }
+}

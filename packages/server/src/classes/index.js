@@ -3,4 +3,4 @@ export { Controller } from './Controller'
 export { Database } from './Database'
 export { Storage } from './Storage'
 
-export { Tokenizer } from './Tokenizer'
+export { Tokenizer } from './Tokenization'

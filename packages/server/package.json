@@ -17,8 +17,11 @@
   "license": "MIT",
   "dependencies": {
     "axios": "^0.21.1",
-    "corenode": "^0.24.7",
+    "corenode": "^0.24.8",
+    "cors": "^2.8.5",
     "express": "^4.17.1",
+    "express-fileupload": "^1.2.1",
+    "morgan": "^1.10.0",
     "uuid": "^8.3.2",
     "websocket": "^1.0.34"
   },
