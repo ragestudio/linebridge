@@ -1,4 +1,7 @@
 {
+    "development": {
+        "origitGit": ""
+    },
     "modulesAliases": {
         "@@classes": "./dist/classes"
     }
