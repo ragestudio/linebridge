@@ -1,0 +1,10 @@
+{
+    "name": "uploadServer",
+    "version": "0.1.0",
+    "scripts": {
+        "start": "relic-server ."
+    },
+    "dependencies": {
+        "@ragestudio/relic-server": "^0.2.2"
+    }
+}

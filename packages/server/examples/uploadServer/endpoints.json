@@ -1,0 +1,14 @@
+[
+    {
+        "method": "PUT",
+        "route": "/upload",
+        "controller": "filecontroller",
+        "fn": "set"
+    },
+    {
+        "method": "GET",
+        "route": "/resources",
+        "controller": "filecontroller",
+        "fn": "get"
+    }
+]
