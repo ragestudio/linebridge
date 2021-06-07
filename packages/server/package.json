@@ -15,6 +15,7 @@
   },
   "files": [
     "dist",
+    ".corenode.json",
     "load.addon.js"
   ],
   "license": "MIT",
