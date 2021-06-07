@@ -1,11 +1,14 @@
 {
   "name": "@ragestudio/relic-server",
-  "version": "0.1.2",
+  "version": "0.2.2",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "start": "corenode ./dist/index.js",
     "dev": "nodemon --ignore dist/ --exec 'corenode build && corenode' dist/index.js"
+  },
+  "bin": {
+    "relic-server": "corenode ./bin/index.js"
   },
   "publishConfig": {
     "access": "public"
@@ -17,7 +20,7 @@
   "license": "MIT",
   "dependencies": {
     "axios": "^0.21.1",
-    "corenode": "^0.24.8",
+    "corenode": "^0.24.9",
     "cors": "^2.8.5",
     "express": "^4.17.1",
     "express-fileupload": "^1.2.1",
