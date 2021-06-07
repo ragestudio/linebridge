@@ -2,7 +2,7 @@ const express = require("express")
 const { objectToArrayMap } = require("@corenode/utils")
 const uuid = require("uuid")
 
-const { Controller } = require("./classes/Controller")
+const { Controller } = require("@@classes")
 const { getLocalEndpoints, fetchController } = require("./lib/helpers")
 const SERVER_VERSION = global.SERVER_VERSION = runtime.helpers.getVersion()
 
@@ -171,10 +171,3 @@ class RequestServer {
 }
 
 module.exports = { Controller, Server: RequestServer }
-
-// create default server
-const defServer = new RequestServer({ autoInit: true })
-defServer.onRequest()
-
-
-
