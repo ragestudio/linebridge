@@ -905,10 +905,10 @@
     "@babel/helper-validator-identifier" "^7.14.0"
     to-fast-properties "^2.0.0"
 
-"@corenode/builder@0.24.8":
-  version "0.24.8"
-  resolved "https://registry.yarnpkg.com/@corenode/builder/-/builder-0.24.8.tgz#ac8239f8425c15cd74d7cdca18792f4a007c6b40"
-  integrity sha512-i6ZMQ0mMAut7FdgkXQwl5ZIbrUnJP8SHwDJCbV6oN2T6+UPQPa36+toTSgLpjMMn0miJeHoveAA0wCI81p7szg==
+"@corenode/builder@0.24.9":
+  version "0.24.9"
+  resolved "https://registry.yarnpkg.com/@corenode/builder/-/builder-0.24.9.tgz#a733b1f1fb51a1c796d8c455a887b05652b10b0c"
+  integrity sha512-G0sXg4ZC2gnPtkbSzdnhyH+xr5Ij+V8lWGtoIBsovZC+ZDZCrHWQ3pSy/LMR6jasYFk97pccUgcocZ6JjhtFfg==
   dependencies:
     "@babel/core" "^7.13.14"
     "@babel/plugin-proposal-class-properties" "7.13.0"
@@ -918,7 +918,7 @@
     "@babel/preset-env" "7.13.12"
     "@babel/preset-typescript" "7.13.0"
     "@babel/runtime" "7.13.10"
-    "@corenode/utils" "0.24.8"
+    "@corenode/utils" "0.24.9"
     cli-progress "^3.9.0"
     map-stream "^0.0.7"
     rimraf "^3.0.2"
@@ -927,17 +927,17 @@
     through2 "^4.0.2"
     vinyl-fs "^3.0.3"
 
-"@corenode/git-lib@0.24.8":
-  version "0.24.8"
-  resolved "https://registry.yarnpkg.com/@corenode/git-lib/-/git-lib-0.24.8.tgz#7a4918eb5d9da59f0c793c29ed2e2ae63b346b3d"
-  integrity sha512-6zQtfthjBD9n72Tl20cMMerGZF7rI+102L6GC81Mzey2/gzg7dRBnnUSnkjpXTnGrfjxahmAIdkSPVWyUJ+xmQ==
+"@corenode/git-lib@0.24.9":
+  version "0.24.9"
+  resolved "https://registry.yarnpkg.com/@corenode/git-lib/-/git-lib-0.24.9.tgz#82316bcd14925e0fda1df369b4b2f2f7aed366f1"
+  integrity sha512-oW3os/Nm0c4gvgQ8NzuAV68AfY1ZSmCfo/vqgfCqYG4IA+wx5e6vsKQGfJwoUIVkygxSB0lzRY6vSOqdRNM6uA==
   dependencies:
     execa "^5.0.0"
 
-"@corenode/utils@0.24.8":
-  version "0.24.8"
-  resolved "https://registry.yarnpkg.com/@corenode/utils/-/utils-0.24.8.tgz#bb31e84e82ff1e1b9065e20643ad9a82f75df82c"
-  integrity sha512-DqmOKUAVk/mf17X3Eaf7CK3UBl+5WMOFxQ1AFk2ahO4FKgU27d1WLb5jzFCUsxX74UQK8aAFG8AszPCg2LshjA==
+"@corenode/utils@0.24.9":
+  version "0.24.9"
+  resolved "https://registry.yarnpkg.com/@corenode/utils/-/utils-0.24.9.tgz#95adc1ff58893295533c0fee6d4b880335c7ea6f"
+  integrity sha512-FiKr4RL9eIc7VwhhZT5/LtnBxB40SoCwfh+WbEOHkZg0KHrHCdBeG1zVwwXFroSlZVMkGmG5Otf2XPQpHHKcMA==
   dependencies:
     axios "^0.21.1"
     chalk "^4.1.0"
@@ -1493,15 +1493,15 @@ core-util-is@~1.0.0:
   resolved "https://registry.yarnpkg.com/core-util-is/-/core-util-is-1.0.2.tgz#b5fd54220aa2bc5ab57aab7140c940754503c1a7"
   integrity sha1-tf1UIgqivFq1eqtxQMlAdUUDwac=
 
-corenode@^0.24.8:
-  version "0.24.8"
-  resolved "https://registry.yarnpkg.com/corenode/-/corenode-0.24.8.tgz#7cd300d159273874a242c753eeda450ed646f9d7"
-  integrity sha512-UNRaH870pDhWh3Pp1NfMa1znaYT9lBxRHhjgpZZy7071gj/pGQ9yZbdvGSS8cpvQoDa6dk0VdIdKqSw95idoVg==
+corenode@^0.24.9:
+  version "0.24.9"
+  resolved "https://registry.yarnpkg.com/corenode/-/corenode-0.24.9.tgz#5316833283f2bacb8c4ccaba3ab6fc93af449603"
+  integrity sha512-5fDc++qdQRUrqAX2OsLzdyEi9dAIXM0mPFeDIMFskkYBzxTHDbCrrpqQBCtnc8qTKCH99TB+GaSVa/g9RqqK+w==
   dependencies:
     "@babel/runtime" "^7.13.10"
-    "@corenode/builder" "0.24.8"
-    "@corenode/git-lib" "0.24.8"
-    "@corenode/utils" "0.24.8"
+    "@corenode/builder" "0.24.9"
+    "@corenode/git-lib" "0.24.9"
+    "@corenode/utils" "0.24.9"
     escape-goat "^3.0.0"
     execa "5.0.0"
     filesize "^6.3.0"

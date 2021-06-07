@@ -8,7 +8,7 @@
     "packages/*"
   ],
   "dependencies": {
-    "corenode": "^0.24.8",
+    "corenode": "^0.24.9",
     "@babel/runtime": "^7.14.0"
   }
 }
