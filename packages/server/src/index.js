@@ -1,9 +1,11 @@
 const express = require("express")
 const { objectToArrayMap } = require("@corenode/utils")
 const uuid = require("uuid")
+const os = require("os")
 
 const { Controller } = require("@@classes")
 const { getLocalEndpoints, fetchController } = require("./lib/helpers")
+const nethub = require("./lib/nethub")
 const SERVER_VERSION = global.SERVER_VERSION = runtime.helpers.getVersion()
 
 const defaultMiddlewares = [
@@ -42,7 +44,7 @@ class RequestServer {
 
         // set server basics
         this.httpServer = require("express")()
-        this.usid = uuid.v4() // unique session identifier
+        this.usid = uuid.v5(os.hostname(), uuid.v4()) // unique session identifier
 
         this._everyRequest = null
         this._onRequest = {}
@@ -102,6 +104,7 @@ class RequestServer {
     }
 
     init() {
+        nethub.heartbeat()
         const localEndpoints = getLocalEndpoints()
 
         this.httpServer.use(express.json())

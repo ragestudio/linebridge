@@ -5,7 +5,7 @@ const defaultRelicOrigin = _import("./defaultOrigin.json")
 let sockets = {}
 
 function registerNewBridge() {
-
+    
 }
 
 function resolveOrigin(origin) {

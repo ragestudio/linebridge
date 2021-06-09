@@ -7,8 +7,16 @@
   "workspaces": [
     "packages/*"
   ],
+  "scripts": {
+    "dev:server": "cd ./packages/server && npm run dev",
+    "dev:nethub": "cd ./packages/nethub && npm run dev",
+    "dev:relic": "cd ./packages/relic && npm run dev"
+  },
   "dependencies": {
     "corenode": "^0.24.9",
     "@babel/runtime": "^7.14.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.7"
   }
 }
