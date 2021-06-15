@@ -29,7 +29,7 @@ function heartbeat() {
 }
 
 async function registerOrigin(payload) {
-    putRegistry({ data: { ...payload } })
+    putRegistry({ ...payload })
         .then((res) => {
             console.log(res.data)
         })
