@@ -2,6 +2,11 @@
 # yarn lockfile v1
 
 
+"7zip-bin@^5.1.1":
+  version "5.1.1"
+  resolved "https://registry.yarnpkg.com/7zip-bin/-/7zip-bin-5.1.1.tgz#9274ec7460652f9c632c59addf24efb1684ef876"
+  integrity sha512-sAP4LldeWNz0lNzmTird3uWfFDWWTeg6V/MsmyyLR9X1idwKBWIgt/ZvinqQldJm3LecKEs1emkbquO6PCiLVQ==
+
 "@babel/code-frame@^7.12.13":
   version "7.12.13"
   resolved "https://registry.yarnpkg.com/@babel/code-frame/-/code-frame-7.12.13.tgz#dcfc826beef65e75c50e21d3837d7d95798dd658"
@@ -905,10 +910,10 @@
     "@babel/helper-validator-identifier" "^7.14.0"
     to-fast-properties "^2.0.0"
 
-"@corenode/builder@0.24.9":
-  version "0.24.9"
-  resolved "https://registry.yarnpkg.com/@corenode/builder/-/builder-0.24.9.tgz#a733b1f1fb51a1c796d8c455a887b05652b10b0c"
-  integrity sha512-G0sXg4ZC2gnPtkbSzdnhyH+xr5Ij+V8lWGtoIBsovZC+ZDZCrHWQ3pSy/LMR6jasYFk97pccUgcocZ6JjhtFfg==
+"@corenode/builder@0.25.0":
+  version "0.25.0"
+  resolved "https://registry.yarnpkg.com/@corenode/builder/-/builder-0.25.0.tgz#198ca7f453856afc84cb21873adf83c5406c00fc"
+  integrity sha512-zjRd7xH7RlzNTgN1zsN1jCZTohLhTW5ItR8croNGa2mrrwijRRpl7TWhJOzIMASweEQvEhibRf3cblMvWm/ldg==
   dependencies:
     "@babel/core" "^7.13.14"
     "@babel/plugin-proposal-class-properties" "7.13.0"
@@ -918,7 +923,7 @@
     "@babel/preset-env" "7.13.12"
     "@babel/preset-typescript" "7.13.0"
     "@babel/runtime" "7.13.10"
-    "@corenode/utils" "0.24.9"
+    "@corenode/utils" "0.25.0"
     cli-progress "^3.9.0"
     map-stream "^0.0.7"
     rimraf "^3.0.2"
@@ -927,17 +932,17 @@
     through2 "^4.0.2"
     vinyl-fs "^3.0.3"
 
-"@corenode/git-lib@0.24.9":
-  version "0.24.9"
-  resolved "https://registry.yarnpkg.com/@corenode/git-lib/-/git-lib-0.24.9.tgz#82316bcd14925e0fda1df369b4b2f2f7aed366f1"
-  integrity sha512-oW3os/Nm0c4gvgQ8NzuAV68AfY1ZSmCfo/vqgfCqYG4IA+wx5e6vsKQGfJwoUIVkygxSB0lzRY6vSOqdRNM6uA==
+"@corenode/git-lib@0.25.0":
+  version "0.25.0"
+  resolved "https://registry.yarnpkg.com/@corenode/git-lib/-/git-lib-0.25.0.tgz#b5e80090e2e179ec2b16930b34c2cd6f4ec56790"
+  integrity sha512-7c8LmVbdvM8NvyFJDi+vju7FzbsNAVvQVcZajmNYwivizG/cyQWbmm6phToipMAP3BjTI2BuDQFzEPZKEtWgvA==
   dependencies:
     execa "^5.0.0"
 
-"@corenode/utils@0.24.9":
-  version "0.24.9"
-  resolved "https://registry.yarnpkg.com/@corenode/utils/-/utils-0.24.9.tgz#95adc1ff58893295533c0fee6d4b880335c7ea6f"
-  integrity sha512-FiKr4RL9eIc7VwhhZT5/LtnBxB40SoCwfh+WbEOHkZg0KHrHCdBeG1zVwwXFroSlZVMkGmG5Otf2XPQpHHKcMA==
+"@corenode/utils@0.25.0":
+  version "0.25.0"
+  resolved "https://registry.yarnpkg.com/@corenode/utils/-/utils-0.25.0.tgz#c6b0974a8e7b0556c9366e2677bd81b84528cd37"
+  integrity sha512-+lXEJqdwxLsT19vSTBTVMx18yj4WjLOTTKsJbUAn5AO6MbspJ8SSOuGESJB+ODumptybvvMOmwkF8vzu0ib1WA==
   dependencies:
     axios "^0.21.1"
     chalk "^4.1.0"
@@ -1493,23 +1498,26 @@ core-util-is@~1.0.0:
   resolved "https://registry.yarnpkg.com/core-util-is/-/core-util-is-1.0.2.tgz#b5fd54220aa2bc5ab57aab7140c940754503c1a7"
   integrity sha1-tf1UIgqivFq1eqtxQMlAdUUDwac=
 
-corenode@^0.24.9:
-  version "0.24.9"
-  resolved "https://registry.yarnpkg.com/corenode/-/corenode-0.24.9.tgz#5316833283f2bacb8c4ccaba3ab6fc93af449603"
-  integrity sha512-5fDc++qdQRUrqAX2OsLzdyEi9dAIXM0mPFeDIMFskkYBzxTHDbCrrpqQBCtnc8qTKCH99TB+GaSVa/g9RqqK+w==
+corenode@^0.25.0:
+  version "0.25.0"
+  resolved "https://registry.yarnpkg.com/corenode/-/corenode-0.25.0.tgz#64410e427faaa6888e1e144c2790a815cb5ff6c7"
+  integrity sha512-7OK/LjuhJSgI2fljcnaSjWIbrTYrO2o6Z9XmsiORoCZHWvqJ9b0R9mJ//l/k9DrsDjDEyyKkFZQw7u+YLgoxZw==
   dependencies:
+    "7zip-bin" "^5.1.1"
     "@babel/runtime" "^7.13.10"
-    "@corenode/builder" "0.24.9"
-    "@corenode/git-lib" "0.24.9"
-    "@corenode/utils" "0.24.9"
+    "@corenode/builder" "0.25.0"
+    "@corenode/git-lib" "0.25.0"
+    "@corenode/utils" "0.25.0"
     escape-goat "^3.0.0"
     execa "5.0.0"
     filesize "^6.3.0"
     listr "0.14.3"
     lodash "^4.17.21"
+    node-7z "^2.1.2"
     open "^8.0.8"
     rimraf "^3.0.2"
     stacktrace-js "^2.0.2"
+    websocket "^1.0.34"
     winston "^3.3.3"
     yargs "^17.0.1"
     yargs-parser "^20.2.7"
@@ -1522,7 +1530,14 @@ cors@^2.8.5:
     object-assign "^4"
     vary "^1"
 
-cross-spawn@^7.0.3:
+cross-env@^7.0.3:
+  version "7.0.3"
+  resolved "https://registry.yarnpkg.com/cross-env/-/cross-env-7.0.3.tgz#865264b29677dc015ba8418918965dd232fc54cf"
+  integrity sha512-+/HKd6EgcQCJGh2PSjZuUitQBQynKor4wrFbRg4DtAgS1aWO+gU52xpH7M9ScGgXSYmAVS9bIJ8EzuaGw0oNAw==
+  dependencies:
+    cross-spawn "^7.0.1"
+
+cross-spawn@^7.0.1, cross-spawn@^7.0.2, cross-spawn@^7.0.3:
   version "7.0.3"
   resolved "https://registry.yarnpkg.com/cross-spawn/-/cross-spawn-7.0.3.tgz#f73a85b9d5d41d045551c177e2882d4ac85728a6"
   integrity sha512-iRDPJKUPVEND7dHPO8rkbOnPpyDygcDFtWjpeWNCgy8WP2rXcxXL8TskReQl6OrB2G7+UJrags1q15Fudc7G6w==
@@ -2485,6 +2500,31 @@ lodash.debounce@^4.0.8:
   resolved "https://registry.yarnpkg.com/lodash.debounce/-/lodash.debounce-4.0.8.tgz#82d79bff30a67c4005ffd5e2515300ad9ca4d7af"
   integrity sha1-gteb/zCmfEAF/9XiUVMArZyk168=
 
+lodash.defaultsdeep@^4.6.1:
+  version "4.6.1"
+  resolved "https://registry.yarnpkg.com/lodash.defaultsdeep/-/lodash.defaultsdeep-4.6.1.tgz#512e9bd721d272d94e3d3a63653fa17516741ca6"
+  integrity sha512-3j8wdDzYuWO3lM3Reg03MuQR957t287Rpcxp1njpEa8oDrikb+FwGdW3n+FELh/A6qib6yPit0j/pv9G/yeAqA==
+
+lodash.defaultto@^4.14.0:
+  version "4.14.0"
+  resolved "https://registry.yarnpkg.com/lodash.defaultto/-/lodash.defaultto-4.14.0.tgz#38bd3d425acee733e0e2bbbd4e4b29711cc2ee11"
+  integrity sha1-OL09QlrO5zPg4ru9TkspcRzC7hE=
+
+lodash.flattendeep@^4.4.0:
+  version "4.4.0"
+  resolved "https://registry.yarnpkg.com/lodash.flattendeep/-/lodash.flattendeep-4.4.0.tgz#fb030917f86a3134e5bc9bec0d69e0013ddfedb2"
+  integrity sha1-+wMJF/hqMTTlvJvsDWngAT3f7bI=
+
+lodash.isempty@^4.4.0:
+  version "4.4.0"
+  resolved "https://registry.yarnpkg.com/lodash.isempty/-/lodash.isempty-4.4.0.tgz#6f86cbedd8be4ec987be9aaf33c9684db1b31e7e"
+  integrity sha1-b4bL7di+TsmHvpqvM8loTbGzHn4=
+
+lodash.negate@^3.0.2:
+  version "3.0.2"
+  resolved "https://registry.yarnpkg.com/lodash.negate/-/lodash.negate-3.0.2.tgz#9c897b0bf610019e0b43b8ff3f0afef3d7b66f34"
+  integrity sha1-nIl7C/YQAZ4LQ7j/Pwr+89e2bzQ=
+
 lodash@^4.17.21:
   version "4.17.21"
   resolved "https://registry.yarnpkg.com/lodash/-/lodash-4.17.21.tgz#679591c564c3bffaae8454cf0b3df370c3d6911c"
@@ -2643,6 +2683,20 @@ next-tick@~1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/next-tick/-/next-tick-1.0.0.tgz#ca86d1fe8828169b0120208e3dc8424b9db8342c"
   integrity sha1-yobR/ogoFpsBICCOPchCS524NCw=
+
+node-7z@^2.1.2:
+  version "2.1.2"
+  resolved "https://registry.yarnpkg.com/node-7z/-/node-7z-2.1.2.tgz#8c15d6cf7c1baae6b6774721507c8b56ec4e6dbb"
+  integrity sha512-mSmn90OIYKYIkuRwH1YRJl2sMwB9OlYhCQS4SPTOfxlzWwomoC1G9j4tsvAsv7vJPwvK7B76Z0a2dH5Mvwo91Q==
+  dependencies:
+    cross-spawn "^7.0.2"
+    debug "^4.1.1"
+    lodash.defaultsdeep "^4.6.1"
+    lodash.defaultto "^4.14.0"
+    lodash.flattendeep "^4.4.0"
+    lodash.isempty "^4.4.0"
+    lodash.negate "^3.0.2"
+    normalize-path "^3.0.0"
 
 node-gyp-build@^4.2.0:
   version "4.2.3"
