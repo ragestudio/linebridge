@@ -1,27 +1,46 @@
+//* LIBRARIES
 const axios = require('axios')
+const { websocket } = require('corenode').net
 
-const NETHUB_URI = global.NETHUB_URI = "https://nethub.ragestudio.net"
-
-const axiosInstance = axios.create({
-    baseURL: NETHUB_URI
+//* constables
+const NETHUB_HOSTNAME = IS_DEV ? "localhost" : global.NETHUB_HOSTNAME = "nethub.ragestudio.net"
+const nethubRequest = axios.create({
+    baseURL: IS_DEV ? `http://localhost:1010` : `https://${NETHUB_HOSTNAME}`
 })
 
-function heartbeat(params) {
-    axiosInstance.get("heartbeat")
+//* HANDLERS
+const getHeartbeat = (...context) => nethubRequest.get("heartbeat", ...context)
+const putRegistry = (...context) => nethubRequest.put("registry", ...context)
+const getRegistry = (...context) => nethubRequest.get("registry", ...context)
+const deleteRegistry = (...context) => nethubRequest.delete("registry", ...context)
+
+function heartbeat() {
+    return new Promise((resolve, reject) => {
+        getHeartbeat()
+            .then((res) => {
+                return resolve(res.data)
+            })
+            .catch((err) => {
+                runtime.logger.dump("error", err)
+                console.error(`❌ [${err.response?.status ?? "0"}] [${NETHUB_HOSTNAME}] Failed to listen heartbeat > ${err}`)
+                return reject(err)
+            })
+    })
+}
+
+async function registerOrigin(payload) {
+    putRegistry({ data: { ...payload } })
         .then((res) => {
-            console.log(res.response.data)
+            console.log(res.data)
         })
         .catch((err) => {
-            console.log(err)
+            console.log(err.response.data)
         })
 }
 
-function registerOrigin() {
-
-}
-
-function getOrigin() {
-
+async function getOrigin() {
+    const hubData = await getRegistry()
+    console.log(hubData)
 }
 
 module.exports = { heartbeat, registerOrigin, getOrigin }

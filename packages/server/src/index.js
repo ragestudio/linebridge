@@ -1,12 +1,53 @@
-const express = require("express")
-const { objectToArrayMap } = require("@corenode/utils")
 const uuid = require("uuid")
 const os = require("os")
+const path = require("path")
+const fs = require("fs")
+const express = require("express")
+const { objectToArrayMap } = require("@corenode/utils")
 
-const { Controller } = require("@@classes")
+const SERVER_VERSION = global.SERVER_VERSION = runtime.helpers.getVersion()
+const SERVER_GENFILE = "origin.server"
+const SERVER_GENFILEPATH = path.resolve(process.cwd(), SERVER_GENFILE)
+const IS_DEV = global.IS_DEV = runtime.helpers.isDevMode()
+
+const { Controller } = require("@classes")
 const { getLocalEndpoints, fetchController } = require("./lib/helpers")
 const nethub = require("./lib/nethub")
-const SERVER_VERSION = global.SERVER_VERSION = runtime.helpers.getVersion()
+const TOKENIZER = require("./lib/tokenizer")
+
+const GEN = {
+    stat: () => {
+        return fs.lstatSync(SERVER_GENFILEPATH)
+    },
+    get: (key) => {
+        let data = {}
+        if (fs.existsSync(SERVER_GENFILEPATH)) {
+            data = JSON.parse(fs.readFileSync(SERVER_GENFILEPATH, 'utf8'))
+        }
+
+        if (typeof key === "string") {
+            return data[key]
+        }
+        return data
+    },
+    write: (mutation) => {
+        let data = GEN.get()
+        data = { ...data, ...mutation }
+
+        GEN.data = data
+        return fs.writeFileSync(SERVER_GENFILEPATH, JSON.stringify(data, null, 2), { encoding: "utf-8" })
+    },
+    create: () => {
+        let data = {
+            created: Date.now(),
+            serverToken: TOKENIZER.generate()
+        }
+
+        GEN.write(data)
+    },
+    file: SERVER_GENFILE,
+    filepath: SERVER_GENFILEPATH,
+}
 
 const defaultMiddlewares = [
     require('cors')(),
@@ -15,7 +56,7 @@ const defaultMiddlewares = [
         createParentPath: true
     })
 ]
-const defaultHeaders = { 
+const defaultHeaders = {
     "Access-Control-Allow-Headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS, PUT, PATCH, DELETE",
@@ -45,6 +86,7 @@ class RequestServer {
         // set server basics
         this.httpServer = require("express")()
         this.usid = uuid.v5(os.hostname(), uuid.v4()) // unique session identifier
+        this.oid = GEN.get("serverToken")
 
         this._everyRequest = null
         this._onRequest = {}
@@ -104,7 +146,28 @@ class RequestServer {
     }
 
     init() {
-        nethub.heartbeat()
+        //? check if origin.server exists
+        if (!fs.existsSync(SERVER_GENFILEPATH)) {
+            GEN.create()
+        }
+
+        //? check origin.server integrity
+        const GENDATA = global.GENDATA = GEN.get()
+        const GENSTAT = global.GENSTAT = GEN.stat()
+
+        if (typeof GENDATA.created === "undefined") {
+            console.warn("Server generation file not contains an creation date")
+            GEN.write({ created: Date.parse(GENSTAT.birthtime) })
+        }
+
+        if (typeof GENDATA.serverToken === "undefined") {
+            console.warn("Missing server token!")
+            GEN.create()
+        }
+
+        //? set last start
+        GEN.write({ lastStart: Date.now() })
+
         const localEndpoints = getLocalEndpoints()
 
         this.httpServer.use(express.json())
@@ -168,6 +231,7 @@ class RequestServer {
         })
 
         this.httpServer.listen(this.params.port, () => {
+            nethub.registerOrigin({ entry: "/", oid: this.oid })
             console.log(`✅  Ready on port ${this.params.port}!`)
         })
     }

@@ -6,6 +6,7 @@ const fs = require('fs')
 //* LIBS
 const { objectToArrayMap } = require("@corenode/utils")
 const TOKENIZER = require("./lib/tokenizer")
+const { websocket } = require("corenode").net
 
 //* GLOBALS
 const SERVER_REGISTRY = "server.registry"
@@ -143,6 +144,30 @@ function init() {
     start()
 }
 
+function startHeartbeatServer() {
+    const heartbeatServer = websocket.server.createInstance({
+        port: 1011,
+        onMessage: (connection, message) => {
+            setTimeout(() => {
+                const index = Number(message.utf8Data)
+                connection.send(index + 1)
+            }, 1000)
+        },
+        authorizeOrigin: (origin) => {
+            // await 5s to simulate an authorization process
+            return new Promise((resolve, reject) => {
+                setTimeout(() => {
+                    return resolve(true)
+                }, 5000)
+            })
+        },
+        onClose: () => {
+            
+        }
+    })
+}
+
+
 function start() {
     //? set middlewares
     SERVER.use(express.json())
@@ -170,6 +195,7 @@ function start() {
     })
 
     // TODO: set websocket server heap & events
+    startHeartbeatServer()
     SERVER.get("/heartbeat", (req, res, next) => {
         res.json({
             uptime: getUptime()
