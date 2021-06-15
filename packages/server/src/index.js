@@ -68,6 +68,7 @@ class RequestServer {
         this.params = params ?? {}
 
         // set params jails
+        this.id = this.params.id ?? runtime.helpers.getRootPackage().name
         this.routes = []
         this.endpoints = { ...endpoints }
         this.middlewares = [...defaultMiddlewares]
@@ -231,7 +232,7 @@ class RequestServer {
         })
 
         this.httpServer.listen(this.params.port, () => {
-            nethub.registerOrigin({ entry: "/", oid: this.oid })
+            nethub.registerOrigin({ entry: "/", oid: this.oid, id: this.id })
             console.log(`✅  Ready on port ${this.params.port}!`)
         })
     }
