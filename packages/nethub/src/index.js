@@ -11,6 +11,7 @@ const { websocket } = require("corenode").net
 //* GLOBALS
 const SERVER_REGISTRY = "server.registry"
 const SERVER_GENFILE = "origin.server"
+const LIMIT_PER_ADDRESS = 5
 
 const SERVER_REGISTRYPATH = path.resolve(process.cwd(), SERVER_REGISTRY)
 const SERVER_GENFILEPATH = path.resolve(process.cwd(), SERVER_GENFILE)
@@ -20,9 +21,14 @@ const SERVER = require("express")()
 
 //* SERVER HUB REGISTRY
 const HUB = {
+    ids: {},
+    addresses: {}, // not storaged to registry
     entries: [],
     oids: [],
     registry: {},
+    add: (payload) => {
+
+    },
     set: (oid, data) => {
         HUB.registry[oid] = data
 
@@ -30,7 +36,9 @@ const HUB = {
     },
     del: (oid) => {
         const addressIndex = HUB.oids.indexOf(oid)
+        const item = HUB.registry[oid]
 
+        delete HUB.ids[item.id]
         delete HUB.registry[oid]
         delete HUB.oids[addressIndex]
         delete HUB.entries[addressIndex]
@@ -39,6 +47,7 @@ const HUB = {
     },
     update: () => {
         const data = {
+            ids: HUB.ids,
             entries: HUB.entries,
             oids: HUB.oids,
             registry: HUB.registry,
@@ -106,7 +115,7 @@ function getUptime() {
 
     return now - lastStart
 }
-function getRegistryFromEntry(entry){
+function getRegistryFromEntry(entry) {
     const index = HUB.entries.indexOf(entry)
     const oid = HUB.oids[index]
 
@@ -162,7 +171,7 @@ function startHeartbeatServer() {
             })
         },
         onClose: () => {
-            
+
         }
     })
 }
@@ -203,10 +212,20 @@ function start() {
     })
 
     SERVER.put("/registry", (req, res, next) => {
-        let { entry, oid } = req.body
+        let { entry, oid, id } = req.body
         const address = req.headers['x-real-ip'] || req.connection.remoteAddress
 
         let mutation = {}
+
+        //? check address quota usage
+        if (typeof HUB.addresses[address] !== "undefined") {
+            if (HUB.addresses[address] >= LIMIT_PER_ADDRESS) {
+                res.status(403)
+                return res.json({
+                    error: `[${address}] This address has exceeded the maximum number of registries [MAX ${LIMIT_PER_ADDRESS}]`
+                })
+            }
+        }
 
         //? validate oid token
         if (typeof oid !== "undefined") {
@@ -245,11 +264,22 @@ function start() {
                 oid = TOKENIZER.generate(address)
             }
 
+            //? add to hub
             HUB.entries.push(entry)
             HUB.oids.push(oid)
+            HUB.addresses[address] = Number(addresses[address]) + 1 ?? Number(1)
 
             mutation.oid = oid
             mutation.created = Date.now()
+        }
+
+        if (typeof id === "string") {
+            if (typeof HUB.ids[id] !== "undefined") {
+                return false
+            }
+
+            HUB.ids[id] = oid
+            mutation.id = id
         }
 
         mutation["address"] = address
