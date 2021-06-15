@@ -96,7 +96,7 @@ const DEFAULT_HEADERS = {
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS, PUT, PATCH, DELETE",
     "Access-Control-Allow-Credentials": "true",
 }
-const DEFAULT_PORT = process.parsedArgs.listenPort ?? 1010
+const DEFAULT_PORT = runtime.args.listenPort ?? 1010
 
 //* HELPERS
 function getUptime() {
