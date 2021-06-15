@@ -3,6 +3,6 @@
         "origitGit": ""
     },
     "modulesAliases": {
-        "@@classes": "./dist/classes"
+        "@classes": "./dist/classes"
     }
 }
