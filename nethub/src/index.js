@@ -5,7 +5,7 @@ const fs = require('fs')
 
 //* LIBS
 const { objectToArrayMap } = require("@corenode/utils")
-const TOKENIZER = require("./lib/tokenizer")
+const tokenizer = require("corenode/dist/libs/tokenizer")
 const { websocket } = require("corenode").net
 
 //* GLOBALS
@@ -24,7 +24,7 @@ const HUB = {
     ids: {},
     addresses: {}, // not storaged to registry
     entries: [],
-    oids: [],
+    oskids: [],
     registry: {},
     add: (payload) => {
 
@@ -35,12 +35,12 @@ const HUB = {
         HUB.update()
     },
     del: (oid) => {
-        const addressIndex = HUB.oids.indexOf(oid)
+        const addressIndex = HUB.oskids.indexOf(oid)
         const item = HUB.registry[oid]
 
         delete HUB.ids[item.id]
         delete HUB.registry[oid]
-        delete HUB.oids[addressIndex]
+        delete HUB.oskids[addressIndex]
         delete HUB.entries[addressIndex]
 
         HUB.update()
@@ -49,7 +49,7 @@ const HUB = {
         const data = {
             ids: HUB.ids,
             entries: HUB.entries,
-            oids: HUB.oids,
+            oids: HUB.oskids,
             registry: HUB.registry,
         }
         return fs.writeFileSync(SERVER_REGISTRYPATH, JSON.stringify(data, null, 2), { encoding: "utf-8" })
@@ -59,7 +59,7 @@ const HUB = {
             const data = JSON.parse(fs.readFileSync(SERVER_REGISTRYPATH, 'utf8')) ?? {}
 
             HUB.entries = data.entries
-            HUB.oids = data.oids
+            HUB.oskids = data.oids
             HUB.registry = data.registry
         }
     }
@@ -86,7 +86,7 @@ const GEN = {
     create: () => {
         let data = {
             created: Date.now(),
-            serverToken: TOKENIZER.generate()
+            serverToken: tokenizer.generate()
         }
 
         GEN.write(data)
@@ -117,7 +117,7 @@ function getUptime() {
 }
 function getRegistryFromEntry(entry) {
     const index = HUB.entries.indexOf(entry)
-    const oid = HUB.oids[index]
+    const oid = HUB.oskids[index]
 
     return HUB.registry[oid]
 }
@@ -153,29 +153,6 @@ function init() {
     start()
 }
 
-function startHeartbeatServer() {
-    const heartbeatServer = websocket.server.createInstance({
-        port: 1011,
-        onMessage: (connection, message) => {
-            setTimeout(() => {
-                const index = Number(message.utf8Data)
-                connection.send(index + 1)
-            }, 1000)
-        },
-        authorizeOrigin: (origin) => {
-            // await 5s to simulate an authorization process
-            return new Promise((resolve, reject) => {
-                setTimeout(() => {
-                    return resolve(true)
-                }, 5000)
-            })
-        },
-        onClose: () => {
-
-        }
-    })
-}
-
 
 function start() {
     //? set middlewares
@@ -203,8 +180,6 @@ function start() {
         })
     })
 
-    // TODO: set websocket server heap & events
-    startHeartbeatServer()
     SERVER.get("/heartbeat", (req, res, next) => {
         res.json({
             uptime: getUptime()
@@ -229,7 +204,7 @@ function start() {
 
         //? validate oid token
         if (typeof oid !== "undefined") {
-            if (!TOKENIZER.valid(oid)) {
+            if (!tokenizer.valid(oid)) {
                 res.status(403)
                 return res.json({
                     error: `[${oid}] Is an invalid OID!`
@@ -261,12 +236,12 @@ function start() {
             }
 
             if (typeof oid === "undefined") {
-                oid = TOKENIZER.generate(address)
+                oid = tokenizer.generate(address)
             }
 
             //? add to hub
             HUB.entries.push(entry)
-            HUB.oids.push(oid)
+            HUB.oskids.push(oid)
             HUB.addresses[address] = Number(addresses[address]) + 1 ?? Number(1)
 
             mutation.oid = oid

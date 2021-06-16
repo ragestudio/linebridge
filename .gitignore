@@ -1,7 +1,13 @@
 node_modules
+dist
+dumps.log
+origin.server
+server.registry
+server.manifest
+
 */**/node_modules
 */**/dist
 */**/dumps.log
-
 */**/origin.server
 */**/server.registry
+*/**/server.manifest

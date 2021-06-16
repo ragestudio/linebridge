@@ -1,53 +1,12 @@
-const uuid = require("uuid")
-const os = require("os")
-const path = require("path")
 const fs = require("fs")
 const express = require("express")
 const { objectToArrayMap } = require("@corenode/utils")
 
-const SERVER_VERSION = global.SERVER_VERSION = runtime.helpers.getVersion()
-const SERVER_GENFILE = "origin.server"
-const SERVER_GENFILEPATH = path.resolve(process.cwd(), SERVER_GENFILE)
-const IS_DEV = global.IS_DEV = runtime.helpers.isDevMode()
-
-const { Controller } = require("@classes")
-const { getLocalEndpoints, fetchController } = require("./lib/helpers")
-const nethub = require("./lib/nethub")
-const TOKENIZER = require("./lib/tokenizer")
-
-const GEN = {
-    stat: () => {
-        return fs.lstatSync(SERVER_GENFILEPATH)
-    },
-    get: (key) => {
-        let data = {}
-        if (fs.existsSync(SERVER_GENFILEPATH)) {
-            data = JSON.parse(fs.readFileSync(SERVER_GENFILEPATH, 'utf8'))
-        }
-
-        if (typeof key === "string") {
-            return data[key]
-        }
-        return data
-    },
-    write: (mutation) => {
-        let data = GEN.get()
-        data = { ...data, ...mutation }
-
-        GEN.data = data
-        return fs.writeFileSync(SERVER_GENFILEPATH, JSON.stringify(data, null, 2), { encoding: "utf-8" })
-    },
-    create: () => {
-        let data = {
-            created: Date.now(),
-            serverToken: TOKENIZER.generate()
-        }
-
-        GEN.write(data)
-    },
-    file: SERVER_GENFILE,
-    filepath: SERVER_GENFILEPATH,
-}
+const serverManifest = require("../serverManifest")
+const tokenizer = require("../lib/tokenizer")
+const classes = require("../classes")
+const { getLocalEndpoints, fetchController } = require("../lib/helpers")
+const nethub = require("../lib/nethub")
 
 const defaultMiddlewares = [
     require('cors')(),
@@ -63,32 +22,25 @@ const defaultHeaders = {
     "Access-Control-Allow-Credentials": "true",
 }
 
-class RequestServer {
+class Server {
     constructor(params, endpoints, middlewares) {
         this.params = params ?? {}
 
-        // set params jails
-        this.id = this.params.id ?? runtime.helpers.getRootPackage().name
+        //* set params jails
         this.routes = []
         this.endpoints = { ...endpoints }
-        this.middlewares = [...defaultMiddlewares]
-        this.headers = {
-            ...defaultHeaders,
-            ...this.params.headers
-        }
+        this.middlewares = [...defaultMiddlewares, ...middlewares ?? []]
+        this.headers = { ...defaultHeaders, ...this.params.headers }
 
-        // process params
-        if (typeof middlewares !== "undefined" && Array.isArray(middlewares)) {
-            middlewares.forEach((middleware) => {
-                this.middlewares.push(middleware)
-            })
-        }
-
-        // set server basics
+        //* set server basics
         this.httpServer = require("express")()
-        this.usid = uuid.v5(os.hostname(), uuid.v4()) // unique session identifier
-        this.oid = GEN.get("serverToken")
 
+        //* set id's
+        this.id = this.params.id ?? runtime.helpers.getRootPackage().name
+        this.usid = tokenizer.generateUSID()
+        this.oskid = serverManifest.get("serverToken")
+
+        //* set events & params
         this._everyRequest = null
         this._onRequest = {}
 
@@ -118,7 +70,7 @@ class RequestServer {
 
     registerEndpoint(method, route, controller) {
         if (typeof controller === "function") {
-            controller = new Controller(route, controller)
+            controller = new classes.Controller(route, controller)
         }
 
         const endpoint = { method: method, route: route, controller: controller }
@@ -148,26 +100,26 @@ class RequestServer {
 
     init() {
         //? check if origin.server exists
-        if (!fs.existsSync(SERVER_GENFILEPATH)) {
-            GEN.create()
+        if (!fs.existsSync(SERVER_MANIFEST_PATH)) {
+            serverManifest.create()
         }
 
         //? check origin.server integrity
-        const GENDATA = global.GENDATA = GEN.get()
-        const GENSTAT = global.GENSTAT = GEN.stat()
+        const MANIFEST_DATA = global.MANIFEST_DATA = serverManifest.get()
+        const MANIFEST_STAT = global.MANIFEST_STAT = serverManifest.stat()
 
-        if (typeof GENDATA.created === "undefined") {
+        if (typeof MANIFEST_DATA.created === "undefined") {
             console.warn("Server generation file not contains an creation date")
-            GEN.write({ created: Date.parse(GENSTAT.birthtime) })
+            serverManifest.write({ created: Date.parse(MANIFEST_STAT.birthtime) })
         }
 
-        if (typeof GENDATA.serverToken === "undefined") {
+        if (typeof MANIFEST_DATA.serverToken === "undefined") {
             console.warn("Missing server token!")
-            GEN.create()
+            serverManifest.create()
         }
 
         //? set last start
-        GEN.write({ lastStart: Date.now() })
+        serverManifest.write({ lastStart: Date.now() })
 
         const localEndpoints = getLocalEndpoints()
 
@@ -205,7 +157,7 @@ class RequestServer {
                         fn = "default"
                     }
 
-                    this.registerEndpoint(method, route, new Controller(route, controller[fn]))
+                    this.registerEndpoint(method, route, new classes.Controller(route, controller[fn]))
                 } catch (error) {
                     runtime.logger.dump(error)
                     console.error(error)
@@ -218,9 +170,10 @@ class RequestServer {
         this.registerEndpoint("get", "/", (req, res) => {
             // here server origin resolver
             res.json({
-                time: new Date().getTime(),
+                id: this.id,
                 usid: this.usid,
-                originID: this.params.oid ?? "RelicServer",
+                oskid: this.oskid,
+                time: new Date().getTime(),
                 version: SERVER_VERSION
             })
         })
@@ -232,10 +185,14 @@ class RequestServer {
         })
 
         this.httpServer.listen(this.params.port, () => {
-            nethub.registerOrigin({ entry: "/", oid: this.oid, id: this.id })
+            //? register to nethub
+            if (this.params.onlineNethub) {
+                nethub.registerOrigin({ entry: "/", oskid: this.oskid, id: this.id })
+            }
+
             console.log(`✅  Ready on port ${this.params.port}!`)
         })
     }
 }
 
-module.exports = { Controller, Server: RequestServer }
+module.exports = Server

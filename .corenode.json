@@ -1,6 +1,8 @@
 {
-  "devRuntime": {
-    "headPackage": "relic"
-  },
-  "version": "0.1.2"
+    "development": {
+        "origitGit": ""
+    },
+    "modulesAliases": {
+        "@classes": "./dist/classes"
+    }
 }

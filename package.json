@@ -1,23 +1,36 @@
 {
-  "private": true,
-  "name": "relic",
-  "version": "0.1.2",
-  "author": "RageStudio",
-  "license": "ISC",
-  "workspaces": [
-    "packages/*"
-  ],
+  "name": "cloudlink",
+  "version": "0.2.5",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "dev:server": "cd ./packages/server && npm run dev",
-    "dev:nethub": "cd ./packages/nethub && npm run dev",
-    "dev:relic": "cd ./packages/relic && npm run dev"
+    "start:server": "corenode ./bin/server.js",
+    "dev:server": "cross-env NODE_ENV=development nodemon --ignore dist/ --exec 'corenode build && corenode' ./bin/server.js"
   },
+  "bin": {
+    "clserver": "./bin/server.js"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    ".corenode.json",
+    "load.addon.js"
+  ],
+  "license": "MIT",
   "dependencies": {
+    "axios": "^0.21.1",
     "corenode": "^0.25.1",
-    "@babel/runtime": "^7.14.0"
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
+    "express-fileupload": "^1.2.1",
+    "morgan": "^1.10.0",
+    "uuid": "^8.3.2",
+    "websocket": "^1.0.34"
   },
   "devDependencies": {
-    "cross-env": "^7.0.3",
-    "nodemon": "^2.0.7"
+    "nodemon": "^2.0.7",
+    "cross-env": "^7.0.3"
   }
 }

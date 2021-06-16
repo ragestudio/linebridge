@@ -1,4 +1,4 @@
-const { Storage } = require('@@classes')
+const { Storage } = require('@classes')
 const path = require('path')
 const { performance } = require('perf_hooks')
 
