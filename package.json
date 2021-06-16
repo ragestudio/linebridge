@@ -1,5 +1,5 @@
 {
-  "name": "cloudlink",
+  "name": "@ragestudio/cloudlink",
   "version": "0.5.0",
   "main": "dist/client/index.js",
   "types": "dist/index.d.ts",
