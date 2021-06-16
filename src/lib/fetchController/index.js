@@ -16,19 +16,4 @@ function fetchController(key) {
     }
 }
 
-function getLocalEndpoints() {
-    try {
-        const localEndpointsFile = path.resolve(process.cwd(), `endpoints.json`)
-        if (fs.existsSync(localEndpointsFile)) {
-            return JSON.parse(fs.readFileSync(localEndpointsFile, 'utf-8'))
-        }
-        return false
-    } catch (error) {
-        return false
-    }
-}
-
-module.exports = {
-    fetchController,
-    getLocalEndpoints
-}
+module.exports = fetchController

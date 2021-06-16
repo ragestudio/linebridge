@@ -1,11 +1,11 @@
-const tokenizer = require("../lib/tokenizer")
+const tokenizer = require("corenode/dist/libs/tokenizer")
 const path = require("path")
 const fs = require("fs")
 
 const SERVER_MANIFEST = global.SERVER_MANIFEST ?? "server.manifest"
 const SERVER_MANIFEST_PATH = global.SERVER_MANIFEST_PATH ?? path.resolve(process.cwd(), SERVER_MANIFEST)
 
-const serverfile = {
+const serverManifest = {
     stat: () => {
         return fs.lstatSync(SERVER_MANIFEST)
     },
@@ -21,10 +21,10 @@ const serverfile = {
         return data
     },
     write: (mutation) => {
-        let data = serverfile.get()
+        let data = serverManifest.get()
         data = { ...data, ...mutation }
 
-        serverfile.data = data
+        serverManifest.data = data
         return fs.writeFileSync(SERVER_MANIFEST_PATH, JSON.stringify(data, null, 2), { encoding: "utf-8" })
     },
     create: () => {
@@ -33,10 +33,10 @@ const serverfile = {
             serverToken: tokenizer.generateOSKID()
         }
 
-        serverfile.write(data)
+        serverManifest.write(data)
     },
     file: SERVER_MANIFEST,
     filepath: SERVER_MANIFEST_PATH,
 }
 
-module.exports = serverfile
+module.exports = serverManifest

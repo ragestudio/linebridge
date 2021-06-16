@@ -1,8 +1,9 @@
 {
-    "development": {
-        "origitGit": ""
-    },
-    "modulesAliases": {
-        "@classes": "./dist/classes"
-    }
+  "development": {
+    "origitGit": ""
+  },
+  "modulesAliases": {
+    "@classes": "./dist/classes"
+  },
+  "version": "0.5.0"
 }

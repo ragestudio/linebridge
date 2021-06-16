@@ -1,5 +1,5 @@
 #!/usr/bin/env corenode
-const cloudlink = require("../src/dist")
+const cloudlink = require("../dist")
 const random = require("corenode/dist/libs/random")
 
 // create server

@@ -6,7 +6,6 @@ const fs = require('fs')
 //* LIBS
 const { objectToArrayMap } = require("@corenode/utils")
 const tokenizer = require("corenode/dist/libs/tokenizer")
-const { websocket } = require("corenode").net
 
 //* GLOBALS
 const SERVER_REGISTRY = "server.registry"

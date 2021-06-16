@@ -1,7 +1,7 @@
 const axios = require("axios")
 const wsClient = require('websocket').client
 
-const defaultRelicOrigin = _import("./defaultOrigin.json")
+const defaultRelicOrigin = global.DEFAULT_RELIC_ORIGIN
 let sockets = {}
 
 function registerNewBridge() {

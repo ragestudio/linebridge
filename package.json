@@ -1,7 +1,7 @@
 {
   "name": "cloudlink",
-  "version": "0.2.5",
-  "main": "dist/index.js",
+  "version": "0.5.0",
+  "main": "dist/client/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "start:server": "corenode ./bin/server.js",
@@ -21,7 +21,7 @@
   "license": "MIT",
   "dependencies": {
     "axios": "^0.21.1",
-    "corenode": "^0.25.1",
+    "corenode": "^0.25.3",
     "cors": "^2.8.5",
     "express": "^4.17.1",
     "express-fileupload": "^1.2.1",

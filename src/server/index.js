@@ -1,12 +1,12 @@
 const fs = require("fs")
 const express = require("express")
-const { objectToArrayMap } = require("@corenode/utils")
 
-const serverManifest = require("../serverManifest")
-const tokenizer = require("../lib/tokenizer")
+const { objectToArrayMap } = require("@corenode/utils")
+const tokenizer = require("corenode/dist/libs/tokenizer")
+
 const classes = require("../classes")
-const { getLocalEndpoints, fetchController } = require("../lib/helpers")
 const nethub = require("../lib/nethub")
+const { getLocalEndpoints, fetchController, serverManifest } = require("../lib")
 
 const defaultMiddlewares = [
     require('cors')(),
