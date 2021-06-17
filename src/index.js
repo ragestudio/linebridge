@@ -8,8 +8,9 @@ global.SERVER_MANIFEST = "server.manifest"
 global.SERVER_MANIFEST_PATH = path.resolve(process.cwd(), SERVER_MANIFEST)
 
 //* import libraries
-const classes = require('./classes')
+const Classes = require('./classes')
 const Server = require("./server")
+const Client = require("./client")
 
 //* export libraries
-module.exports = { Server, ...classes }
+module.exports = { Server, Client, Classes }
