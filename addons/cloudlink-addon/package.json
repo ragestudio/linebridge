@@ -1,0 +1,18 @@
+{
+  "name": "cloudlink-addon",
+  "version": "0.5.2",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    ".corenode.json",
+    "load.addon.js"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@ragestudio/cloudlink": "0.5.2"
+  }
+}
