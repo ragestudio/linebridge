@@ -3,6 +3,9 @@
   "version": "0.5.2",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "engines": {
+    "corenode": "^0.25.3"
+  },
   "scripts": {
     "start:server": "corenode ./bin/server.js",
     "dev:server": "cross-env NODE_ENV=development nodemon --ignore dist/ --exec 'corenode build && corenode' ./bin/server.js"
