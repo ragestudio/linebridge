@@ -3,6 +3,6 @@ module.exports = {
     script: "./addon.js",
     hasDependencies: true,
     dependencies: {
-        "@ragestudio/cloudlink": "0.5.2"
+        "@ragestudio/cloudlink": "0.5.3"
     }
 }

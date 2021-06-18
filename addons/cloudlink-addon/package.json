@@ -1,6 +1,6 @@
 {
-  "name": "cloudlink-addon",
-  "version": "0.5.2",
+  "name": "@corenode/cloudlink-addon",
+  "version": "0.5.3",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "publishConfig": {
@@ -8,11 +8,12 @@
   },
   "files": [
     "dist",
+    "addon.js",
     ".corenode.json",
     "load.addon.js"
   ],
   "license": "MIT",
   "dependencies": {
-    "@ragestudio/cloudlink": "0.5.2"
+    "@ragestudio/cloudlink": "0.5.3"
   }
 }

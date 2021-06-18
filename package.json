@@ -23,7 +23,6 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "@ragestudio/cloudlink": "^0.5.2",
     "axios": "^0.21.1",
     "corenode": "^0.25.8",
     "cors": "^2.8.5",
