@@ -1,13 +1,13 @@
-const cloudlink = require('@ragestudio/cloudlink')
-
 const commands = [
     {
         command: "clserver",
         description: "Start an cloudlink server",
         exec: (context, args) => {
-            console.log("Starting Cloudlink™ Server")
+            const cloudlink = require('@ragestudio/cloudlink')
 
-            console.log(cloudlink)
+            console.log(`Starting Cloudlink™ Server \n`)
+            const server = new cloudlink.Server({...args})
+            server.init()
         }
     }
 ]
