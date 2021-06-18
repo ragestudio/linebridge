@@ -4,6 +4,8 @@ dumps.log
 origin.server
 server.registry
 server.manifest
+package-lock.json
+yarn.lock
 
 */**/node_modules
 */**/dist
@@ -11,3 +13,5 @@ server.manifest
 */**/origin.server
 */**/server.registry
 */**/server.manifest
+*/**/package-lock.json
+*/**/yarn.lock
