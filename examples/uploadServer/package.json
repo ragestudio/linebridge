@@ -6,6 +6,6 @@
     },
     "dependencies": {
         "corenode": "^0.25.9",
-        "@corenode/cloudlink-addon": "^0.5.5"
+        "@corenode/cloudlink-addon": "^0.5.6"
     }
 }
