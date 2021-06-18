@@ -38,8 +38,8 @@ class Server {
         //* set id's
         this.id = this.params.id ?? runtime.helpers.getRootPackage().name
         this.usid = tokenizer.generateUSID()
-        this.oskid = serverManifest.get("serverToken")
-
+        this.oskid = "unloaded"
+        
         //* set events & params
         this._everyRequest = null
         this._onRequest = {}
@@ -51,6 +51,10 @@ class Server {
         if (this.params.autoInit) {
             this.init()
         }
+    }
+
+    reloadOskid() {
+        this.oskid = serverManifest.get("serverToken")
     }
 
     everyRequest = (context) => {
@@ -119,6 +123,7 @@ class Server {
         }
 
         //? set last start
+        this.reloadOskid()
         serverManifest.write({ lastStart: Date.now() })
 
         const localEndpoints = getLocalEndpoints()
