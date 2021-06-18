@@ -10,9 +10,6 @@
     "start:server": "corenode ./bin/server.js",
     "dev:server": "cross-env NODE_ENV=development nodemon --ignore dist/ --exec 'corenode build && corenode' ./bin/server.js"
   },
-  "bin": {
-    "clserver": "./bin/server.js"
-  },
   "publishConfig": {
     "access": "public"
   },

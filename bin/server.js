@@ -1,4 +1,3 @@
-#!/usr/bin/env corenode
 const cloudlink = require("../dist")
 const random = require("corenode/dist/libs/random")
 
