@@ -2,9 +2,10 @@
     "name": "uploadServer",
     "version": "0.1.0",
     "scripts": {
-        "start": "rcs ."
+        "start": "corenode clserver"
     },
     "dependencies": {
-        "@ragestudio/relic-server": "^0.2.2"
+        "corenode": "^0.25.9",
+        "@corenode/cloudlink-addon": "^0.5.3"
     }
 }

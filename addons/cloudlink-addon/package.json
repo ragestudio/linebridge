@@ -1,7 +1,7 @@
 {
   "name": "@corenode/cloudlink-addon",
-  "version": "0.5.3",
-  "main": "dist/index.js",
+  "version": "",
+  "main": "dist/in0.5.3dex.js",
   "types": "dist/index.d.ts",
   "publishConfig": {
     "access": "public"
