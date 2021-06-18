@@ -9,7 +9,7 @@ global.SERVER_MANIFEST = "server.manifest"
 global.SERVER_MANIFEST_PATH = path.resolve(process.cwd(), SERVER_MANIFEST)
 
 runtime.registerModulesAliases({
-    "@@classes": path.resolve(__dirname, 'classes'),
+    "@classes": path.resolve(__dirname, 'classes'),
 })
 
 //* import libraries
