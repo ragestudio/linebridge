@@ -1,37 +1,48 @@
 const axios = require("axios")
 const wsClient = require('websocket').client
 
-const defaultRelicOrigin = global.DEFAULT_RELIC_ORIGIN
-let sockets = {}
+const RELIC_ORIGIN = global.RELIC_ORIGIN
 
-function registerNewBridge() {
-    
-}
 
 function resolveOrigin(origin) {
-    
+
 }
 
-function connectToOrigin(origin) {
-    if (typeof origin === "undefined") {
-        origin = defaultRelicOrigin
-    }
-    return new DefaultBridge({
-        origin: origin
-    })
-}
-
-class DefaultBridge {
+class Bridge {
     constructor(params) {
         this.params = params
-        
-        this.origin = this.params.origin ?? "https://relic.ragestudio.net"
+
+        this.origin = this.params.origin
+        this.headers = { ...this.params.headers }
+        this.instance = axios.create({
+            baseURL: this.origin,
+            headers: this.headers
+        })
+
+        this.map = null
     }
+
+    async connect() {
+        //get map
+        const req = await this.instance.get("/map")
+        this.map = req.data
+    }
+}
+
+function createInterface(address) {
+    
+    const bridge = new Bridge({
+        origin: address
+    })
+
+    bridge.connect()
+        .then(() => {
+            console.log(bridge.map)
+        })
 }
 
 module.exports = {
-    defaultRelicOrigin,
-    registerNewBridge,
+    Bridge,
     resolveOrigin,
-    connectToOrigin
+    createInterface,
 }

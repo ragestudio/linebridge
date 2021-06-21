@@ -1,5 +1,18 @@
 const fs = require("fs")
 const express = require("express")
+function getIPAddress() {
+    var interfaces = require('os').networkInterfaces();
+    for (var devName in interfaces) {
+      var iface = interfaces[devName];
+  
+      for (var i = 0; i < iface.length; i++) {
+        var alias = iface[i];
+        if (alias.family === 'IPv4' && alias.address !== '127.0.0.1' && !alias.internal)
+          return alias.address;
+      }
+    }
+    return '0.0.0.0';
+  }
 
 const { objectToArrayMap } = require("@corenode/utils")
 const tokenizer = require("corenode/dist/libs/tokenizer")
@@ -25,6 +38,7 @@ const defaultHeaders = {
 class Server {
     constructor(params, endpoints, middlewares) {
         this.params = params ?? {}
+        this.port = this.params.port ?? 3010
 
         // handle endpoints && middlewares
         const localEndpoints = getLocalEndpoints()
@@ -49,7 +63,7 @@ class Server {
 
         //* set server basics
         this.httpServer = require("express")()
-
+        
         //* set id's
         this.id = this.params.id ?? runtime.helpers.getRootPackage().name
         this.usid = tokenizer.generateUSID()
@@ -59,9 +73,9 @@ class Server {
         this._everyRequest = null
         this._onRequest = {}
 
-        if (typeof this.params.port === "undefined") {
-            this.params.port = 3010
-        }
+
+        this.localOrigin = `http://${getIPAddress()}:${this.port}`
+        this.nethubOrigin = ""
 
         if (this.params.autoInit) {
             this.init()
@@ -236,13 +250,13 @@ class Server {
             })
         })
 
-        this.httpServer.listen(this.params.port, () => {
+        this.httpServer.listen(this.port, () => {
             //? register to nethub
             if (this.params.onlineNethub) {
                 nethub.registerOrigin({ entry: "/", oskid: this.oskid, id: this.id })
             }
 
-            console.log(`✅  Ready on port ${this.params.port}!`)
+            console.log(`✅  Ready on port ${this.port}!`)
         })
     }
 }
