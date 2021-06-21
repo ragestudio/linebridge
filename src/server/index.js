@@ -28,8 +28,8 @@ class Server {
 
         //* set params jails
         this.routes = []
-        this.endpoints = { ...endpoints }
-        this.middlewares = [...defaultMiddlewares, ...middlewares ?? []]
+        this.endpoints = { ...endpoints, ...this.params.endpoints }
+        this.middlewares = [...defaultMiddlewares, ...middlewares ?? [], ...this.params.middlewares ?? []]
         this.headers = { ...defaultHeaders, ...this.params.headers }
 
         //* set server basics
@@ -80,8 +80,6 @@ class Server {
         const endpoint = { method: method, route: route, controller: controller }
 
         this.routes.push(route)
-        this.endpoints[route] = endpoint
-
         this.httpServer[method.toLowerCase()](route, (req, res, next) => this.httpRequest(req, res, next, endpoint))
     }
 
@@ -139,13 +137,11 @@ class Server {
             next()
         })
 
-        if (Array.isArray(this.middlewares)) {
-            this.middlewares.forEach((middleware) => {
-                this.httpServer.use(middleware)
-            })
-        }
-
         if (localEndpoints && Array.isArray(localEndpoints)) {
+            this.endpoints = [...this.endpoints, ...localEndpoints]
+        }
+   
+        if (Array.isArray(this.endpoints)) {
             localEndpoints.forEach((endpoint) => {
                 if (!endpoint || !endpoint.route || !endpoint.controller) {
                     throw new Error(`Invalid endpoint!`)
