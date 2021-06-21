@@ -91,8 +91,10 @@ class Server {
         if (typeof controller === "function") {
             controller = new classes.Controller(route, controller)
         }
-
+        
         const endpoint = { method: method, route: route, controller: controller }
+        
+        this.endpoints[route] = endpoint
 
         this.routes.push(route)
         this.httpServer[method.toLowerCase()](route, (req, res, next) => this.handleRequest(req, res, next, endpoint))
@@ -167,9 +169,6 @@ class Server {
                     throw new Error(`Invalid endpoint!`)
                 }
 
-                // add to endpoints map
-                this.endpoints[endpoint.route] = endpoint
-
                 try {
                     let { method, route, controller, fn } = endpoint
 
@@ -221,8 +220,19 @@ class Server {
         })
 
         this.registerEndpoint("get", "/map", (req, res) => {
+            const methods = {}
+            
+            this.routes.forEach((route) => {
+                const endpoint = this.endpoints[route] ?? {}
+
+                if (typeof endpoint.method === "string") {
+                    methods[route] = endpoint.method
+                }
+            })
+
             res.json({
-                routes: this.routes
+                routes: this.routes,
+                methods: methods
             })
         })
 
