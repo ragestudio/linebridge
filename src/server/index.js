@@ -26,10 +26,24 @@ class Server {
     constructor(params, endpoints, middlewares) {
         this.params = params ?? {}
 
+        // handle endpoints && middlewares
+        const localEndpoints = getLocalEndpoints()
+        if (typeof endpoints !== "undefined" && Array.isArray(endpoints)) {
+            this.params.endpoints = [...this.params.endpoints ?? [], ...endpoints]
+        }
+        if (localEndpoints && Array.isArray(localEndpoints)) {
+            this.params.endpoints = [...this.params.endpoints ?? [], ...localEndpoints]
+        }
+        if (typeof middlewares !== "undefined" && Array.isArray(middlewares)) {
+            this.params.middlewares = [...this.params.middlewares ?? [], ...middlewares]
+        }
+        // set default middlewares
+        this.params.middlewares = [...this.params.middlewares ?? [], ...defaultMiddlewares]
+
         //* set params jails
         this.routes = []
-        this.endpoints = { ...endpoints, ...this.params.endpoints }
-        this.middlewares = [...defaultMiddlewares, ...middlewares ?? [], ...this.params.middlewares ?? []]
+        this.endpoints = {}
+        this.middlewares = []
         this.headers = { ...defaultHeaders, ...this.params.headers }
 
         //* set server basics
@@ -39,7 +53,7 @@ class Server {
         this.id = this.params.id ?? runtime.helpers.getRootPackage().name
         this.usid = tokenizer.generateUSID()
         this.oskid = "unloaded"
-        
+
         //* set events & params
         this._everyRequest = null
         this._onRequest = {}
@@ -80,10 +94,10 @@ class Server {
         const endpoint = { method: method, route: route, controller: controller }
 
         this.routes.push(route)
-        this.httpServer[method.toLowerCase()](route, (req, res, next) => this.httpRequest(req, res, next, endpoint))
+        this.httpServer[method.toLowerCase()](route, (req, res, next) => this.handleRequest(req, res, next, endpoint))
     }
 
-    httpRequest = (req, res, next, endpoint) => {
+    handleRequest = (req, res, next, endpoint) => {
         const { route, method, controller } = endpoint
 
         // exec controller
@@ -124,11 +138,19 @@ class Server {
         this.reloadOskid()
         serverManifest.write({ lastStart: Date.now() })
 
-        const localEndpoints = getLocalEndpoints()
-
+        //* setup server
         this.httpServer.use(express.json())
         this.httpServer.use(express.urlencoded({ extended: true }))
+        // set middlewares
+        if (Array.isArray(this.params.middlewares)) {
+            this.params.middlewares.forEach((middleware) => {
+                if (typeof middleware === "function") {
+                    this.httpServer.use(middleware)
+                }
+            })
+        }
 
+        // set headers
         this.httpServer.use((req, res, next) => {
             objectToArrayMap(this.headers).forEach((entry) => {
                 res.setHeader(entry.key, entry.value)
@@ -137,27 +159,40 @@ class Server {
             next()
         })
 
-        if (localEndpoints && Array.isArray(localEndpoints)) {
-            this.endpoints = [...this.endpoints, ...localEndpoints]
-        }
-   
-        if (Array.isArray(this.endpoints)) {
-            localEndpoints.forEach((endpoint) => {
+        // set endpoints
+        if (Array.isArray(this.params.endpoints)) {
+            this.params.endpoints.forEach((endpoint) => {
                 if (!endpoint || !endpoint.route || !endpoint.controller) {
                     throw new Error(`Invalid endpoint!`)
                 }
+
+                // add to endpoints map
+                this.endpoints[endpoint.route] = endpoint
+
                 try {
                     let { method, route, controller, fn } = endpoint
-                    controller = fetchController(controller)
 
+                    // check if controller is an already a controller
+                    if (typeof controller === "string") {
+                        controller = fetchController(controller)
+                    }
+
+                    // check if the controller is an default function and transform it into an controller
+                    if (typeof controller === "function") {
+                        controller = {
+                            default: controller
+                        }
+                    }
+
+                    // fullfill undefined 
                     if (typeof method === "undefined") {
                         method = "GET"
                     }
-
                     if (typeof fn === "undefined") {
                         fn = "default"
                     }
 
+                    // append to server
                     this.registerEndpoint(method, route, new classes.Controller(route, controller[fn]))
                 } catch (error) {
                     runtime.logger.dump(error)
