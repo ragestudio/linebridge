@@ -44,6 +44,7 @@ class Server {
         this.routes = []
         this.endpoints = {}
         this.middlewares = []
+        this.controllers = { ...this.params.controllers }
         this.headers = { ...defaultHeaders, ...this.params.headers }
 
         //* set server basics
@@ -174,7 +175,12 @@ class Server {
 
                     // check if controller is an already a controller
                     if (typeof controller === "string") {
-                        controller = fetchController(controller)
+                        // check if the controller is already loaded, else try to fetch
+                        if (typeof this.controllers[controller] !== "undefined") {
+                            controller = this.controllers[controller]
+                        } else {
+                            controller = fetchController(controller)
+                        }
                     }
 
                     // check if the controller is an default function and transform it into an controller
