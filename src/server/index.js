@@ -8,7 +8,7 @@ const tokenizer = require("corenode/dist/libs/tokenizer")
 const classes = require("../classes")
 const nethub = require("../lib/nethub")
 const { getLocalEndpoints, fetchController, serverManifest } = require("../lib")
-const hostAddress = net.getHostAddress() ?? "localhost"
+const hostAddress = net.ip.getHostAddress() ?? "localhost"
 
 const defaultMiddlewares = [
     require('cors')(),
