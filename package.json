@@ -4,11 +4,11 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "engines": {
-    "corenode": ">=0.25.8"
+    "corenode": ">=0.25.16"
   },
   "scripts": {
     "start:server": "corenode ./bin/server.js",
-    "dev:server": "cross-env NODE_ENV=development nodemon --ignore dist/ --exec 'corenode build && corenode' ./bin/server.js"
+    "dev:server": "cross-env NODE_ENV=development nodemon --ignore dist/ --exec 'corenode build && corenode' ./bin/server.js --disableCheckDependencies"
   },
   "publishConfig": {
     "access": "public"
@@ -21,7 +21,8 @@
   "license": "MIT",
   "dependencies": {
     "axios": "^0.21.1",
-    "corenode": "^0.25.9",
+    "@corenode/utils": "^0.25.16",
+    "corenode": "^0.25.16",
     "cors": "^2.8.5",
     "express": "^4.17.1",
     "express-fileupload": "^1.2.1",
