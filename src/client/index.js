@@ -1,12 +1,5 @@
 const axios = require("axios")
-const wsClient = require('websocket').client
-
-const RELIC_ORIGIN = global.RELIC_ORIGIN
-
-
-function resolveOrigin(origin) {
-
-}
+const { camalize } = require("@corenode/utils")
 
 class Bridge {
     constructor(params) {
@@ -29,20 +22,71 @@ class Bridge {
     }
 }
 
-function createInterface(address) {
-    
+function generateRouteDispatcher(bridge, method, route) {
+    return async function (body, query,...context){
+        let obj = Object()
+        const response = await bridge.instance({
+            method: method,
+            url: route,
+            data: body,
+            params: query,
+            ...context
+        })
+
+        obj = response.data
+        obj.__proto__ = response
+
+        return obj
+    }
+}
+
+async function createInterface(address) {
+    let objects = {
+        get: Object(),
+        post: Object(),
+        put: Object(),
+        delete: Object()
+    }
+
     const bridge = new Bridge({
         origin: address
     })
 
-    bridge.connect()
-        .then(() => {
-            console.log(bridge.map)
+    await bridge.connect()
+
+    const routes = bridge.map.routes ?? []
+    const methods = bridge.map.methods ?? {}
+
+    if (Array.isArray(routes)) {
+        routes.forEach((route) => {
+            const method = methods[route].toLowerCase()
+            const tree = route.split("/")
+            const hasTree = tree.length >= 1
+            let nameKey = route
+
+            // check if has tree
+            if (hasTree) {
+                // remove first whitespace item in route index[0]
+                if (tree[0] == "") {
+                    tree.shift()
+                }
+
+                nameKey = camalize(tree.join("_"))
+            }
+
+            // if is an blank route, set as index
+            if (nameKey == "") {
+                nameKey = "index"
+            }
+
+            objects[method][nameKey] = generateRouteDispatcher(bridge, method, route)
         })
+    }
+
+    return objects
 }
 
 module.exports = {
     Bridge,
-    resolveOrigin,
     createInterface,
 }
