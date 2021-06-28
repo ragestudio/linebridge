@@ -1,6 +1,6 @@
 {
   "name": "@ragestudio/cloudlink",
-  "version": "0.5.12",
+  "version": "0.5.13",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "engines": {
@@ -21,8 +21,8 @@
   "license": "MIT",
   "dependencies": {
     "axios": "^0.21.1",
-    "@corenode/utils": "^0.25.17",
-    "corenode": "^0.25.17",
+    "@corenode/utils": "^0.25.19",
+    "corenode": "^0.25.21",
     "cors": "^2.8.5",
     "express": "^4.17.1",
     "express-fileupload": "^1.2.1",
