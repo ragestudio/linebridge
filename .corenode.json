@@ -2,5 +2,6 @@
   "development": {
     "origitGit": ""
   },
-  "version": "0.5.13"
+  "version": "0.5.13",
+  "ignoreAddons": ["cloudlink"]
 }
