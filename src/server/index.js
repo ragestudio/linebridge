@@ -86,32 +86,41 @@ class Server {
         }
     }
 
-    registerEndpoint(method, route, controller) {
-        if (typeof controller === "function") {
-            controller = new classes.Controller(route, controller)
+    registerEndpoint(endpoint) {
+        if (typeof endpoint.controller === "function") {
+            endpoint.controller = new classes.Controller(endpoint.route, endpoint.controller)
         }
 
-        const endpoint = { method: method, route: route, controller: controller }
+        this.endpoints[endpoint.route] = endpoint
+        this.routes.push(endpoint.route)
 
-        this.endpoints[route] = endpoint
-
-        this.routes.push(route)
-        this.httpServer[method.toLowerCase()](route, (req, res, next) => this.handleRequest(req, res, next, endpoint))
+        this.httpServer[endpoint.method.toLowerCase()](endpoint.route, (req, res, next) => this.handleRequest(req, res, next, endpoint))
     }
 
     handleRequest = (req, res, next, endpoint) => {
-        const { route, method, controller } = endpoint
+        const { route, controller } = endpoint
 
         req.requestId = nanoid()
         req.endpoint = endpoint
 
         // exec middleware before controller
-        if (typeof controller.middleware !== "undefined") {
-            if (typeof this.middlewares[controller.middleware] === "function") {
-                this.middlewares[controller.middleware](req, res, next)
+        if (typeof endpoint.middleware !== "undefined") {
+            let query = []
+
+            if (endpoint.middleware === "string") {
+                query.push(endpoint.middleware)
             }
+            if (Array.isArray(endpoint.middleware)) {
+                query = endpoint.middleware   
+            }
+
+            query.forEach((middleware) => {
+                if (typeof this.middlewares[middleware] === "function") {
+                    this.middlewares[middleware](req, res, next)
+                }
+            })
         }
-        
+
         // exec controller
         if (typeof controller.exec === "function") {
             res.setHeader("request_id", req.requestId)
@@ -158,7 +167,7 @@ class Server {
         // set middlewares
         if (Array.isArray(this.serverMiddlewares)) {
             this.serverMiddlewares.forEach((middleware) => {
-            if (typeof middleware === "function") {
+                if (typeof middleware === "function") {
                     this.httpServer.use(middleware)
                 }
             })
@@ -172,7 +181,7 @@ class Server {
 
             next()
         })
-        
+
         this.httpServer.use((req, res, next) => {
             res.removeHeader("X-Powered-By")
             next()
@@ -214,7 +223,10 @@ class Server {
                     }
 
                     // append to server
-                    this.registerEndpoint(method, route, new classes.Controller(route, controller[fn]))
+                    this.registerEndpoint({
+                        ...endpoint,
+                        controller: new classes.Controller(route, controller[fn])
+                    })
                 } catch (error) {
                     runtime.logger.dump(error)
                     console.error(error)
@@ -224,32 +236,40 @@ class Server {
         }
 
         // register root resolver
-        this.registerEndpoint("get", "/", (req, res) => {
-            // here server origin resolver
-            res.json({
-                id: this.id,
-                usid: this.usid,
-                oskid: this.oskid,
-                time: new Date().getTime(),
-                version: SERVER_VERSION
-            })
+        this.registerEndpoint({
+            method: "get",
+            route: "/",
+            controller: (req, res) => {
+                // here server origin resolver
+                res.json({
+                    id: this.id,
+                    usid: this.usid,
+                    oskid: this.oskid,
+                    time: new Date().getTime(),
+                    version: SERVER_VERSION
+                })
+            }
         })
 
-        this.registerEndpoint("get", "/map", (req, res) => {
-            const methods = {}
+        this.registerEndpoint({
+            method: "get",
+            route: "/map",
+            controller: (req, res) => {
+                const methods = {}
 
-            this.routes.forEach((route) => {
-                const endpoint = this.endpoints[route] ?? {}
+                this.routes.forEach((route) => {
+                    const endpoint = this.endpoints[route] ?? {}
 
-                if (typeof endpoint.method === "string") {
-                    methods[route] = endpoint.method
-                }
-            })
+                    if (typeof endpoint.method === "string") {
+                        methods[route] = endpoint.method
+                    }
+                })
 
-            res.json({
-                routes: this.routes,
-                methods: methods
-            })
+                res.json({
+                    routes: this.routes,
+                    methods: methods
+                })
+            }
         })
 
         this.httpServer.listen(this.port, () => {
