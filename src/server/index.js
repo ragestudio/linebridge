@@ -38,16 +38,12 @@ class Server {
         if (localEndpoints && Array.isArray(localEndpoints)) {
             this.params.endpoints = [...this.params.endpoints ?? [], ...localEndpoints]
         }
-        if (typeof middlewares !== "undefined" && Array.isArray(middlewares)) {
-            this.params.middlewares = [...this.params.middlewares ?? [], ...middlewares]
-        }
-        // set default middlewares
-        this.params.middlewares = [...this.params.middlewares ?? [], ...defaultMiddlewares]
 
         //* set params jails
         this.routes = []
         this.endpoints = {}
-        this.middlewares = []
+        this.serverMiddlewares = [...this.params.serverMiddlewares ?? [], ...defaultMiddlewares]
+        this.middlewares = this.params.middlewares ?? {}
         this.controllers = { ...this.params.controllers }
         this.headers = { ...defaultHeaders, ...this.params.headers }
 
@@ -105,8 +101,16 @@ class Server {
 
     handleRequest = (req, res, next, endpoint) => {
         const { route, method, controller } = endpoint
+
         req.requestId = nanoid()
         req.endpoint = endpoint
+
+        // exec middleware before controller
+        if (typeof controller.middleware !== "undefined") {
+            if (typeof this.middlewares[controller.middleware] === "function") {
+                this.middlewares[controller.middleware](req, res, next)
+            }
+        }
         
         // exec controller
         if (typeof controller.exec === "function") {
@@ -150,10 +154,11 @@ class Server {
         //* setup server
         this.httpServer.use(express.json())
         this.httpServer.use(express.urlencoded({ extended: true }))
+
         // set middlewares
-        if (Array.isArray(this.params.middlewares)) {
-            this.params.middlewares.forEach((middleware) => {
-                if (typeof middleware === "function") {
+        if (Array.isArray(this.serverMiddlewares)) {
+            this.serverMiddlewares.forEach((middleware) => {
+            if (typeof middleware === "function") {
                     this.httpServer.use(middleware)
                 }
             })
