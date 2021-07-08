@@ -43,7 +43,7 @@ class Server {
         this.routes = []
         this.endpoints = {}
         this.serverMiddlewares = [...this.params.serverMiddlewares ?? [], ...defaultMiddlewares]
-        this.middlewares = this.params.middlewares ?? {}
+        this.middlewares = {...this.params.middlewares}
         this.controllers = { ...this.params.controllers }
         this.headers = { ...defaultHeaders, ...this.params.headers }
 
@@ -100,9 +100,6 @@ class Server {
     handleRequest = (req, res, next, endpoint) => {
         const { route, controller } = endpoint
 
-        req.requestId = nanoid()
-        req.endpoint = endpoint
-
         // exec middleware before controller
         if (typeof endpoint.middleware !== "undefined") {
             let query = []
@@ -123,7 +120,6 @@ class Server {
 
         // exec controller
         if (typeof controller.exec === "function") {
-            res.setHeader("request_id", req.requestId)
             controller.exec(req, res, next)
         }
 
@@ -163,6 +159,16 @@ class Server {
         //* setup server
         this.httpServer.use(express.json())
         this.httpServer.use(express.urlencoded({ extended: true }))
+
+        // expose information
+        this.httpServer.use((req, res, next) => {
+            req.requestId = nanoid()
+            req.endpoint = endpoint
+
+            res.setHeader("request_id", req.requestId)
+
+            next()
+        })
 
         // set middlewares
         if (Array.isArray(this.serverMiddlewares)) {
