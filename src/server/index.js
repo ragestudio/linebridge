@@ -43,7 +43,7 @@ class Server {
         this.routes = []
         this.endpoints = {}
         this.serverMiddlewares = [...this.params.serverMiddlewares ?? [], ...defaultMiddlewares]
-        this.middlewares = {...this.params.middlewares}
+        this.middlewares = { ...this.params.middlewares }
         this.controllers = { ...this.params.controllers }
         this.headers = { ...defaultHeaders, ...this.params.headers }
 
@@ -108,7 +108,7 @@ class Server {
                 query.push(endpoint.middleware)
             }
             if (Array.isArray(endpoint.middleware)) {
-                query = endpoint.middleware   
+                query = endpoint.middleware
             }
 
             query.forEach((middleware) => {
