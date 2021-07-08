@@ -21,9 +21,14 @@ class Bridge {
     }
 }
 
-function generateRouteDispatcher(bridge, method, route) {
+function generateRouteDispatcher(bridge, method, route, getContext) {
     return async function (body, query,...context){
         let obj = Object()
+
+        if (getContext === "function") {
+            context = {...context, getContext()}
+        }
+
         const response = await bridge.instance({
             method: method,
             url: route,
@@ -39,7 +44,7 @@ function generateRouteDispatcher(bridge, method, route) {
     }
 }
 
-async function createInterface(address) {
+async function createInterface(address, getContext) {
     let objects = {
         get: Object(),
         post: Object(),
@@ -78,7 +83,7 @@ async function createInterface(address) {
                 nameKey = "index"
             }
 
-            objects[method][nameKey] = generateRouteDispatcher(bridge, method, route)
+            objects[method][nameKey] = generateRouteDispatcher(bridge, method, route, getContext)
         })
     }
 
