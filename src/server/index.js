@@ -106,7 +106,8 @@ class Server {
     handleRequest = (req, res, next, endpoint) => {
         const { route, method, controller } = endpoint
         req.requestId = nanoid()
-
+        req.endpoint = endpoint
+        
         // exec controller
         if (typeof controller.exec === "function") {
             res.setHeader("request_id", req.requestId)
