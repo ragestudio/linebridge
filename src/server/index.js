@@ -104,7 +104,7 @@ class Server {
         if (typeof endpoint.middleware !== "undefined") {
             let query = []
 
-            if (endpoint.middleware === "string") {
+            if (typeof endpoint.middleware === "string") {
                 query.push(endpoint.middleware)
             }
             if (Array.isArray(endpoint.middleware)) {
