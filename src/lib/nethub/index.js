@@ -1,6 +1,6 @@
 //* LIBRARIES
 const axios = require('axios')
-const { websocket } = require('corenode').net
+const { websocket } = require('corenode/dist/net')
 
 //* constables
 const NETHUB_HOSTNAME = IS_DEV ? "localhost" : global.NETHUB_HOSTNAME = "nethub.ragestudio.net"

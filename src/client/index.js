@@ -1,6 +1,5 @@
 const axios = require("axios")
 const { camalize } = require("@corenode/utils")
-
 class Bridge {
     constructor(params) {
         this.params = params

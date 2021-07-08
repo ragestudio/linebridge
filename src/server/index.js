@@ -1,9 +1,10 @@
 const fs = require("fs")
 const express = require("express")
-const { net } = require("corenode")
 
 const { objectToArrayMap } = require("@corenode/utils")
+const { nanoid } = require("nanoid")
 const tokenizer = require("corenode/dist/libs/tokenizer")
+const net = require("corenode/dist/net")
 
 const classes = require("../classes")
 const nethub = require("../lib/nethub")
@@ -62,7 +63,6 @@ class Server {
         this._everyRequest = null
         this._onRequest = {}
 
-
         this.localOrigin = `http://${hostAddress}:${this.port}`
         this.nethubOrigin = ""
 
@@ -105,9 +105,11 @@ class Server {
 
     handleRequest = (req, res, next, endpoint) => {
         const { route, method, controller } = endpoint
+        req.requestId = nanoid()
 
         // exec controller
         if (typeof controller.exec === "function") {
+            res.setHeader("request_id", req.requestId)
             controller.exec(req, res, next)
         }
 
@@ -162,6 +164,11 @@ class Server {
                 res.setHeader(entry.key, entry.value)
             })
 
+            next()
+        })
+        
+        this.httpServer.use((req, res, next) => {
+            res.removeHeader("X-Powered-By")
             next()
         })
 
