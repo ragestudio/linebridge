@@ -22,20 +22,21 @@ class Bridge {
 }
 
 function generateRouteDispatcher(bridge, method, route, getContext) {
-    return async function (body, query,...context){
+    return async function (body, query, ...context){
         let obj = Object()
-
-        if (getContext === "function") {
-            context = {...context, getContext()}
-        }
-
-        const response = await bridge.instance({
+        let opt = {
             method: method,
             url: route,
             data: body,
             params: query,
             ...context
-        })
+        }
+
+        if (typeof getContext === "function") {
+            opt = {...opt, ...getContext()}
+        }
+    
+        const response = await bridge.instance(opt)
 
         obj = response.data
         obj.__proto__ = response
