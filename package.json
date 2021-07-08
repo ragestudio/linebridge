@@ -4,7 +4,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "engines": {
-    "corenode": ">=0.25.22"
+    "corenode": ">=0.25.24"
   },
   "scripts": {
     "start:server": "corenode ./bin/server.js",
@@ -20,13 +20,14 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "@corenode/utils": "^0.25.22",
-    "corenode": "^0.25.22",
+    "@corenode/utils": "^0.25.24",
     "axios": "^0.21.1",
+    "corenode": "^0.25.24",
     "cors": "^2.8.5",
     "express": "^4.17.1",
     "express-fileupload": "^1.2.1",
     "morgan": "^1.10.0",
+    "nanoid": "^3.1.23",
     "uuid": "^8.3.2",
     "websocket": "^1.0.34"
   },
