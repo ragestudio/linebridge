@@ -120,7 +120,9 @@ class Server {
 
         // exec controller
         if (typeof controller.exec === "function") {
-            controller.exec(req, res, next)
+            if (!res.headersSent) {
+                controller.exec(req, res, next)
+            }
         }
 
         // on events
