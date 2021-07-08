@@ -113,7 +113,7 @@ class Server {
 
             query.forEach((middleware) => {
                 if (typeof this.middlewares[middleware] === "function") {
-                    this.middlewares[middleware](req, res, next)
+                    this.middlewares[middleware](req, res, next, endpoint)
                 }
             })
         }
@@ -163,10 +163,7 @@ class Server {
         // expose information
         this.httpServer.use((req, res, next) => {
             req.requestId = nanoid()
-            req.endpoint = endpoint
-
             res.setHeader("request_id", req.requestId)
-
             next()
         })
 
