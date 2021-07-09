@@ -49,6 +49,7 @@ class Server {
 
         //* set server basics
         this.httpServer = require("express")()
+        this.router = express.Router()
 
         //* set id's
         this.id = this.params.id ?? runtime.helpers.getRootPackage().name
@@ -84,7 +85,7 @@ class Server {
         //? set last start
         this.reloadOskid()
 
-        serverManifest.write({ lastStart: Date.now() })
+        this.preInitialization()
         if (this.params.autoInit) {
             this.init()
         }
@@ -117,10 +118,10 @@ class Server {
         this.endpoints[endpoint.route] = endpoint
         this.routes.push(endpoint.route)
 
-        this.httpServer[endpoint.method.toLowerCase()](endpoint.route, (req, res, next) => this.handleRequest(req, res, next, endpoint))
+        this.router[endpoint.method.toLowerCase()](endpoint.route, (req, res, next) => this.handleRequest(req, res, next, endpoint))
     }
 
-    handleRequest = (req, res, next, endpoint) => {
+    handleRequest = async (req, res, next, endpoint) => {
         const { route, controller } = endpoint
 
         // exec middleware before controller
@@ -134,11 +135,11 @@ class Server {
                 query = endpoint.middleware
             }
 
-            query.forEach((middleware) => {
+            for await (let middleware of query) {
                 if (typeof this.middlewares[middleware] === "function") {
-                    this.middlewares[middleware](req, res, next, endpoint)
+                    await this.middlewares[middleware](req, res, next, endpoint)
                 }
-            })
+            }
         }
 
         // exec controller
@@ -157,19 +158,11 @@ class Server {
         }
     }
 
-    init() {
-        //* setup server
+    preInitialization() {
+        // set middlewares
         this.httpServer.use(express.json())
         this.httpServer.use(express.urlencoded({ extended: true }))
 
-        // expose information
-        this.httpServer.use((req, res, next) => {
-            req.requestId = nanoid()
-            res.setHeader("request_id", req.requestId)
-            next()
-        })
-
-        // set middlewares
         if (Array.isArray(this.serverMiddlewares)) {
             this.serverMiddlewares.forEach((middleware) => {
                 if (typeof middleware === "function") {
@@ -180,63 +173,21 @@ class Server {
 
         // set headers
         this.httpServer.use((req, res, next) => {
+            req.requestId = nanoid()
+            res.setHeader("request_id", req.requestId)
+            next()
+        })
+        this.httpServer.use((req, res, next) => {
+            res.removeHeader("X-Powered-By")
+            next()
+        })
+        this.httpServer.use((req, res, next) => {
             objectToArrayMap(this.headers).forEach((entry) => {
                 res.setHeader(entry.key, entry.value)
             })
 
             next()
         })
-
-        this.httpServer.use((req, res, next) => {
-            res.removeHeader("X-Powered-By")
-            next()
-        })
-
-        // set endpoints
-        if (Array.isArray(this.params.endpoints)) {
-            this.params.endpoints.forEach((endpoint) => {
-                if (!endpoint || !endpoint.route || !endpoint.controller) {
-                    throw new Error(`Invalid endpoint!`)
-                }
-
-                try {
-                    // check if controller is an already a controller
-                    if (typeof endpoint.controller === "string") {
-                        // check if the controller is already loaded, else try to fetch
-                        if (typeof this.controllers[endpoint.controller] !== "undefined") {
-                            endpoint.controller = this.controllers[endpoint.controller]
-                        } else {
-                            endpoint.controller = fetchController(endpoint.controller)
-                        }
-                    }
-
-                    // check if the controller is an default function and transform it into an controller
-                    if (typeof endpoint.controller === "function") {
-                        endpoint.controller = {
-                            default: endpoint.controller
-                        }
-                    }
-
-                    // fulfill undefined 
-                    if (typeof endpoint.method === "undefined") {
-                        endpoint.method = "GET"
-                    }
-                    if (typeof endpoint.fn === "undefined") {
-                        endpoint.fn = "default"
-                    }
-
-                    // convert with class
-                    endpoint.controller =  new classes.Controller(endpoint.route, endpoint.controller[endpoint.fn])
-                   
-                    // append to server
-                    this.registerEndpoint(endpoint)
-                } catch (error) {
-                    runtime.logger.dump(error)
-                    console.error(error)
-                    console.error(`🆘  Failed to load endpoint > ${error.message}`)
-                }
-            })
-        }
 
         // register root resolver
         this.registerEndpoint({
@@ -274,6 +225,59 @@ class Server {
                 })
             }
         })
+    }
+
+    init() {
+        // write lastStart
+        serverManifest.write({ lastStart: Date.now() })
+
+        // set endpoints
+        if (Array.isArray(this.params.endpoints)) {
+            this.params.endpoints.forEach((endpoint) => {
+                if (!endpoint || !endpoint.route || !endpoint.controller) {
+                    throw new Error(`Invalid endpoint!`)
+                }
+
+                try {
+                    // check if controller is an already a controller
+                    if (typeof endpoint.controller === "string") {
+                        // check if the controller is already loaded, else try to fetch
+                        if (typeof this.controllers[endpoint.controller] !== "undefined") {
+                            endpoint.controller = this.controllers[endpoint.controller]
+                        } else {
+                            endpoint.controller = fetchController(endpoint.controller)
+                        }
+                    }
+
+                    // check if the controller is an default function and transform it into an controller
+                    if (typeof endpoint.controller === "function") {
+                        endpoint.controller = {
+                            default: endpoint.controller
+                        }
+                    }
+
+                    // fulfill undefined 
+                    if (typeof endpoint.method === "undefined") {
+                        endpoint.method = "get"
+                    }
+                    if (typeof endpoint.fn === "undefined") {
+                        endpoint.fn = "default"
+                    }
+
+                    // convert with class
+                    endpoint.controller = new classes.Controller(endpoint.route, endpoint.controller[endpoint.fn])
+
+                    // append to server
+                    this.registerEndpoint(endpoint)
+                } catch (error) {
+                    runtime.logger.dump(error)
+                    console.error(error)
+                    console.error(`🆘  Failed to load endpoint > ${error.message}`)
+                }
+            })
+        }
+
+        this.httpServer.use('/', this.router)
 
         this.httpServer.listen(this.port, () => {
             //? register to nethub
