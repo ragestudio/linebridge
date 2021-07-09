@@ -83,7 +83,7 @@ class Server {
 
         //? set last start
         this.reloadOskid()
-        
+
         serverManifest.write({ lastStart: Date.now() })
         if (this.params.autoInit) {
             this.init()
@@ -200,38 +200,36 @@ class Server {
                 }
 
                 try {
-                    let { method, route, controller, fn } = endpoint
-
                     // check if controller is an already a controller
-                    if (typeof controller === "string") {
+                    if (typeof endpoint.controller === "string") {
                         // check if the controller is already loaded, else try to fetch
-                        if (typeof this.controllers[controller] !== "undefined") {
-                            controller = this.controllers[controller]
+                        if (typeof this.controllers[endpoint.controller] !== "undefined") {
+                            endpoint.controller = this.controllers[endpoint.controller]
                         } else {
-                            controller = fetchController(controller)
+                            endpoint.controller = fetchController(endpoint.controller)
                         }
                     }
 
                     // check if the controller is an default function and transform it into an controller
-                    if (typeof controller === "function") {
-                        controller = {
-                            default: controller
+                    if (typeof endpoint.controller === "function") {
+                        endpoint.controller = {
+                            default: endpoint.controller
                         }
                     }
 
-                    // fullfill undefined 
-                    if (typeof method === "undefined") {
-                        method = "GET"
+                    // fulfill undefined 
+                    if (typeof endpoint.method === "undefined") {
+                        endpoint.method = "GET"
                     }
-                    if (typeof fn === "undefined") {
-                        fn = "default"
+                    if (typeof endpoint.fn === "undefined") {
+                        endpoint.fn = "default"
                     }
 
+                    // convert with class
+                    endpoint.controller =  new classes.Controller(endpoint.route, endpoint.controller[endpoint.fn])
+                   
                     // append to server
-                    this.registerEndpoint({
-                        ...endpoint,
-                        controller: new classes.Controller(route, controller[fn])
-                    })
+                    this.registerEndpoint(endpoint)
                 } catch (error) {
                     runtime.logger.dump(error)
                     console.error(error)
