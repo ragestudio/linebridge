@@ -56,10 +56,6 @@ class Server {
         this.usid = tokenizer.generateUSID()
         this.oskid = "unloaded"
 
-        //* set events & params
-        this._everyRequest = null
-        this._onRequest = {}
-
         this.localOrigin = `http://${hostAddress}:${this.port}`
         this.nethubOrigin = ""
 
@@ -82,7 +78,6 @@ class Server {
             serverManifest.create()
         }
 
-        //? set last start
         this.reloadOskid()
 
         this.preInitialization()
@@ -95,36 +90,18 @@ class Server {
         this.oskid = serverManifest.get("serverToken")
     }
 
-    everyRequest = (context) => {
-        if (typeof context === "function") {
-            this._everyRequest = context
-        }
-    }
-
-    onRequest = (key, context) => {
-        if (typeof key === "undefined") {
-            return false
-        }
-        if (typeof context === "function") {
-            this._onRequest[key] = context
-        }
-    }
-
     registerEndpoint(endpoint) {
         if (typeof endpoint.controller === "function") {
             endpoint.controller = new classes.Controller(endpoint.route, endpoint.controller)
         }
 
+        endpoint.method = endpoint.method.toLowerCase()
+
         this.endpoints[endpoint.route] = endpoint
         this.routes.push(endpoint.route)
 
-        this.router[endpoint.method.toLowerCase()](endpoint.route, (req, res, next) => this.handleRequest(req, res, next, endpoint))
-    }
+        const routeModel = [endpoint.route]
 
-    handleRequest = async (req, res, next, endpoint) => {
-        const { route, controller } = endpoint
-
-        // exec middleware before controller
         if (typeof endpoint.middleware !== "undefined") {
             let query = []
 
@@ -135,27 +112,18 @@ class Server {
                 query = endpoint.middleware
             }
 
-            for await (let middleware of query) {
+            query.forEach(() => {
                 if (typeof this.middlewares[middleware] === "function") {
-                    await this.middlewares[middleware](req, res, next, endpoint)
+                    routeModel.push(this.middlewares[middleware])
                 }
-            }
+            })
+        }
+        
+        if (typeof endpoint.controller.exec === "function") {
+            routeModel.push(endpoint.controller.exec)
         }
 
-        // exec controller
-        if (typeof controller.exec === "function") {
-            if (!res.headersSent) {
-                controller.exec(req, res, next)
-            }
-        }
-
-        // on events
-        if (typeof this._everyRequest === "function") {
-            this._everyRequest(req, res, next)
-        }
-        if (typeof this._onRequest[route] === "function") {
-            this._onRequest[route](req, res, next)
-        }
+        this.router[endpoint.method.toLowerCase()](...routeModel)
     }
 
     preInitialization() {
