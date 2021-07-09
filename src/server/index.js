@@ -62,6 +62,29 @@ class Server {
         this.localOrigin = `http://${hostAddress}:${this.port}`
         this.nethubOrigin = ""
 
+        //? check if origin.server exists
+        if (!fs.existsSync(SERVER_MANIFEST_PATH)) {
+            serverManifest.create()
+        }
+
+        //? check origin.server integrity
+        const MANIFEST_DATA = global.MANIFEST_DATA = serverManifest.get()
+        const MANIFEST_STAT = global.MANIFEST_STAT = serverManifest.stat()
+
+        if (typeof MANIFEST_DATA.created === "undefined") {
+            console.warn("Server generation file not contains an creation date")
+            serverManifest.write({ created: Date.parse(MANIFEST_STAT.birthtime) })
+        }
+
+        if (typeof MANIFEST_DATA.serverToken === "undefined") {
+            console.warn("Missing server token!")
+            serverManifest.create()
+        }
+
+        //? set last start
+        this.reloadOskid()
+        
+        serverManifest.write({ lastStart: Date.now() })
         if (this.params.autoInit) {
             this.init()
         }
@@ -135,29 +158,6 @@ class Server {
     }
 
     init() {
-        //? check if origin.server exists
-        if (!fs.existsSync(SERVER_MANIFEST_PATH)) {
-            serverManifest.create()
-        }
-
-        //? check origin.server integrity
-        const MANIFEST_DATA = global.MANIFEST_DATA = serverManifest.get()
-        const MANIFEST_STAT = global.MANIFEST_STAT = serverManifest.stat()
-
-        if (typeof MANIFEST_DATA.created === "undefined") {
-            console.warn("Server generation file not contains an creation date")
-            serverManifest.write({ created: Date.parse(MANIFEST_STAT.birthtime) })
-        }
-
-        if (typeof MANIFEST_DATA.serverToken === "undefined") {
-            console.warn("Missing server token!")
-            serverManifest.create()
-        }
-
-        //? set last start
-        this.reloadOskid()
-        serverManifest.write({ lastStart: Date.now() })
-
         //* setup server
         this.httpServer.use(express.json())
         this.httpServer.use(express.urlencoded({ extended: true }))
