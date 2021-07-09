@@ -112,7 +112,7 @@ class Server {
                 query = endpoint.middleware
             }
 
-            query.forEach(() => {
+            query.forEach((middleware) => {
                 if (typeof this.middlewares[middleware] === "function") {
                     routeModel.push(this.middlewares[middleware])
                 }
