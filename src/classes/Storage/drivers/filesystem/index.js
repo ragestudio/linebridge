@@ -12,13 +12,16 @@ class FilesystemDriver {
         this.defaultWriteMode = "0777"
         this.defaultWriteFlags = 'w+'
 
-        this.matchMimetypes = String()
+        this.strictMimetypeCheck = this.strictMimetypeCheck ?? false
+        this.checkMimetypes = this.params.checkMimetypes ?? false
+        this.mimetypes = String()
         if (Array.isArray(this.params.allowedMimetypes)) {
+            this.checkMimetypes = true
             this.params.allowedMimetypes.forEach((type, index) => {
                 if (index == 0) {
-                    return this.matchMimetypes = `${type}.*`
+                    return this.mimetypes = `${type}.*`
                 }
-                return this.matchMimetypes = `${this.matchMimetypes}|${type}.*`
+                return this.mimetypes = `${this.mimetypes}|${type}.*`
             })
         }
 
@@ -33,7 +36,10 @@ class FilesystemDriver {
     }
 
     checkMimetype(type) {
-        return type.match(this.matchMimetypes)
+        if (!this.checkMimetypes) {
+            return true
+        }
+        return type.match(this.mimetypes)
     }
 
     stream = (dir, options) => {
@@ -49,12 +55,18 @@ class FilesystemDriver {
             fs.mkdirSync(fileParent)
         }
 
-        const validMIME = this.checkMimetype(file.mimetype) ? true : false
-
-        if (!validMIME) {
-            throw new Error(`Invalid mimetype [${file.mimetype}]`)
+        if (typeof file.mimetype === "undefined" && this.strictMimetypeCheck) {
+            throw new Error(`Missing mimetype`)
         }
 
+        if (typeof file.mimetype !== "undefined") {
+            const validMIME = this.checkMimetype(file.mimetype) ? true : false
+
+            if (!validMIME && this.strictMimetypeCheck) {
+                throw new Error(`Invalid mimetype [${file.mimetype}]`)
+            }    
+        }
+       
         const stream = this.stream(filePath, { mode: options?.mode ?? this.defaultWriteMode, flags: options?.flags ?? this.defaultWriteFlags })
 
         stream.on("ready", () => {
