@@ -1,6 +1,6 @@
 {
   "name": "@ragestudio/cloudlink",
-  "version": "0.5.29",
+  "version": "0.5.30",
   "main": "dist/index.js",
   "types": "dist/modules.d.ts",
   "engines": {
