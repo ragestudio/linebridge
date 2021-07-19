@@ -118,7 +118,7 @@ class Server {
                 }
             })
         }
-        
+
         if (typeof endpoint.controller.exec === "function") {
             routeModel.push(endpoint.controller.exec)
         }
@@ -247,7 +247,7 @@ class Server {
 
         this.httpServer.use('/', this.router)
 
-        this.httpServer.listen(this.port, () => {
+        this.httpServer.listen(this.port, this.params.listen ?? '0.0.0.0', () => {
             //? register to nethub
             if (this.params.onlineNethub) {
                 nethub.registerOrigin({ entry: "/", oskid: this.oskid, id: this.id })
