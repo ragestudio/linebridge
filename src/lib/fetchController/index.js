@@ -1,9 +1,9 @@
 const fs = require("fs")
 const path = require("path")
 
-function fetchController(key) {
+function fetchController(key, from) {
     try {
-        const controllersPath = global.controllersPath ?? path.resolve(process.cwd(), `controllers`)
+        const controllersPath = from ?? path.resolve(process.cwd(), `controllers`)
         const controllerPath = path.join(controllersPath, key)
 
         if (fs.existsSync(controllerPath)) {

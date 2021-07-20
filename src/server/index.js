@@ -213,7 +213,7 @@ class Server {
                         if (typeof this.controllers[endpoint.controller] !== "undefined") {
                             endpoint.controller = this.controllers[endpoint.controller]
                         } else {
-                            endpoint.controller = fetchController(endpoint.controller)
+                            endpoint.controller = fetchController(endpoint.controller, this.params.controllersPath)
                         }
                     }
 
