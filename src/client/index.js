@@ -22,7 +22,7 @@ class Bridge {
 }
 
 function generateDispatcher(bridge, method, route, getContext) {
-    return async function (body, query, ...context) {
+    return async function (body, query, options) {
         let obj = Object()
         let opt = {
             parseData: true,
@@ -30,7 +30,7 @@ function generateDispatcher(bridge, method, route, getContext) {
             url: route,
             data: body,
             params: query,
-            ...context
+            ...options
         }
 
         if (typeof getContext === "function") {
