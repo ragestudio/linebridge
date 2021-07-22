@@ -21,10 +21,11 @@ class Bridge {
     }
 }
 
-function generateRouteDispatcher(bridge, method, route, getContext) {
+function generateDispatcher(bridge, method, route, getContext) {
     return async function (body, query, ...context) {
         let obj = Object()
         let opt = {
+            parseData: true,
             method: method,
             url: route,
             data: body,
@@ -38,8 +39,11 @@ function generateRouteDispatcher(bridge, method, route, getContext) {
 
         const req = await bridge.instance(opt)
 
-        obj = req.data
-        obj.__proto__ = req
+        if (opt.parseData) {
+            obj = req.data
+        }else {
+            obj = req
+        }
 
         return obj
     }
@@ -84,7 +88,7 @@ async function createInterface(address, getContext) {
                 nameKey = "index"
             }
 
-            objects[method][nameKey] = generateRouteDispatcher(bridge, method, route, getContext)
+            objects[method][nameKey] = generateDispatcher(bridge, method, route, getContext)
         })
     }
 
