@@ -28,7 +28,7 @@ export class RequestAdaptor {
             if (typeof this.payload[1] === "object") {
                 payloads.query = this.payload[1]
             }
-        }else if (typeof this.payload === "object"){
+        } else if (typeof this.payload === "object") {
             payloads = {
                 ...payloads,
                 ...this.payload
@@ -94,7 +94,7 @@ function generateDispatcher(bridge, method, route, getContext) {
 
         if (opt.parseData) {
             obj = req.data
-        }else {
+        } else {
             obj = req
         }
 
@@ -103,12 +103,7 @@ function generateDispatcher(bridge, method, route, getContext) {
 }
 
 async function createInterface(address, getContext) {
-    let objects = {
-        get: Object(),
-        post: Object(),
-        put: Object(),
-        delete: Object()
-    }
+    let objects = {}
 
     const bridge = new Bridge({
         origin: address
@@ -116,12 +111,15 @@ async function createInterface(address, getContext) {
 
     await bridge.connect()
 
-    const routes = bridge.map.routes ?? []
-    const methods = bridge.map.methods ?? {}
+    const map = bridge.map
 
-    if (Array.isArray(routes)) {
-        routes.forEach((route) => {
-            const method = methods[route].toLowerCase()
+    Object.keys(map).forEach((method) => {
+        method = method.toLowerCase()
+        if (typeof objects[method] !== "object") {
+            objects[method] = Object()
+        }
+
+        Object.keys(map[method]).forEach((route) => {
             const tree = route.split("/")
             const hasTree = tree.length >= 1
             let nameKey = route
@@ -143,7 +141,9 @@ async function createInterface(address, getContext) {
 
             objects[method][nameKey] = generateDispatcher(bridge, method, route, getContext)
         })
-    }
+
+    })
+
 
     return objects
 }

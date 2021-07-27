@@ -94,10 +94,14 @@ class Server {
         if (typeof endpoint.controller === "function") {
             endpoint.controller = new classes.Controller(endpoint.route, endpoint.controller)
         }
-
+        
         endpoint.method = endpoint.method.toLowerCase()
 
-        this.endpoints[endpoint.route] = endpoint
+        if (typeof this.endpoints[endpoint.method] !== "object") {
+            this.endpoints[endpoint.method] = Object()
+        }
+
+        this.endpoints[endpoint.method][endpoint.route] = endpoint
         this.routes.push(endpoint.route)
 
         const routeModel = [endpoint.route]
@@ -174,23 +178,37 @@ class Server {
         })
 
         this.registerEndpoint({
+            method: "PUT",
+            route: "/session",
+            controller: (req, res) => {
+                res.send("bruh")
+            }
+        })
+        this.registerEndpoint({
+            method: "DELETE",
+            route: "/session",
+            controller: (req, res) => {
+                res.send("deleted bruh")
+            }
+        })
+
+        this.registerEndpoint({
             method: "get",
             route: "/map",
             controller: (req, res) => {
-                const methods = {}
+                const map = {}
 
-                this.routes.forEach((route) => {
-                    const endpoint = this.endpoints[route] ?? {}
-
-                    if (typeof endpoint.method === "string") {
-                        methods[route] = endpoint.method
+                Object.keys(this.endpoints).forEach((method) => {
+                    if (typeof map[method] !== "object") {
+                        map[method] = Object()
                     }
-                })
 
-                res.json({
-                    routes: this.routes,
-                    methods: methods
+                    Object.keys(this.endpoints[method]).forEach((route) => {
+                        map[method] = route
+                    })
                 })
+               
+                res.json(map)
             }
         })
     }
