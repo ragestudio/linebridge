@@ -115,11 +115,13 @@ async function createInterface(address, getContext) {
 
     Object.keys(map).forEach((method) => {
         method = method.toLowerCase()
+
         if (typeof objects[method] !== "object") {
             objects[method] = Object()
         }
 
-        Object.keys(map[method]).forEach((route) => {
+        map[method].forEach((endpoint) => {
+            const route = endpoint.route
             const tree = route.split("/")
             const hasTree = tree.length >= 1
             let nameKey = route

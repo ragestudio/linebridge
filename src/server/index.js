@@ -40,10 +40,9 @@ class Server {
         }
 
         //* set params jails
-        this.routes = []
         this.endpoints = {}
         this.serverMiddlewares = [...this.params.serverMiddlewares ?? [], ...defaultMiddlewares]
-        this.middlewares = { ...this.params.middlewares }
+        this.middlewares = { ...this.params.middlewares, ...middlewares }
         this.controllers = { ...this.params.controllers }
         this.headers = { ...defaultHeaders, ...this.params.headers }
 
@@ -94,15 +93,14 @@ class Server {
         if (typeof endpoint.controller === "function") {
             endpoint.controller = new classes.Controller(endpoint.route, endpoint.controller)
         }
-        
+
         endpoint.method = endpoint.method.toLowerCase()
 
-        if (typeof this.endpoints[endpoint.method] !== "object") {
+        if (typeof this.endpoints[endpoint.method] === "undefined") {
             this.endpoints[endpoint.method] = Object()
         }
 
         this.endpoints[endpoint.method][endpoint.route] = endpoint
-        this.routes.push(endpoint.route)
 
         const routeModel = [endpoint.route]
 
@@ -178,36 +176,24 @@ class Server {
         })
 
         this.registerEndpoint({
-            method: "PUT",
-            route: "/session",
-            controller: (req, res) => {
-                res.send("bruh")
-            }
-        })
-        this.registerEndpoint({
-            method: "DELETE",
-            route: "/session",
-            controller: (req, res) => {
-                res.send("deleted bruh")
-            }
-        })
-
-        this.registerEndpoint({
             method: "get",
             route: "/map",
             controller: (req, res) => {
                 const map = {}
 
                 Object.keys(this.endpoints).forEach((method) => {
-                    if (typeof map[method] !== "object") {
-                        map[method] = Object()
+                    if (typeof map[method] === "undefined") {
+                        map[method] = []
                     }
 
                     Object.keys(this.endpoints[method]).forEach((route) => {
-                        map[method] = route
+                        map[method].push({
+                            route: route,
+                            method: method
+                        })
                     })
                 })
-               
+
                 res.json(map)
             }
         })
