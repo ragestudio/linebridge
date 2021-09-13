@@ -1,17 +1,22 @@
-node_modules
-dist
-dumps.log
-origin.server
-server.registry
-server.manifest
-package-lock.json
-yarn.lock
+# Secrets
+/**/**/.env
+/**/**/origin.server
+/**/**/server.manifest
+/**/**/server.registry
 
-*/**/node_modules
-*/**/dist
-*/**/dumps.log
-*/**/origin.server
-*/**/server.registry
-*/**/server.manifest
-*/**/package-lock.json
-*/**/yarn.lock
+# Trash
+/**/**/.crash.log
+/**/**/.tmp
+/**/**/dist
+/**/**/node_modules
+/**/**/corenode_modules
+/**/**/.DS_Store
+
+# Logs
+/**/**/npm-debug.log*
+/**/**/yarn-error.log
+/**/**/dumps.log
+/**/**/corenode.log
+
+# Temporal configurations
+/**/**/.aliaser

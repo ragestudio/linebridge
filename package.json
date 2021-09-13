@@ -1,9 +1,10 @@
 {
-  "name": "@ragestudio/cloudlink",
+  "name": "cloudlink",
   "version": "0.5.35",
   "main": "dist/index.js",
   "types": "dist/modules.d.ts",
   "scripts": {
+    "build": "corenode build",
     "dev": "corenode dev --dist --input ./src --exec ./bin/server.js",
     "start:server": "corenode ./bin/server.js",
     "dev:server": "cross-env NODE_ENV=development nodemon --ignore dist/ --exec 'corenode build && corenode' ./bin/server.js --disableCheckDependencies"
@@ -12,15 +13,13 @@
     "access": "public"
   },
   "files": [
-    "dist",
-    ".corenode.json",
-    "load.addon.js"
+    "dist"
   ],
   "license": "MIT",
   "dependencies": {
     "socket.io": "^4.2.0",
-    "@corenode/utils": "^0.26.5",
-    "corenode": "^0.26.5",
+    "@corenode/utils": "^0.26.15",
+    "corenode": "^0.26.15",
     "axios": "^0.21.1",
     "cors": "^2.8.5",
     "express": "^4.17.1",
