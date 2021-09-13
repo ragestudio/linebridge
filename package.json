@@ -1,6 +1,8 @@
 {
-  "name": "cloudlink",
-  "version": "0.5.35",
+  "name": "linebridge",
+  "version": "0.6.0",
+  "description": "A simple, fast, and powerful API interface library",
+  "author": "RageStudio",
   "main": "dist/index.js",
   "types": "dist/modules.d.ts",
   "scripts": {
