@@ -1,1 +1,1 @@
-# @relic/server
+# linebridge | API Interface library
