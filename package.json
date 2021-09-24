@@ -4,24 +4,23 @@
   "description": "A simple, fast, and powerful API interface library",
   "author": "RageStudio",
   "main": "dist/index.js",
-  "types": "dist/modules.d.ts",
+  "types": "./modules.d.ts",
   "scripts": {
-    "build": "corenode build",
-    "dev": "corenode dev --dist --input ./src --exec ./bin/server.js",
-    "start:server": "corenode ./bin/server.js",
-    "dev:server": "cross-env NODE_ENV=development nodemon --ignore dist/ --exec 'corenode build && corenode' ./bin/server.js --disableCheckDependencies"
+    "start": "corenode-node ./src/bin/server.js",
+    "dev": "corenode-cli dev --dist --input ./src --exec ./bin/server.js",
+    "build": "corenode-cli build --parallel --clean --fix"
   },
   "publishConfig": {
     "access": "public"
   },
   "files": [
-    "dist"
+    "**/**"
   ],
   "license": "MIT",
   "dependencies": {
     "socket.io": "^4.2.0",
-    "@corenode/utils": "^0.26.15",
-    "corenode": "^0.26.15",
+    "@corenode/utils": "^0.28.15",
+    "corenode": "^0.28.15",
     "axios": "^0.21.1",
     "cors": "^2.8.5",
     "express": "^4.17.1",
