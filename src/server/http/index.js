@@ -50,7 +50,7 @@ class Server {
         this.router = express.Router()
 
         //* set id's
-        this.id = this.params.id ?? runtime.helpers.getRootPackage().name
+        this.id = this.params.id ?? process.runtime?.helpers?.getRootPackage()?.name ?? "unavailable"
         this.usid = tokenizer.generateUSID()
         this.oskid = "unloaded"
 
@@ -241,9 +241,9 @@ class Server {
                     // append to server
                     this.registerEndpoint(endpoint)
                 } catch (error) {
-                    runtime.logger.dump(error)
                     console.error(error)
                     console.error(`🆘  Failed to load endpoint > ${error.message}`)
+                    process.runtime.logger.dump(error)
                 }
             })
         }

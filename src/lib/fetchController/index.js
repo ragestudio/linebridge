@@ -11,8 +11,8 @@ function fetchController(key, from) {
         }
 
     } catch (error) {
-        runtime.logger.dump(error)
         console.error(`Failed to load controller [${key}] > ${error.message}`)
+        process.runtime.logger.dump(error)
     }
 }
 

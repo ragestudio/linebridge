@@ -21,8 +21,8 @@ function heartbeat() {
                 return resolve(res.data)
             })
             .catch((err) => {
-                runtime.logger.dump("error", err)
                 console.error(`❌ [${err.response?.status ?? "0"}] [${NETHUB_HOSTNAME}] Failed to listen heartbeat > ${err}`)
+                process.runtime.logger.dump("error", err)
                 return reject(err)
             })
     })
