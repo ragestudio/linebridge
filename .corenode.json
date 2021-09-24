@@ -1,9 +1,4 @@
 {
-  "development": {
-    "origitGit": ""
-  },
   "version": "0.5.35",
-  "ignoreAddons": [
-    "cloudlink"
-  ]
+  "fixedMainScript": "./index.js"
 }
