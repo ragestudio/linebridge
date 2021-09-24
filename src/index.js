@@ -1,11 +1,8 @@
 const path = require('path')
 
-// patch corenode global runtime
-global.runtime = process.runtime
-
 //* set globals
 global.IS_DEV = process.runtime.helpers.isDevMode()
-global.RELIC_ORIGIN = require('./relicOrigin.json')
+global.RELIC_ORIGIN = "https://relic.ragestudio.net"
 
 global.SERVER_VERSION = process.runtime.helpers.getVersion()
 global.SERVER_MANIFEST = "server.manifest"

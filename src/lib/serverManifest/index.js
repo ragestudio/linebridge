@@ -1,4 +1,4 @@
-const tokenizer = require("corenode/dist/libs/tokenizer")
+const tokenizer = require("corenode/libs/tokenizer")
 const path = require("path")
 const fs = require("fs")
 

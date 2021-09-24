@@ -3,8 +3,8 @@ const socketIo = require('socket.io')
 
 class WSServer {
     constructor(params) {
-        this.params = { ...params }
 
+        this.params = { ...params }
         this.io = socketIo({
             serveClient: false,
         })
@@ -43,7 +43,7 @@ class WSServer {
             pingTimeout: 5000,
             cookie: false
         })
-        
+
         this.httpServer.listen(this.listenPort)
         console.log("WSS Listen on " + this.listenPort)
     }
@@ -53,7 +53,7 @@ class WSServer {
 
         return this.namespaces[namespace]
     }
-    
+
 }
 
 module.exports = WSServer

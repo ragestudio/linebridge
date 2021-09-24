@@ -1,11 +1,11 @@
 //* LIBRARIES
 const axios = require('axios')
-const { websocket } = require('corenode/dist/net')
+const { websocket } = require('corenode/net')
 
 //* constables
-const NETHUB_HOSTNAME = IS_DEV ? "localhost" : global.NETHUB_HOSTNAME = "nethub.ragestudio.net"
+const NETHUB_HOSTNAME = IS_DEV ? `http://localhost:1010` : `https://nethub.ragestudio.net`
 const nethubRequest = axios.create({
-    baseURL: IS_DEV ? `http://localhost:1010` : `https://${NETHUB_HOSTNAME}`
+    baseURL: NETHUB_HOSTNAME
 })
 
 //* HANDLERS

@@ -1,10 +1,9 @@
 const fs = require("fs")
 const express = require("express")
 
-const { objectToArrayMap } = require("@corenode/utils")
 const { nanoid } = require("nanoid")
-const tokenizer = require("corenode/dist/libs/tokenizer")
-const net = require("corenode/dist/net")
+const tokenizer = require("corenode/libs/tokenizer")
+const net = require("corenode/net")
 
 const classes = require("../../classes")
 const nethub = require("../../lib/nethub")
@@ -152,8 +151,8 @@ class Server {
             next()
         })
         this.httpServer.use((req, res, next) => {
-            objectToArrayMap(this.headers).forEach((entry) => {
-                res.setHeader(entry.key, entry.value)
+            Object.keys(this.headers).forEach((key) => {
+                res.setHeader(key, this.headers[key])
             })
 
             next()
