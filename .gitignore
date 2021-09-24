@@ -7,10 +7,15 @@
 # Trash
 /**/**/.crash.log
 /**/**/.tmp
+/**/**/.cache
+/**/**/out
+/**/**/.out
 /**/**/dist
 /**/**/node_modules
 /**/**/corenode_modules
 /**/**/.DS_Store
+/**/**/package-lock.json
+/**/**/yarn.lock
 
 # Logs
 /**/**/npm-debug.log*
