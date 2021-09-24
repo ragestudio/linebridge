@@ -19,6 +19,7 @@
   "license": "MIT",
   "dependencies": {
     "socket.io": "^4.2.0",
+    "@corenode/helpers": "^0.28.15",
     "@corenode/utils": "^0.28.15",
     "corenode": "^0.28.15",
     "axios": "^0.21.1",
