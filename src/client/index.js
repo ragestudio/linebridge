@@ -1,5 +1,5 @@
 const axios = require("axios")
-const { camalize } = require("@corenode/utils")
+const camalize = require("@corenode/utils/dist/camalize")
 
 export class RequestAdaptor {
     constructor(req, payload, callback) {
