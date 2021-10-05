@@ -9,6 +9,9 @@
     "start": "corenode-node ./src/bin/server.js",
     "build": "corenode-cli build --parallel --clean --fix"
   },
+  "bin": {
+    "linebridge": "./bin/server.js"
+  },
   "publishConfig": {
     "access": "public"
   },
