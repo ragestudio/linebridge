@@ -4,7 +4,6 @@
   "description": "A simple, fast, and powerful API interface library",
   "author": "RageStudio",
   "main": "dist/index.js",
-  "types": "./modules.d.ts",
   "scripts": {
     "start": "corenode-node ./src/bin/server.js",
     "build": "corenode-cli build --parallel --clean --fix"
