@@ -257,13 +257,12 @@ class Server {
 
         // load and set endpoints
         if (Array.isArray(this.params.endpoints)) {
-            this.params.endpoints.forEach((endpoint) => {
+            this.params.endpoints.forEach((endpoint, index) => {
                 try {
                     // append to server
                     this.register(endpoint)
                 } catch (error) {
-                    console.error(error)
-                    console.error(`🆘  Failed to load endpoint > ${error.message}`)
+                    console.error(`🆘 [${endpoint.route}[${index}]] Failed to load endpoint > ${error.message}`)
                     process.runtime.logger.dump(error)
                 }
             })
