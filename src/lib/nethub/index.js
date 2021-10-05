@@ -3,7 +3,7 @@ const axios = require('axios')
 const { websocket } = require('corenode/net')
 
 //* constables
-const NETHUB_HOSTNAME = IS_DEV ? `http://localhost:1010` : `https://nethub.ragestudio.net`
+const NETHUB_HOSTNAME = global.nethubOrigin ?? `https://nethub.ragestudio.net`
 const nethubRequest = axios.create({
     baseURL: NETHUB_HOSTNAME
 })
