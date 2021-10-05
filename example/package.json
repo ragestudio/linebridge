@@ -1,0 +1,10 @@
+{
+    "name": "uploadServer",
+    "version": "0.1.0",
+    "scripts": {
+        "start": "linebridge"
+    },
+    "dependencies": {
+        "linebridge": "^0.7.0"
+    }
+}
