@@ -1,4 +1,3 @@
-const path = require('path')
 const fs = require("fs")
 const express = require("express")
 
@@ -13,9 +12,6 @@ const hostAddress = net.ip.getHostAddress() ?? "localhost"
 const defaultMiddlewares = [
     require('cors')(),
     require('morgan')("dev"),
-    require('express-fileupload')({
-        createParentPath: true
-    })
 ]
 const defaultHeaders = {
     "Access-Control-Allow-Headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
@@ -27,12 +23,7 @@ const defaultHeaders = {
 const helpers = process.runtime.helpers ?? require('@corenode/helpers')
 
 //* set globals
-global.IS_DEV = helpers.isDevMode()
-global.RELIC_ORIGIN = "https://relic.ragestudio.net"
-
 global.SERVER_VERSION = helpers.getVersion()
-global.SERVER_MANIFEST = "server.manifest"
-global.SERVER_MANIFEST_PATH = path.resolve(process.cwd(), SERVER_MANIFEST)
 
 class Server {
     constructor(params, endpoints, middlewares) {
