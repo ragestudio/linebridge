@@ -1,15 +1,18 @@
 class Controller {
-    constructor(key, exec, params) {
-        this.key = key ?? "controller"
-        this.params = { ...params }
-
-        if (typeof exec === "function") {
-            this.exec = exec
-        }
+    constructor(payload) {
+        this.payload = {...payload}
+        
+        return this
     }
 
-    exec(req, res, next) {
-        res.json(`empty response`)
+    exec = async (req, res, next) => {
+        if (typeof this.payload.exec === "function") {
+            try {
+                await this.payload.exec (req, res, next)
+            } catch (error) {
+                return res.status(500).json({ error: error.message, endpoint: this.payload.route })
+            }
+        }
     }
 }
 
