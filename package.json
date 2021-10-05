@@ -7,14 +7,13 @@
   "types": "./modules.d.ts",
   "scripts": {
     "start": "corenode-node ./src/bin/server.js",
-    "dev": "corenode-cli dev --dist --input ./src --exec ./bin/server.js",
     "build": "corenode-cli build --parallel --clean --fix"
   },
   "publishConfig": {
     "access": "public"
   },
   "files": [
-    "**/**"
+    "dist"
   ],
   "license": "MIT",
   "dependencies": {
@@ -22,19 +21,16 @@
     "@corenode/helpers": "^0.28.18",
     "@corenode/utils": "^0.28.18",
     "corenode": "^0.28.18",
-    "axios": "^0.21.1",
+    "axios": "^0.22.0",
     "cors": "^2.8.5",
     "express": "^4.17.1",
-    "express-fileupload": "^1.2.1",
     "md5": "^2.3.0",
     "morgan": "^1.10.0",
-    "nanoid": "^3.1.23",
+    "nanoid": "^3.1.28",
     "uuid": "^8.3.2",
     "websocket": "^1.0.34"
   },
   "devDependencies": {
-    "@corenode/dev-addon": "0.1.9",
-    "cross-env": "^7.0.3",
-    "nodemon": "^2.0.7"
+    "express-fileupload": "^1.2.1"
   }
 }
