@@ -59,7 +59,7 @@ class Server {
         this.nethubOrigin = ""
 
         //? check if origin.server exists
-        if (!fs.existsSync(SERVER_MANIFEST_PATH)) {
+        if (!fs.existsSync(serverManifest.filepath)) {
             serverManifest.create()
         }
 
