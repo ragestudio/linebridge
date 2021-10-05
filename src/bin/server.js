@@ -3,10 +3,10 @@ const corenode = require("corenode")
 
 corenode.runInNewRuntime(() => {
     const { randomWord } = require("@corenode/utils")
-    const cloudlink = require("../index.js")
+    const lib = require("../index.js")
 
     // create server
-    new cloudlink.Server({
+    new lib.Server({
         autoInit: true,
         id: process.env.serverID ?? randomWord.generate(),
     })
