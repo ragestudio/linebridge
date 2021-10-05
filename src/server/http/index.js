@@ -88,29 +88,80 @@ class Server {
         this.oskid = serverManifest.get("serverToken")
     }
 
-    registerEndpoint(endpoint) {
-        if (typeof endpoint.controller === "function") {
-            endpoint.controller = new classes.Controller(endpoint.route, endpoint.controller)
+    register = (controller) => {
+        if (typeof controller === "undefined") {
+            console.error(`Invalid endpoint, missing parameters!`)
+            return false
         }
 
-        endpoint.method = endpoint.method.toLowerCase()
+        // fix data
+        controller.method = controller.method?.toLowerCase() ?? "get"
 
-        if (typeof this.endpoints[endpoint.method] === "undefined") {
-            this.endpoints[endpoint.method] = Object()
+        // fulfill an undefined fn
+        if (typeof controller.fn === "undefined") {
+            controller.fn = (req, res, next) => {
+                return next()
+            }
         }
 
-        this.endpoints[endpoint.method][endpoint.route] = endpoint
+        // fetchController function if needed
+        if (typeof controller.fn === "string") {
+            let stack = []
+            const resolverKeys = controller.fn.split(".")
 
-        const routeModel = [endpoint.route]
+            resolverKeys.forEach((key, index) => {
+                if (index === 0) {
+                    if (typeof this.controllers[key] !== "undefined") {
+                        stack.push(this.controllers[key])
+                    } else {
+                        stack.push(fetchController(key, this.params.controllersPath))
+                    }
 
-        if (typeof endpoint.middleware !== "undefined") {
+                } else {
+                    stack.push(stack[index - 1][key])
+                }
+
+
+                if (resolverKeys.length === index + 1) {
+                    let resolved = stack[index]
+
+                    if (typeof resolved !== "function" && typeof resolved[controller.method] === "function") {
+                        resolved = resolved[controller.method]
+                    }
+
+                    return controller.fn = resolved
+                }
+            })
+        }
+
+        // extend main fn
+        controller._exec = async (req, res, next) => {
+            try {
+                await controller.fn(req, res, next)
+            } catch (error) {
+                return res.status(500).json({ error: error.message, endpoint: controller.route })
+            }
+        }
+
+        // set endpoint registry
+        if (typeof this.endpoints[controller.method] === "undefined") {
+            this.endpoints[controller.method] = Object()
+        }
+
+        this.endpoints[controller.method][controller.route] = controller
+
+        // create routeModel
+        const routeModel = [controller.route]
+
+        // query middlewares
+        if (typeof controller.middleware !== "undefined") {
             let query = []
 
-            if (typeof endpoint.middleware === "string") {
-                query.push(endpoint.middleware)
+            if (typeof controller.middleware === "string") {
+                query.push(controller.middleware)
             }
-            if (Array.isArray(endpoint.middleware)) {
-                query = endpoint.middleware
+            if (Array.isArray(controller.middleware)) {
+                query = controller.middleware
             }
 
             query.forEach((middleware) => {
@@ -120,11 +171,13 @@ class Server {
             })
         }
 
-        if (typeof endpoint.controller.exec === "function") {
-            routeModel.push(endpoint.controller.exec)
+        // query main endpoint function
+        if (typeof controller._exec === "function") {
+            routeModel.push(controller._exec)
         }
 
-        this.router[endpoint.method.toLowerCase()](...routeModel)
+        // append to router
+        this.router[controller.method](...routeModel)
     }
 
     preInitialization() {
@@ -159,12 +212,11 @@ class Server {
         })
 
         // register root resolver
-        this.registerEndpoint({
+        this.register({
             method: "get",
             route: "/",
-            controller: (req, res) => {
-                // here server origin resolver
-                res.json({
+            fn: (req, res) => {
+                return res.json({
                     id: this.id,
                     usid: this.usid,
                     oskid: this.oskid,
@@ -174,10 +226,10 @@ class Server {
             }
         })
 
-        this.registerEndpoint({
+        this.register({
             method: "get",
             route: "/map",
-            controller: (req, res) => {
+            fn: (req, res) => {
                 const map = {}
 
                 Object.keys(this.endpoints).forEach((method) => {
@@ -193,7 +245,7 @@ class Server {
                     })
                 })
 
-                res.json(map)
+                return res.json(map)
             }
         })
     }
@@ -202,44 +254,12 @@ class Server {
         // write lastStart
         serverManifest.write({ lastStart: Date.now() })
 
-        // set endpoints
+        // load and set endpoints
         if (Array.isArray(this.params.endpoints)) {
             this.params.endpoints.forEach((endpoint) => {
-                if (!endpoint || !endpoint.route || !endpoint.controller) {
-                    throw new Error(`Invalid endpoint!`)
-                }
-
                 try {
-                    // check if controller is an already a controller
-                    if (typeof endpoint.controller === "string") {
-                        // check if the controller is already loaded, else try to fetch
-                        if (typeof this.controllers[endpoint.controller] !== "undefined") {
-                            endpoint.controller = this.controllers[endpoint.controller]
-                        } else {
-                            endpoint.controller = fetchController(endpoint.controller, this.params.controllersPath)
-                        }
-                    }
-
-                    // check if the controller is an default function and transform it into an controller
-                    if (typeof endpoint.controller === "function") {
-                        endpoint.controller = {
-                            default: endpoint.controller
-                        }
-                    }
-
-                    // fulfill undefined 
-                    if (typeof endpoint.method === "undefined") {
-                        endpoint.method = "get"
-                    }
-                    if (typeof endpoint.fn === "undefined") {
-                        endpoint.fn = "default"
-                    }
-
-                    // convert with class
-                    endpoint.controller = new classes.Controller(endpoint.route, endpoint.controller[endpoint.fn])
-
                     // append to server
-                    this.registerEndpoint(endpoint)
+                    this.register(endpoint)
                 } catch (error) {
                     console.error(error)
                     console.error(`🆘  Failed to load endpoint > ${error.message}`)
