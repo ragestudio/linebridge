@@ -1,3 +1,4 @@
+const path = require('path')
 const fs = require("fs")
 const express = require("express")
 
@@ -5,7 +6,6 @@ const { nanoid } = require("nanoid")
 const tokenizer = require("corenode/libs/tokenizer")
 const net = require("corenode/net")
 
-const classes = require("../../classes")
 const nethub = require("../../lib/nethub")
 const { getLocalEndpoints, fetchController, serverManifest } = require("../../lib")
 const hostAddress = net.ip.getHostAddress() ?? "localhost"
@@ -23,6 +23,16 @@ const defaultHeaders = {
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS, PUT, PATCH, DELETE",
     "Access-Control-Allow-Credentials": "true",
 }
+
+const helpers = process.runtime.helpers ?? require('@corenode/helpers')
+
+//* set globals
+global.IS_DEV = helpers.isDevMode()
+global.RELIC_ORIGIN = "https://relic.ragestudio.net"
+
+global.SERVER_VERSION = helpers.getVersion()
+global.SERVER_MANIFEST = "server.manifest"
+global.SERVER_MANIFEST_PATH = path.resolve(process.cwd(), SERVER_MANIFEST)
 
 class Server {
     constructor(params, endpoints, middlewares) {

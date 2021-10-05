@@ -3,7 +3,6 @@ const socketIo = require('socket.io')
 
 class WSServer {
     constructor(params) {
-
         this.params = { ...params }
         this.io = socketIo({
             serveClient: false,
