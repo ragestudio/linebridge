@@ -26,6 +26,11 @@ const helpers = process.runtime.helpers ?? require('@corenode/helpers')
 //* set globals
 global.SERVER_VERSION = helpers.getVersion()
 
+const MethodsFix = {
+    "delete": "del",
+}
+const ValidMethods = ["get", "post", "put", "patch", "del", "trace", "head"]
+
 class Server {
     constructor(params, endpoints, middlewares) {
         this.params = params ?? {}
@@ -95,8 +100,17 @@ class Server {
             return false
         }
 
-        // fix data
+        // check and fix method
         controller.method = controller.method?.toLowerCase() ?? "get"
+        
+        if (MethodsFix[controller.method]) {
+            controller.method = MethodsFix[controller.method]
+        }
+
+        // validate method
+        if (!ValidMethods.includes(controller.method)){
+            throw new Error(`Invalid endpoint method: ${controller.method}`)
+        }
 
         // fulfill an undefined fn
         if (typeof controller.fn === "undefined") {
