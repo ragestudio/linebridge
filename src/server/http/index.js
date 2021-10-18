@@ -1,6 +1,6 @@
 const fs = require("fs")
 const http = require("nanoexpress")
-const bodyParser = require('body-parser')
+const bodyParser = require('@nanoexpress/middleware-body-parser/cjs')
 
 const { nanoid } = require("nanoid")
 const tokenizer = require("corenode/libs/tokenizer")
@@ -197,8 +197,7 @@ class Server {
 
     preInitialization() {
         // set middlewares
-        this.httpServer.use(bodyParser.json())
-        this.httpServer.use(bodyParser.urlencoded({ extended: true }))
+        this.httpServer.use(bodyParser())
 
         if (Array.isArray(this.serverMiddlewares)) {
             this.serverMiddlewares.forEach((middleware) => {

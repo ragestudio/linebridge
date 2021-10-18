@@ -21,8 +21,8 @@
   "dependencies": {
     "@corenode/helpers": "^0.28.18",
     "@corenode/utils": "^0.28.18",
+    "@nanoexpress/middleware-body-parser": "^1.2.2",
     "axios": "^0.22.0",
-    "body-parser": "^1.19.0",
     "corenode": "^0.28.18",
     "cors": "^2.8.5",
     "express": "^4.17.1",
