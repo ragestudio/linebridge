@@ -29,7 +29,7 @@ global.SERVER_VERSION = helpers.getVersion()
 const MethodsFix = {
     "delete": "del",
 }
-const ValidMethods = ["get", "post", "put", "patch", "del", "trace", "head"]
+const ValidMethods = ["get", "post", "put", "patch", "del", "trace", "head", "any", "options", "ws"]
 
 class Server {
     constructor(params, endpoints, middlewares) {
