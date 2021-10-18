@@ -1,5 +1,6 @@
 const fs = require("fs")
-const express = require("express")
+const http = require("nanoexpress")
+const bodyParser = require('body-parser')
 
 const { nanoid } = require("nanoid")
 const tokenizer = require("corenode/libs/tokenizer")
@@ -47,8 +48,7 @@ class Server {
         this.headers = { ...defaultHeaders, ...this.params.headers }
 
         //* set server basics
-        this.httpServer = require("express")()
-        this.router = express.Router()
+        this.httpServer = http()
 
         //* set id's
         this.id = this.params.id ?? process.runtime?.helpers?.getRootPackage()?.name ?? "unavailable"
@@ -178,13 +178,13 @@ class Server {
         }
 
         // append to router
-        this.router[controller.method](...routeModel)
+        this.httpServer[controller.method](...routeModel)
     }
 
     preInitialization() {
         // set middlewares
-        this.httpServer.use(express.json())
-        this.httpServer.use(express.urlencoded({ extended: true }))
+        this.httpServer.use(bodyParser.json())
+        this.httpServer.use(bodyParser.urlencoded({ extended: true }))
 
         if (Array.isArray(this.serverMiddlewares)) {
             this.serverMiddlewares.forEach((middleware) => {
@@ -251,7 +251,7 @@ class Server {
         })
     }
 
-    init() {
+    init = async () => {
         // write lastStart
         serverManifest.write({ lastStart: Date.now() })
 
@@ -268,16 +268,14 @@ class Server {
             })
         }
 
-        this.httpServer.use('/', this.router)
+        await this.httpServer.listen(this.port, this.params.listen ?? '0.0.0.0')
+        
+        //? register to nethub
+        if (this.params.onlineNethub) {
+            nethub.registerOrigin({ entry: "/", oskid: this.oskid, id: this.id })
+        }
 
-        this.httpServer.listen(this.port, this.params.listen ?? '0.0.0.0', () => {
-            //? register to nethub
-            if (this.params.onlineNethub) {
-                nethub.registerOrigin({ entry: "/", oskid: this.oskid, id: this.id })
-            }
-
-            console.log(`✅  Ready on port ${this.port}!`)
-        })
+        console.log(`✅  Ready on port ${this.port}!`)
     }
 }
 
