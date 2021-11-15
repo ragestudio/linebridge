@@ -3,10 +3,10 @@ const corenode = require("corenode")
 
 corenode.runInNewRuntime(() => {
     const { randomWord } = require("@corenode/utils")
-    const lib = require("../server/index.js")
+    const server = require("../server/index.js")
 
     // create server
-    new lib.HttpServer({
+    new server({
         autoInit: true,
         id: process.env.serverID ?? randomWord.generate(),
     })
