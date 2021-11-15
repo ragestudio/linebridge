@@ -9,23 +9,29 @@ const nethub = require("../../lib/nethub")
 const { getLocalEndpoints, fetchController, serverManifest } = require("../../lib")
 const hostAddress = net.ip.getHostAddress() ?? "localhost"
 
-const defaultMiddlewares = [
-    require('cors')(),
-    require('morgan')("dev"),
-]
 const defaultHeaders = {
     "Access-Control-Allow-Headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS, PUT, PATCH, DELETE",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS, PUT, PATCH, DELETE, DEL",
     "Access-Control-Allow-Credentials": "true",
 }
+
+const defaultMiddlewares = [
+    require('cors')({
+        "origin": "*",
+        "methods": defaultHeaders["Access-Control-Allow-Methods"],
+        "preflightContinue": false,
+        "optionsSuccessStatus": 204
+    }),
+    require('morgan')("dev"),
+]
 
 const helpers = process.runtime.helpers ?? require('@corenode/helpers')
 
 //* set globals
 global.SERVER_VERSION = helpers.getVersion()
 
-const MethodsFix = {
+const FixedMethods = {
     "delete": "del",
 }
 const ValidMethods = ["get", "post", "put", "patch", "del", "trace", "head", "any", "options", "ws"]
@@ -101,13 +107,13 @@ class Server {
 
         // check and fix method
         controller.method = controller.method?.toLowerCase() ?? "get"
-        
-        if (MethodsFix[controller.method]) {
-            controller.method = MethodsFix[controller.method]
+
+        if (FixedMethods[controller.method]) {
+            controller.method = FixedMethods[controller.method]
         }
 
         // validate method
-        if (!ValidMethods.includes(controller.method)){
+        if (!ValidMethods.includes(controller.method)) {
             throw new Error(`Invalid endpoint method: ${controller.method}`)
         }
 
@@ -272,7 +278,7 @@ class Server {
         }
 
         await this.httpServer.listen(this.port, this.params.listen ?? '0.0.0.0')
-        
+
         //? register to nethub
         if (this.params.onlineNethub) {
             nethub.registerOrigin({ entry: "/", oskid: this.oskid, id: this.id })
