@@ -100,7 +100,6 @@ function generateDispatcher(bridge, method, route, getContext) {
                     result.response = response
                 })
                 .catch((error) => {
-                    console.error(error.response)
                     result.error = error.response.data.error ?? error.response.data
                 })
 
