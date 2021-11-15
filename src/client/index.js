@@ -75,30 +75,43 @@ class Bridge {
 }
 
 function generateDispatcher(bridge, method, route, getContext) {
-    return async function (body, query, options) {
-        let obj = Object()
-        let opt = {
-            parseData: true,
-            method: method,
-            url: route,
-            data: body,
-            params: query,
-            ...options
-        }
+    return function (body, query, options) {
+        return new Promise((resolve, reject) => {
+            let requestParams = {
+                parseData: true,
+                ...options,
+                method: method,
+                url: route,
+                data: body,
+                params: query,
+            }
 
-        if (typeof getContext === "function") {
-            opt = { ...opt, ...getContext() }
-        }
+            if (typeof getContext === "function") {
+                requestParams = { ...requestParams, ...getContext() }
+            }
 
-        const req = await bridge.instance(opt)
+            let result = []
 
-        if (opt.parseData) {
-            obj = req.data
-        } else {
-            obj = req
-        }
-
-        return obj
+            bridge.instance(requestParams)
+                .then((response) => {
+                    if (response.status > 400) {
+                        throw new Error(response.data.error ?? response.data)
+                    }
+                })
+                .catch((response) => {
+                    result[0] = response
+                })
+                .then((response) => {
+                    if (requestParams.parseData) {
+                        result[1] = response.data
+                    } else {
+                        result[1] = response
+                    }
+                })
+                .finally(() => {
+                    return resolve(...result)
+                })
+        })
     }
 }
 
