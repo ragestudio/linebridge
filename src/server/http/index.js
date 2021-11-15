@@ -2,7 +2,6 @@ const fs = require("fs")
 const http = require("nanoexpress")
 const bodyParser = require('@nanoexpress/middleware-body-parser/cjs')
 
-const { nanoid } = require("nanoid")
 const tokenizer = require("corenode/libs/tokenizer")
 const net = require("corenode/net")
 
