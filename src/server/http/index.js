@@ -209,15 +209,6 @@ class Server {
 
         // set headers
         this.httpServer.use((req, res, next) => {
-            req.requestId = nanoid()
-            res.setHeader("request_id", req.requestId)
-            next()
-        })
-        this.httpServer.use((req, res, next) => {
-            res.removeHeader("X-Powered-By")
-            next()
-        })
-        this.httpServer.use((req, res, next) => {
             Object.keys(this.headers).forEach((key) => {
                 res.setHeader(key, this.headers[key])
             })
