@@ -10,6 +10,8 @@ class Controller {
     constructor(params = {}) {
         this.params = params
         this.pool = []
+
+        this.initialize()
     }
 
     async initialize() {
