@@ -1,7 +1,7 @@
 {
   "name": "linebridge",
   "version": "0.8.4",
-  "description": "A simple, fast, and powerful API interface library",
+  "description": "A simple, fast, and powerful REST API interface library",
   "author": "RageStudio",
   "main": "dist/index.js",
   "scripts": {
@@ -29,9 +29,7 @@
     "morgan": "^1.10.0",
     "nanoexpress": "^5.1.2",
     "nanoid": "^3.1.30",
+    "socket.io": "^4.4.0",
     "uuid": "^8.3.2"
-  },
-  "devDependencies": {
-    "express-fileupload": "^1.2.1"
   }
 }
