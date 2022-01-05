@@ -20,7 +20,7 @@ class Controller {
         }
 
         for await (let server of this.pool) {
-            await server.connect(server)
+            await this.connect(server)
         }
     }
 
