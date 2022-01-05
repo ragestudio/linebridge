@@ -5,6 +5,50 @@ const FixedMethods = {
     "del": "delete"
 }
 
+// TODO: AutoConnection
+class Controller {
+    constructor(params = {}) {
+        this.params = params
+        this.pool = []
+    }
+
+    async initialize() {
+        if (typeof this.params.servers !== "undefined" && Array.isArray(this.params.servers)) {
+            for await (let server of this.params.servers) {
+                this.appendServer(server)
+            }
+        }
+
+        for await (let server of this.pool) {
+            await server.connect(server)
+        }
+    }
+
+    async appendServer(server) {
+        if (typeof server === "string") {
+            server = new Bridge({
+                origin: server,
+            })
+        }
+        if (typeof server === "object" && server instanceof Bridge) {
+            server = new Bridge(...server)
+        }
+
+        this.pool.push(server)
+    }
+
+    // async disconnect() {
+    // }
+
+    async connect(server) {
+        if (server instanceof Bridge) {
+            server.initialize()
+        } else {
+            throw new Error("Invalid server. Expected Bridge instance.")
+        }
+    }
+}
+
 class Bridge {
     constructor(params = {}) {
         this.params = params
@@ -23,15 +67,15 @@ class Bridge {
         return this
     }
 
-    handleRequestContext = () => {
-        if (typeof this.params.onRequestContext === "function") {
-            return this.params.onRequestContext()
+    handleRequestContext = async () => {
+        if (typeof this.params.onRequest === "function") {
+            return this.params.onRequest()
         }
 
         return false
     }
 
-    initialize = async () => {
+    updateEndpointMap = async () => {
         this.map = await this.getMap()
 
         for await (let method of Object.keys(this.map)) {
@@ -74,6 +118,10 @@ class Bridge {
     getMap = async () => {
         const req = await this.instance.get("/map")
         return req.data
+    }
+
+    initialize = async () => {
+        await this.updateEndpointMap()
     }
 }
 
@@ -121,4 +169,5 @@ function generateDispatcher(instance, method, route, handleRequestContext) {
 
 module.exports = {
     Bridge,
+    Controller,
 }
