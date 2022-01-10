@@ -6,7 +6,8 @@
   "main": "dist/index.js",
   "scripts": {
     "start": "corenode-node ./src/bin/server.js",
-    "build": "corenode-cli build --parallel --clean --fix && chmod -R 777 ./dist"
+    "build": "corenode-cli build --parallel --clean --fix && chmod -R 777 ./dist",
+    "test": "mocha"
   },
   "bin": {
     "linebridge": "./bin/server.js"
@@ -31,5 +32,8 @@
     "nanoid": "^3.1.30",
     "socket.io": "^4.4.0",
     "uuid": "^8.3.2"
+  },
+  "devDependencies": {
+    "mocha": "^9.1.3"
   }
 }
