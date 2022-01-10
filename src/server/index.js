@@ -27,7 +27,12 @@ const defaultMiddlewares = [
     require('morgan')("dev"),
 ]
 
-const helpers = process.runtime.helpers ?? require('@corenode/helpers')
+if (typeof process.runtime === "undefined") {
+    process.runtime = {}
+    process.runtime.manifests = {}
+}
+
+const helpers = process.runtime?.helpers ?? require('@corenode/helpers')
 
 //* set globals
 global.SERVER_VERSION = helpers.getVersion()
