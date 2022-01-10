@@ -8,16 +8,16 @@ const FixedMethods = {
 // TODO: AutoConnection
 class Controller {
     constructor(params = {}) {
+        console.warn("[Linebridge] Controller is not finished yet. Please use regular bridges instead.")
+        
         this.params = params
         this.pool = []
-
-        this.initialize()
     }
 
     async initialize() {
         if (typeof this.params.servers !== "undefined" && Array.isArray(this.params.servers)) {
             for await (let server of this.params.servers) {
-                this.appendServer(server)
+                await this.appendServer(server)
             }
         }
 
@@ -31,8 +31,7 @@ class Controller {
             server = new Bridge({
                 origin: server,
             })
-        }
-        if (typeof server === "object" && server instanceof Bridge) {
+        } else if (typeof server === "object" && server instanceof Bridge) {
             server = new Bridge(...server)
         }
 
@@ -44,7 +43,7 @@ class Controller {
 
     async connect(server) {
         if (server instanceof Bridge) {
-            server.initialize()
+            await server.initialize()
         } else {
             throw new Error("Invalid server. Expected Bridge instance.")
         }
@@ -140,7 +139,8 @@ function generateDispatcher(instance, method, route, handleRequestContext) {
             }
 
             if (typeof handleRequestContext === "function") {
-                requestParams = { ...requestParams, ...handleRequestContext() }
+                const context = await handleRequestContext()
+                requestParams = { ...requestParams, ...context }
             }
 
             let result = {
