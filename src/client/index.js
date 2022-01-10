@@ -9,7 +9,7 @@ const FixedMethods = {
 class Controller {
     constructor(params = {}) {
         console.warn("[Linebridge] Controller is not finished yet. Please use regular bridges instead.")
-        
+
         this.params = params
         this.pool = []
     }
@@ -70,7 +70,7 @@ class Bridge {
 
     handleRequestContext = async () => {
         if (typeof this.params.onRequest === "function") {
-            return this.params.onRequest()
+            return await this.params.onRequest()
         }
 
         return false
