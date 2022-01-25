@@ -76,6 +76,14 @@ class Bridge {
         return false
     }
 
+    handleResponse = async (response) => {
+        if (typeof this.params.onResponse === "function") {
+            return await this.params.onResponse(response)
+        }
+
+        return false
+    }
+
     updateEndpointMap = async () => {
         this.map = await this.getMap()
 
@@ -109,7 +117,7 @@ class Bridge {
                     nameKey = "index"
                 }
 
-                this.endpoints[fixedMethod][nameKey] = generateDispatcher(this.instance, fixedMethod, route, this.handleRequestContext)
+                this.endpoints[fixedMethod][nameKey] = generateDispatcher(this.instance, fixedMethod, route, this.handleRequestContext, this.handleResponse)
             })
         }
 
@@ -126,7 +134,7 @@ class Bridge {
     }
 }
 
-function generateDispatcher(instance, method, route, handleRequestContext) {
+function generateDispatcher(instance, method, route, handleRequestContext, handleResponse) {
     return function (body, query, options) {
         return new Promise(async (resolve, reject) => {
             let requestParams = {
@@ -148,13 +156,21 @@ function generateDispatcher(instance, method, route, handleRequestContext) {
                 error: null,
             }
 
-            await instance(requestParams)
+            const request = await instance(requestParams)
                 .then((response) => {
                     result.response = response
+
+                    return response
                 })
                 .catch((error) => {
                     result.error = error.response.data.error ?? error.response.data
+
+                    return error
                 })
+
+            if (typeof handleResponse === "function") {
+                await handleResponse(request)
+            }
 
             if (requestParams.parseData) {
                 if (result.error) {
