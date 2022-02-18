@@ -116,7 +116,7 @@ class Server {
                 const endpoints = ControllerInstance.getEndpoints()
 
                 endpoints.forEach((endpoint) => {
-                    this.registerEndpoint(endpoint, this.resolveMiddlewares(controller.useMiddlewares))
+                    this.registerEndpoint(endpoint, ...this.resolveMiddlewares(controller.useMiddlewares))
                 })
             } catch (error) {
                 console.error(`🆘 [${controller.refName}] Failed to initialize controller: ${error.message}`)
