@@ -3,17 +3,18 @@
   "version": "0.10.0",
   "description": "A simple, fast, and powerful REST API interface library",
   "author": "RageStudio",
-  "main": "dist/index.js",
+  "main": "./dist/client/index.js",
   "scripts": {
     "start": "corenode-node ./src/bin/server.js",
-    "build": "corenode-cli build --parallel --clean --fix && chmod -R 777 ./dist",
+    "build": "corenode-cli build --parallel --clean && chmod -R 777 ./dist",
     "test": "mocha"
   },
   "publishConfig": {
     "access": "public"
   },
   "files": [
-    "**/**"
+    "dist/**/**",
+    "./package.json"
   ],
   "license": "MIT",
   "dependencies": {

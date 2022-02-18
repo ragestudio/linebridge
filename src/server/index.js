@@ -1,19 +1,19 @@
-const fs = require("fs")
 const path = require("path")
-const packageJSON = require(path.resolve(process.cwd(), "package.json"))
-
+const fs = require("fs")
 const http = require("nanoexpress")
 const net = require("corenode/net")
+
+const packageJSON = require(path.resolve(module.path, "../../package.json"))
+global.LINEBRIDGE_SERVER_VERSION = packageJSON.version
 
 const tokenizer = require("corenode/libs/tokenizer")
 const { randomWord } = require("@corenode/utils")
 
 const { serverManifest } = require("../lib")
 
-const SERVER_VERSION = global.SERVER_VERSION = packageJSON.version
-const LOCALHOST_ADDRESS = global.LOCALHOST_ADDRESS = net.ip.getHostAddress() ?? "localhost"
-const VALID_HTTP_METHODS = global.VALID_HTTP_METHODS = ["get", "post", "put", "patch", "del", "trace", "head", "any", "options", "ws"]
-const DEFAULT_HEADERS = global.DEFAULT_HEADERS = {
+global.LOCALHOST_ADDRESS = net.ip.getHostAddress() ?? "localhost"
+global.VALID_HTTP_METHODS = ["get", "post", "put", "patch", "del", "trace", "head", "any", "options", "ws"]
+global.DEFAULT_HEADERS = {
     "Access-Control-Allow-Headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS, PUT, PATCH, DELETE, DEL",
@@ -191,11 +191,11 @@ class Server {
             route: "/",
             fn: (req, res) => {
                 return res.json({
+                    LINEBRIDGE_SERVER_VERSION: LINEBRIDGE_SERVER_VERSION,
                     id: this.id,
                     usid: this.usid,
                     oskid: this.oskid,
-                    time: new Date().getTime(),
-                    version: SERVER_VERSION,
+                    requestTime: new Date().getTime(),
                     endpointsMap: this.endpointsMap,
                 })
             }
