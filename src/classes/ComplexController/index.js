@@ -7,6 +7,10 @@ export default class ComplexController {
         this.internalEvents = new EventEmitter()
     }
 
+    getWSEndpoints() {
+        //TODO: implement
+    }
+
     getEndpoints() {
         let endpoints = []
 
@@ -45,6 +49,7 @@ export default class ComplexController {
                 const result = await fn(...args)
                 return resolve(result)
             } catch (error) {
+                this.internalEvents.emit("requestError", error)
                 return reject(error)
             }
         })
