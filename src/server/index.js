@@ -1,16 +1,19 @@
-// TODO: Support WS SocketIO wrapper
 const fs = require("fs")
-const http = require("nanoexpress")
-const bodyParser = require("@nanoexpress/middleware-body-parser/cjs")
+const path = require("path")
+const packageJSON = require(path.resolve(process.cwd(), "package.json"))
 
-const tokenizer = require("corenode/libs/tokenizer")
+const http = require("nanoexpress")
 const net = require("corenode/net")
 
-const nethub = require("../lib/nethub")
-const { getLocalEndpoints, fetchController, serverManifest } = require("../lib")
-const hostAddress = net.ip.getHostAddress() ?? "localhost"
+const tokenizer = require("corenode/libs/tokenizer")
+const { randomWord } = require("@corenode/utils")
 
-const defaultHeaders = {
+const { serverManifest } = require("../lib")
+
+const SERVER_VERSION = global.SERVER_VERSION = packageJSON.version
+const LOCALHOST_ADDRESS = global.LOCALHOST_ADDRESS = net.ip.getHostAddress() ?? "localhost"
+const VALID_HTTP_METHODS = global.VALID_HTTP_METHODS = ["get", "post", "put", "patch", "del", "trace", "head", "any", "options", "ws"]
+const DEFAULT_HEADERS = global.DEFAULT_HEADERS = {
     "Access-Control-Allow-Headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS, PUT, PATCH, DELETE, DEL",
@@ -18,61 +21,36 @@ const defaultHeaders = {
 }
 
 const defaultMiddlewares = [
+    require("@nanoexpress/middleware-body-parser/cjs")(),
     require('cors')({
         "origin": "*",
-        "methods": defaultHeaders["Access-Control-Allow-Methods"],
+        "methods": DEFAULT_HEADERS["Access-Control-Allow-Methods"],
         "preflightContinue": false,
         "optionsSuccessStatus": 204
     }),
-    require('morgan')("dev"),
 ]
-
-if (typeof process.runtime === "undefined") {
-    process.runtime = {}
-    process.runtime.manifests = {}
-}
-
-const helpers = process.runtime?.helpers ?? require('@corenode/helpers')
-
-//* set globals
-global.SERVER_VERSION = helpers.getVersion()
 
 const FixedMethods = {
     "delete": "del",
 }
-const ValidMethods = ["get", "post", "put", "patch", "del", "trace", "head", "any", "options", "ws"]
+
+if (process.env.NODE_ENV !== "production") {
+    defaultMiddlewares.push(require('morgan')("dev"))
+}
 
 class Server {
-    constructor(params, endpoints, middlewares) {
-        this.params = params ?? {}
-        this.port = this.params.port ?? 3010
+    constructor(params = {}, controllers = [], middlewares = {}) {
+        this.params = { ...params }
+        this.controllers = [...controllers]
+        this.middlewares = { ...middlewares }
+        this.headers = { ...DEFAULT_HEADERS, ...this.params.headers }
+        this.endpointsMap = {}
 
-        // handle endpoints && middlewares
-        const localEndpoints = getLocalEndpoints()
-        if (typeof endpoints !== "undefined" && Array.isArray(endpoints)) {
-            this.params.endpoints = [...this.params.endpoints ?? [], ...endpoints]
-        }
-        if (localEndpoints && Array.isArray(localEndpoints)) {
-            this.params.endpoints = [...this.params.endpoints ?? [], ...localEndpoints]
-        }
-
-        //* set params jails
-        this.endpoints = {}
-        this.serverMiddlewares = [...this.params.serverMiddlewares ?? [], ...defaultMiddlewares]
-        this.middlewares = { ...this.params.middlewares, ...middlewares }
-        this.controllers = { ...this.params.controllers }
-        this.headers = { ...defaultHeaders, ...this.params.headers }
+        this.HTTPlistenPort = this.params.port ?? 3010
+        this.HTTPAddress = `http://${LOCALHOST_ADDRESS}:${this.HTTPlistenPort}`
 
         //* set server basics
         this.httpServer = http()
-
-        //* set id's
-        this.id = this.params.id ?? process.runtime?.helpers?.getRootPackage()?.name ?? "unavailable"
-        this.usid = tokenizer.generateUSID()
-        this.oskid = "unloaded"
-
-        this.localOrigin = `http://${hostAddress}:${this.port}`
-        this.nethubOrigin = ""
 
         //? check if origin.server exists
         if (!fs.existsSync(serverManifest.filepath)) {
@@ -93,132 +71,16 @@ class Server {
             serverManifest.create()
         }
 
-        this.reloadOskid()
-
-        this.preInitialization()
-        if (this.params.autoInit) {
-            this.init()
-        }
-    }
-
-    reloadOskid() {
+        this.id = this.params.id ?? randomWord.generate() ?? "unavailable"
+        this.usid = tokenizer.generateUSID()
         this.oskid = serverManifest.get("serverToken")
+
+        serverManifest.write({ lastStart: Date.now() })
+
+        this.initialize()
     }
 
-    register = (controller) => {
-        if (typeof controller === "undefined") {
-            console.error(`Invalid endpoint, missing parameters!`)
-            return false
-        }
-
-        // check and fix method
-        controller.method = controller.method?.toLowerCase() ?? "get"
-
-        if (FixedMethods[controller.method]) {
-            controller.method = FixedMethods[controller.method]
-        }
-
-        // validate method
-        if (!ValidMethods.includes(controller.method)) {
-            throw new Error(`Invalid endpoint method: ${controller.method}`)
-        }
-
-        // fulfill an undefined fn
-        if (typeof controller.fn === "undefined") {
-            controller.fn = (req, res, next) => {
-                return next()
-            }
-        }
-
-        // fetchController function if needed
-        if (typeof controller.fn === "string") {
-            let stack = []
-            const resolverKeys = controller.fn.split(".")
-
-            resolverKeys.forEach((key, index) => {
-                if (index === 0) {
-                    if (typeof this.controllers[key] !== "undefined") {
-                        stack.push(this.controllers[key])
-                    } else {
-                        stack.push(fetchController(key, this.params.controllersPath))
-                    }
-
-                } else {
-                    stack.push(stack[index - 1][key])
-                }
-
-
-                if (resolverKeys.length === index + 1) {
-                    let resolved = stack[index]
-
-                    if (typeof resolved !== "function" && typeof resolved[controller.method] === "function") {
-                        resolved = resolved[controller.method]
-                    }
-
-                    return controller.fn = resolved
-                }
-            })
-        }
-
-        // extend main fn
-        controller._exec = async (req, res, next) => {
-            try {
-                await controller.fn(req, res, next)
-            } catch (error) {
-                return res.status(500).json({ error: error.message, endpoint: controller.route })
-            }
-        }
-
-        // set endpoint registry
-        if (typeof this.endpoints[controller.method] === "undefined") {
-            this.endpoints[controller.method] = Object()
-        }
-
-        this.endpoints[controller.method][controller.route] = controller
-
-        // create routeModel
-        const routeModel = [controller.route]
-
-        // query middlewares
-        if (typeof controller.middleware !== "undefined") {
-            let query = []
-
-            if (typeof controller.middleware === "string") {
-                query.push(controller.middleware)
-            }
-            if (Array.isArray(controller.middleware)) {
-                query = controller.middleware
-            }
-
-            query.forEach((middleware) => {
-                if (typeof this.middlewares[middleware] === "function") {
-                    routeModel.push(this.middlewares[middleware])
-                }
-            })
-        }
-
-        // query main endpoint function
-        if (typeof controller._exec === "function") {
-            routeModel.push(controller._exec)
-        }
-
-        // append to router
-        this.httpServer[controller.method](...routeModel)
-    }
-
-    preInitialization() {
-        // set middlewares
-        this.httpServer.use(bodyParser())
-
-        if (Array.isArray(this.serverMiddlewares)) {
-            this.serverMiddlewares.forEach((middleware) => {
-                if (typeof middleware === "function") {
-                    this.httpServer.use(middleware)
-                }
-            })
-        }
-
-        // set headers
+    initialize = async () => {
         this.httpServer.use((req, res, next) => {
             Object.keys(this.headers).forEach((key) => {
                 res.setHeader(key, this.headers[key])
@@ -227,8 +89,104 @@ class Server {
             next()
         })
 
-        // register root resolver
-        this.register({
+        const useMiddlewares = [...defaultMiddlewares, ...(this.params.middlewares ?? [])]
+
+        useMiddlewares.forEach((middleware) => {
+            if (typeof middleware === "function") {
+                this.httpServer.use(middleware)
+            }
+        })
+
+        await this.registerBaseEndpoints()
+        await this.initializeControllers()
+
+        await this.httpServer.listen(this.HTTPlistenPort, this.params.listen ?? "0.0.0.0")
+
+        console.log(`✅  Ready on port ${this.HTTPlistenPort}!`)
+    }
+
+    initializeControllers = async () => {
+        for await (let controller of this.controllers) {
+            if (typeof controller !== "function") {
+                throw new Error(`Controller must use the controller class!`)
+            }
+
+            try {
+                const ControllerInstance = new controller()
+                const endpoints = ControllerInstance.getEndpoints()
+
+                endpoints.forEach((endpoint) => {
+                    this.registerEndpoint(endpoint, this.resolveMiddlewares(controller.useMiddlewares))
+                })
+            } catch (error) {
+                console.error(`🆘 [${controller.refName}] Failed to initialize controller: ${error.message}`)
+            }
+        }
+    }
+
+    registerEndpoint = (endpoint, ...execs) => {
+        // check and fix method
+        endpoint.method = endpoint.method?.toLowerCase() ?? "get"
+
+        if (FixedMethods[endpoint.method]) {
+            endpoint.method = FixedMethods[endpoint.method]
+        }
+
+        let middlewares = [...execs]
+
+        if (endpoint.middlewares) {
+            middlewares = [...middlewares, ...this.resolveMiddlewares(endpoint.middlewares)]
+        }
+
+        if (typeof this.endpointsMap[endpoint.method] !== "object") {
+            this.endpointsMap[endpoint.method] = {}
+        }
+
+        this.endpointsMap[endpoint.method] = {
+            ...this.endpointsMap[endpoint.method],
+            [endpoint.route]: {
+                route: endpoint.route,
+            }
+        }
+
+        this.httpServer[endpoint.method](endpoint.route, ...middlewares, async (req, res) => {
+            try {
+                return await endpoint.fn(req, res)
+            } catch (error) {
+                if (typeof this.params.onRouteError === "function") {
+                    return this.params.onRouteError(req, res, error)
+                } else {
+                    return res.status(500).json({
+                        "error": error.message
+                    })
+                }
+            }
+        })
+    }
+
+    resolveMiddlewares = (middlewares) => {
+        middlewares = Array.isArray(middlewares) ? middlewares : [middlewares]
+        const middlewaresArray = []
+
+        middlewares.forEach((middleware) => {
+            if (typeof middleware === "string") {
+                if (typeof this.middlewares[middleware] !== "function") {
+                    throw new Error(`Middleware ${middleware} not found!`)
+                }
+
+                middlewaresArray.push(this.middlewares[middleware])
+            }
+
+            if (typeof middleware === "function") {
+                middlewaresArray.push(middleware)
+            }
+        })
+
+        return middlewaresArray
+    }
+
+    registerBaseEndpoints() {
+        this.registerEndpoint({
             method: "get",
             route: "/",
             fn: (req, res) => {
@@ -237,60 +195,11 @@ class Server {
                     usid: this.usid,
                     oskid: this.oskid,
                     time: new Date().getTime(),
-                    version: SERVER_VERSION
+                    version: SERVER_VERSION,
+                    endpointsMap: this.endpointsMap,
                 })
             }
         })
-
-        this.register({
-            method: "get",
-            route: "/map",
-            fn: (req, res) => {
-                const map = {}
-
-                Object.keys(this.endpoints).forEach((method) => {
-                    if (typeof map[method] === "undefined") {
-                        map[method] = []
-                    }
-
-                    Object.keys(this.endpoints[method]).forEach((route) => {
-                        map[method].push({
-                            route: route,
-                            method: method
-                        })
-                    })
-                })
-
-                return res.json(map)
-            }
-        })
-    }
-
-    init = async () => {
-        // write lastStart
-        serverManifest.write({ lastStart: Date.now() })
-
-        // load and set endpoints
-        if (Array.isArray(this.params.endpoints)) {
-            this.params.endpoints.forEach((endpoint, index) => {
-                try {
-                    // append to server
-                    this.register(endpoint)
-                } catch (error) {
-                    console.error(`🆘 [${endpoint.route}[${index}]] Failed to load endpoint > ${error.message}`)
-                    process.runtime.logger.dump(error)
-                }
-            })
-        }
-
-        await this.httpServer.listen(this.port, this.params.listen ?? '0.0.0.0')
-
-        //? register to nethub
-        if (this.params.onlineNethub) {
-            nethub.registerOrigin({ entry: "/", oskid: this.oskid, id: this.id })
-        }
-
-        console.log(`✅  Ready on port ${this.port}!`)
     }
 }
 
