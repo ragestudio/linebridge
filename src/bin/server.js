@@ -1,13 +1,10 @@
-#!/usr/bin/env node
+#!/usr/bin/env EXPERIMENTAL_FASTCALL=1 node
 const corenode = require("corenode")
 
 corenode.runInNewRuntime(() => {
-    const { randomWord } = require("@corenode/utils")
     const server = require("../server/index.js")
 
-    // create server
     new server({
-        autoInit: true,
-        id: process.env.serverID ?? randomWord.generate(),
+        id: process.env.serverID,
     })
 })

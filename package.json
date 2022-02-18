@@ -9,9 +9,6 @@
     "build": "corenode-cli build --parallel --clean --fix && chmod -R 777 ./dist",
     "test": "mocha"
   },
-  "bin": {
-    "linebridge": "./bin/server.js"
-  },
   "publishConfig": {
     "access": "public"
   },
