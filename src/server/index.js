@@ -77,7 +77,7 @@ class Server {
 
         serverManifest.write({ lastStart: Date.now() })
 
-        this.initialize()
+        return this
     }
 
     initialize = async () => {

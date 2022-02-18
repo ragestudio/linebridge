@@ -51,6 +51,7 @@ async function _main() {
         origin: server.HTTPAddress,
     })
 
+    await server.initialize()
     await clientBridge.initialize()
 
     const test = await clientBridge.endpoints.get.test()
