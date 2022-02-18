@@ -1,2 +1,1 @@
-export { Controller } from './Controller'
-export { Storage } from './Storage'
+export { default as ComplexController } from "./ComplexController"
