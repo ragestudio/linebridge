@@ -1,6 +1,9 @@
-const generateRequestDispatcher = require("./generateRequestDispatcher")
 const axios = require("axios")
+const WSInterface = require("../classes/ClientWSInterface")
 const camalize = require("@corenode/utils/dist/camalize").default
+
+const generateRequestDispatcher = require("./generateRequestDispatcher")
+const generateWSRequestDispatcher = require("./generateWSRequestDispatcher")
 
 const FixedMethods = {
     "del": "delete"
@@ -13,18 +16,34 @@ module.exports = class Bridge {
         this.origin = this.params.origin
         this.headers = { ...this.params.headers }
 
-        this.instance = axios.create({
+        this.httpInterface = axios.create({
             baseURL: this.origin,
             headers: this.headers
         })
+        this.wsInterface = new WSInterface({
+            origin: this.params.wsOrigin,
+            managerOptions: this.params.wsOptions
+        })
 
         this.endpoints = {}
+        this.wsEndpoints = {}
 
         return this
     }
 
     initialize = async () => {
-        await this.updateEndpointsMap()
+        const instanceManifest = await this.httpInterface.get("/")
+            .then(res => res.data)
+            .catch(err => {
+                console.error(err)
+                throw new Error(`Could not get endpoints map from server. [${err.message}]`)
+            })
+
+        const httpMap = instanceManifest.endpointsMap
+        const wsMap = instanceManifest.wsEndpointsMap
+
+        await this.generateHTTPDispatchers(httpMap)
+        await this.generateWSDispatchers(wsMap)
     }
 
     handleRequestContext = async () => {
@@ -43,15 +62,13 @@ module.exports = class Bridge {
         return false
     }
 
-    updateEndpointsMap = async () => {
-        const endpointsMap = await this.instance.get("/")
-            .then(res => res.data.endpointsMap)
-            .catch(err => {
-                console.error(err)
-                throw new Error(`Could not get endpoints map from server. [${err.message}]`)
-            })
+    generateHTTPDispatchers = async (map) => {
+        if (typeof map !== "object") {
+            console.error("[Bridge] > createHTTPDispatchers > map is not an object")
+            return false
+        }
 
-        for await (let HttpMethod of Object.keys(endpointsMap)) {
+        for await (let HttpMethod of Object.keys(map)) {
             HttpMethod = HttpMethod.toLowerCase()
 
             const fixedMethod = FixedMethods[HttpMethod] ?? HttpMethod
@@ -60,7 +77,7 @@ module.exports = class Bridge {
                 this.endpoints[fixedMethod] = {}
             }
 
-            Object.keys(endpointsMap[HttpMethod]).forEach((route) => {
+            Object.keys(map[HttpMethod]).forEach((route) => {
                 const tree = route.split("/")
                 const hasTree = tree.length >= 1
 
@@ -82,7 +99,7 @@ module.exports = class Bridge {
                 }
 
                 this.endpoints[fixedMethod][nameKey] = generateRequestDispatcher(
-                    this.instance,
+                    this.httpInterface,
                     fixedMethod,
                     route,
                     this.handleRequestContext,
@@ -92,5 +109,21 @@ module.exports = class Bridge {
         }
 
         return this.endpoints
+    }
+
+    generateWSDispatchers = async (map) => {
+        if (typeof map !== "object") {
+            console.error("[Bridge] > createWSDispatchers > map is not an object")
+            return false
+        }
+
+        for await (let wsChannel of Object.keys(map)) {
+            const endpoint = map[wsChannel]
+            
+            endpoint.nsp[0] == "/" ? endpoint.nsp = endpoint.nsp.slice(1) : null
+            endpoint.method = endpoint.channel[0] == "/" ? endpoint.channel.slice(1) : endpoint.channel
+            
+            this.wsEndpoints[endpoint.method] = generateWSRequestDispatcher(this.wsInterface.sockets[endpoint.nsp ?? "main"], endpoint.channel)
+        }
     }
 }
