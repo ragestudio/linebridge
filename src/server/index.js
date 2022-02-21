@@ -1,7 +1,9 @@
 const path = require("path")
 const fs = require("fs")
-const http = require("nanoexpress")
 const net = require("corenode/net")
+
+const http = require("nanoexpress")
+const io = require("socket.io")
 
 const packageJSON = require(path.resolve(module.path, "../../package.json"))
 global.LINEBRIDGE_SERVER_VERSION = packageJSON.version
@@ -46,11 +48,37 @@ class Server {
         this.headers = { ...DEFAULT_HEADERS, ...this.params.headers }
         this.endpointsMap = {}
 
+        this.WSListenPort = this.params.wsPort ?? 3011
         this.HTTPlistenPort = this.params.port ?? 3010
+
+        // TODO: Handle HTTPS and WSS
         this.HTTPAddress = `http://${LOCALHOST_ADDRESS}:${this.HTTPlistenPort}`
+        this.WSAddress = `ws://${LOCALHOST_ADDRESS}:${this.WSListenPort}`
 
         //* set server basics
-        this.httpServer = http()
+        this.httpInterface = global.httpInterface = http()
+        this.wsInterface = global.wsInterface = {
+            io: new io.Server(this.WSListenPort),
+            map: {},
+            clients: [],
+            eventsChannels: [],
+            getChannelsEventsFromNSP: (nsp) => {
+                return this.wsInterface.eventsChannels.filter(channel => channel.nsp === nsp)
+            },
+            findUserIdFromClientID: (clientId) => {
+                return this.wsInterface.clients.find(client => client.id === clientId)?.userId ?? false
+            },
+            getClientSockets: (userId) => {
+                return this.wsInterface.clients.filter(client => client.userId === userId).map((client) => {
+                    return client?.socket
+                })
+            },
+            broadcast: async (channel, ...args) => {
+                for await (const client of this.wsInterface.clients) {
+                    client.socket.emit(channel, ...args)
+                }
+            },
+        }
 
         //? check if origin.server exists
         if (!fs.existsSync(serverManifest.filepath)) {
@@ -81,7 +109,7 @@ class Server {
     }
 
     initialize = async () => {
-        this.httpServer.use((req, res, next) => {
+        this.httpInterface.use((req, res, next) => {
             Object.keys(this.headers).forEach((key) => {
                 res.setHeader(key, this.headers[key])
             })
@@ -93,16 +121,90 @@ class Server {
 
         useMiddlewares.forEach((middleware) => {
             if (typeof middleware === "function") {
-                this.httpServer.use(middleware)
+                this.httpInterface.use(middleware)
             }
         })
 
         await this.registerBaseEndpoints()
         await this.initializeControllers()
 
-        await this.httpServer.listen(this.HTTPlistenPort, this.params.listen ?? "0.0.0.0")
+        // initialize socket.io
+        this.wsInterface.io.on("connection", this.handleWSClientConnection)
+
+        // initialize http server
+        await this.httpInterface.listen(this.HTTPlistenPort, this.params.listen ?? "0.0.0.0")
 
         console.log(`✅  Ready on port ${this.HTTPlistenPort}!`)
+    }
+
+    handleWSClientConnection = async (socket) => {
+        socket.res = (...args) => {
+            socket.emit("response", ...args)
+        }
+        socket.err = (...args) => {
+            socket.emit("responseError", ...args)
+        }
+
+        for await (const [nsp, on, dispatch] of this.wsInterface.eventsChannels) {
+            socket.on(on, async (...args) => {
+                try {
+                    await dispatch(socket, ...args).catch((error) => {
+                        console.error(error)
+                        socket.emit("responseError", error)
+                    })
+                } catch (error) {
+                    socket.emit("error", error)
+                }
+            })
+        }
+
+        let authResult = true
+
+        if (typeof this.params.wsAuthorization === "function") {
+            authResult = await this.params.wsAuthorization(socket)
+        }
+
+        if (authResult) {
+            this.attachClientSocket(socket, socket.id)
+        } else {
+            socket.disconnect()
+        }
+
+        socket.on("ping", () => {
+            socket.emit("pong")
+        })
+
+        socket.on("disconnect", () => {
+            console.log(`[${socket.id}] disconnected`)
+            this.detachClientSocket(socket)
+        })
+    }
+
+    attachClientSocket = async (client, userId) => {
+        const socket = this.wsInterface.clients.find(c => c.id === client.id)
+
+        if (socket) {
+            socket.socket.disconnect()
+        }
+
+        this.wsInterface.clients.push({
+            id: client.id,
+            socket: client,
+            userId,
+        })
+
+        this.wsInterface.io.emit("user_connected", userId)
+    }
+
+    detachClientSocket = async (client) => {
+        const socket = this.wsInterface.clients.find(c => c.id === client.id)
+
+        if (socket) {
+            socket.socket.disconnect()
+            this.wsInterface.clients = this.wsInterface.clients.filter(c => c.id !== client.id)
+        }
+
+        this.wsInterface.io.emit("user_disconnected", client.id)
     }
 
     initializeControllers = async () => {
@@ -113,10 +215,15 @@ class Server {
 
             try {
                 const ControllerInstance = new controller()
-                const endpoints = ControllerInstance.getEndpoints()
+                const HTTPEndpoints = ControllerInstance.getEndpoints()
+                const WSEndpoints = ControllerInstance.getWSEndpoints()
 
-                endpoints.forEach((endpoint) => {
-                    this.registerEndpoint(endpoint, ...this.resolveMiddlewares(controller.useMiddlewares))
+                HTTPEndpoints.forEach((endpoint) => {
+                    this.registerHTTPEndpoint(endpoint, ...this.resolveMiddlewares(controller.useMiddlewares))
+                })
+
+                WSEndpoints.forEach((endpoint) => {
+                    this.registerWSEndpoint(endpoint)
                 })
             } catch (error) {
                 console.error(`🆘 [${controller.refName}] Failed to initialize controller: ${error.message}`)
@@ -124,7 +231,7 @@ class Server {
         }
     }
 
-    registerEndpoint = (endpoint, ...execs) => {
+    registerHTTPEndpoint = (endpoint, ...execs) => {
         // check and fix method
         endpoint.method = endpoint.method?.toLowerCase() ?? "get"
 
@@ -149,7 +256,7 @@ class Server {
             }
         }
 
-        this.httpServer[endpoint.method](endpoint.route, ...middlewares, async (req, res) => {
+        this.httpInterface[endpoint.method](endpoint.route, ...middlewares, async (req, res) => {
             try {
                 return await endpoint.fn(req, res)
             } catch (error) {
@@ -162,6 +269,17 @@ class Server {
                 }
             }
         })
+    }
+
+    registerWSEndpoint = (endpoint, ...execs) => {
+        endpoint.nsp = endpoint.nsp ?? "/main"
+
+        this.wsInterface.eventsChannels.push([endpoint.nsp, endpoint.on, endpoint.dispatch])
+
+        this.wsInterface.map[endpoint.on] = {
+            nsp: endpoint.nsp,
+            channel: endpoint.on,
+        }
     }
 
     resolveMiddlewares = (middlewares) => {
@@ -186,7 +304,7 @@ class Server {
     }
 
     registerBaseEndpoints() {
-        this.registerEndpoint({
+        this.registerHTTPEndpoint({
             method: "get",
             route: "/",
             fn: (req, res) => {
@@ -197,6 +315,7 @@ class Server {
                     oskid: this.oskid,
                     requestTime: new Date().getTime(),
                     endpointsMap: this.endpointsMap,
+                    wsEndpointsMap: this.wsInterface.map,
                 })
             }
         })
