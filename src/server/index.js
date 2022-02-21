@@ -122,10 +122,10 @@ class Server {
 
     handleWSClientConnection = async (socket) => {
         socket.res = (...args) => {
-            socket.emit("response", socket, ...args)
+            socket.emit("response", ...args)
         }
         socket.err = (...args) => {
-            socket.emit("responseError", socket, ...args)
+            socket.emit("responseError", ...args)
         }
 
         if (typeof this.params.onWSClientConnection === "function") {
