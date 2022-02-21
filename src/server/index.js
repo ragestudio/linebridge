@@ -136,11 +136,14 @@ class Server {
             socket.on(on, async (...args) => {
                 try {
                     await dispatch(socket, ...args).catch((error) => {
-                        console.error(error)
-                        socket.err(error)
+                        socket.err({
+                            message: error.message,
+                        })
                     })
                 } catch (error) {
-                    socket.err(error)
+                    socket.err({
+                        message: error.message,
+                    })
                 }
             })
         }
