@@ -42,6 +42,12 @@ const Controllers = [
                 return res.send("Hello World!")
             }
         }
+
+        delete = {
+            "/test" : (req, res) => {
+                return res.send(`Deleting ${req.body.a}`)
+            }
+        }
     },
 ]
 
@@ -60,10 +66,14 @@ async function _main() {
         console.log(error)
         return false
     })
+    const deleteTest = await clientBridge.endpoints.delete.test({
+        a: "test"
+    })
     const wsEpicEvent = await clientBridge.wsEndpoints.epicEvent("Hello", "World")
 
     console.log(`[get.test] > ${test}`)
     console.log(`[get.crashtest] > ${crashTest}`)
+    console.log(`[delete.test] > ${deleteTest}`)
     console.log(`[ws.epicEvent] > ${wsEpicEvent}`)
 }
 
