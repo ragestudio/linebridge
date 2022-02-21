@@ -137,10 +137,10 @@ class Server {
                 try {
                     await dispatch(socket, ...args).catch((error) => {
                         console.error(error)
-                        socket.emit("responseError", error)
+                        socket.err(error)
                     })
                 } catch (error) {
-                    socket.emit("error", error)
+                    socket.err(error)
                 }
             })
         }
