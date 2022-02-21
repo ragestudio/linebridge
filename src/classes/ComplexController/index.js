@@ -9,7 +9,7 @@ export default class ComplexController {
 
     getWSEndpoints() {
         if (typeof this.channels !== "object") {
-            return false
+            return []
         }
 
         const keys = Object.keys(this.channels)
