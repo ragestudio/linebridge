@@ -8,7 +8,20 @@ export default class ComplexController {
     }
 
     getWSEndpoints() {
-        //TODO: implement
+        if (typeof this.channels !== "object") {
+            return false
+        }
+
+        const keys = Object.keys(this.channels)
+
+        return keys.map((key) => {
+            const dispatch = this.channels[key]
+
+            return {
+                on: key,
+                dispatch: dispatch,
+            }
+        })
     }
 
     getEndpoints() {
