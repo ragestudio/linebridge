@@ -60,24 +60,7 @@ class Server {
         this.wsInterface = global.wsInterface = {
             io: new io.Server(this.WSListenPort),
             map: {},
-            clients: [],
             eventsChannels: [],
-            getChannelsEventsFromNSP: (nsp) => {
-                return this.wsInterface.eventsChannels.filter(channel => channel.nsp === nsp)
-            },
-            findUserIdFromClientID: (clientId) => {
-                return this.wsInterface.clients.find(client => client.id === clientId)?.userId ?? false
-            },
-            getClientSockets: (userId) => {
-                return this.wsInterface.clients.filter(client => client.userId === userId).map((client) => {
-                    return client?.socket
-                })
-            },
-            broadcast: async (channel, ...args) => {
-                for await (const client of this.wsInterface.clients) {
-                    client.socket.emit(channel, ...args)
-                }
-            },
         }
 
         //? check if origin.server exists
@@ -145,6 +128,10 @@ class Server {
             socket.emit("responseError", ...args)
         }
 
+        if (typeof this.params.onWSClientConnection === "function") {
+            await this.params.onWSClientConnection(socket)
+        }
+
         for await (const [nsp, on, dispatch] of this.wsInterface.eventsChannels) {
             socket.on(on, async (...args) => {
                 try {
@@ -158,53 +145,15 @@ class Server {
             })
         }
 
-        let authResult = true
-
-        if (typeof this.params.wsAuthorization === "function") {
-            authResult = await this.params.wsAuthorization(socket)
-        }
-
-        if (authResult) {
-            this.attachClientSocket(socket, socket.id)
-        } else {
-            socket.disconnect()
-        }
-
         socket.on("ping", () => {
             socket.emit("pong")
         })
 
-        socket.on("disconnect", () => {
-            console.log(`[${socket.id}] disconnected`)
-            this.detachClientSocket(socket)
+        socket.on("disconnect", async () => {
+            if (typeof this.params.onWSClientDisconnect === "function") {
+                await this.params.onWSClientDisconnect(socket)
+            }
         })
-    }
-
-    attachClientSocket = async (client, userId) => {
-        const socket = this.wsInterface.clients.find(c => c.id === client.id)
-
-        if (socket) {
-            socket.socket.disconnect()
-        }
-
-        this.wsInterface.clients.push({
-            id: client.id,
-            socket: client,
-            userId,
-        })
-
-        this.wsInterface.io.emit("user_connected", userId)
-    }
-
-    detachClientSocket = async (client) => {
-        const socket = this.wsInterface.clients.find(c => c.id === client.id)
-
-        if (socket) {
-            socket.socket.disconnect()
-            this.wsInterface.clients = this.wsInterface.clients.filter(c => c.id !== client.id)
-        }
-
-        this.wsInterface.io.emit("user_disconnected", client.id)
     }
 
     initializeControllers = async () => {
