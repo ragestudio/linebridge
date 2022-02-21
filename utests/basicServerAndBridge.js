@@ -18,10 +18,10 @@ const Controllers = [
         static refName = "TestController"
         static useMiddlewares = ["test"]
 
-        on = {
-            "epicEvent": (socket, arg1, arg2) => {
-                socket.response("Boom!")
-                socket.fail("Ido not know what to do with this epic event")
+        channels = {
+            "epicEvent": (socket, ...args) => {
+                console.log(`[SERVER WS EVENT] > ${socket.id} > `, ...args)
+                return socket.res("elo")
             }
         }
 
@@ -49,6 +49,7 @@ async function _main() {
     const server = new Server(undefined, Controllers, Middlewares)
     const clientBridge = new Bridge({
         origin: server.HTTPAddress,
+        wsOrigin: server.WSAddress,
     })
 
     await server.initialize()
@@ -59,9 +60,11 @@ async function _main() {
         console.log(error)
         return false
     })
+    const wsEpicEvent = await clientBridge.wsEndpoints.epicEvent("Hello", "World")
 
     console.log(`[get.test] > ${test}`)
     console.log(`[get.crashtest] > ${crashTest}`)
+    console.log(`[ws.epicEvent] > ${wsEpicEvent}`)
 }
 
 _main().catch((error) => {
