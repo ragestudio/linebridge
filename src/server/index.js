@@ -14,7 +14,10 @@ const { randomWord } = require("@corenode/utils")
 const { serverManifest } = require("../lib")
 
 global.LOCALHOST_ADDRESS = net.ip.getHostAddress() ?? "localhost"
-global.VALID_HTTP_METHODS = ["get", "post", "put", "patch", "del", "trace", "head", "any", "options", "ws"]
+global.FIXED_HTTP_METHODS = {
+    "delete": "del",
+}
+global.VALID_HTTP_METHODS = ["get", "post", "put", "patch", "del", "delete", "trace", "head", "any", "options", "ws"]
 global.DEFAULT_HEADERS = {
     "Access-Control-Allow-Headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
     "Access-Control-Allow-Origin": "*",

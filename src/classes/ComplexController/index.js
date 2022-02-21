@@ -29,13 +29,14 @@ export default class ComplexController {
 
         global.VALID_HTTP_METHODS.forEach((httpMethod) => {
             if (typeof this[httpMethod] === "object") {
+                const fixedMethod = global.FIXED_HTTP_METHODS[httpMethod]
                 const controllerMethods = Object.keys(this[httpMethod])
 
                 controllerMethods.forEach((methodKey) => {
                     const fn = this[httpMethod][methodKey]
 
                     let endpoint = {
-                        method: httpMethod,
+                        method: fixedMethod,
                         route: methodKey,
                         middlewares: [],
                         fn: fn,
