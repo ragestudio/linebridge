@@ -36,7 +36,7 @@ export default class ComplexController {
                     const fn = this[httpMethod][methodKey]
 
                     let endpoint = {
-                        method: fixedMethod,
+                        method: fixedMethod ?? httpMethod,
                         route: methodKey,
                         middlewares: [],
                         fn: fn,
