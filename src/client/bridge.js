@@ -10,8 +10,9 @@ const FixedMethods = {
 }
 
 module.exports = class Bridge {
-    constructor(params = {}) {
+    constructor(params = {}, events = {}) {
         this.params = params
+        this.events = events
 
         this.origin = this.params.origin
         this.headers = { ...this.params.headers }
@@ -22,11 +23,24 @@ module.exports = class Bridge {
         })
         this.wsInterface = new WSInterface({
             origin: this.params.wsOrigin,
-            managerOptions: this.params.wsOptions
+            managerOptions: this.params.wsOptions,
+            mainSocketOptions: this.params.wsMainSocketOptions,
         })
 
         this.endpoints = {}
         this.wsEndpoints = {}
+
+        this.wsInterface.sockets.main.on("disconnect", async (...args) => {
+            if (typeof this.events.onDisconnect === "function") {
+                await this.events.onDisconnect(...args)
+            }
+        })
+
+        this.wsInterface.sockets.main.on("unauthorized", async (...args) => {
+            if (typeof this.events.onUnauthorized === "function") {
+                await this.events.onUnauthorized(...args)
+            }
+        })
 
         return this
     }
@@ -44,6 +58,15 @@ module.exports = class Bridge {
 
         await this.generateHTTPDispatchers(httpMap)
         await this.generateWSDispatchers(wsMap)
+
+        this.wsInterface.manager.open((err) => {
+            if (err) {
+                console.error(err)
+                throw new Error(`Could not open socket manager. [${err.message}]`)
+            }
+
+            this.wsInterface.sockets.main.connect()
+        })
     }
 
     handleRequestContext = async () => {
@@ -119,10 +142,10 @@ module.exports = class Bridge {
 
         for await (let wsChannel of Object.keys(map)) {
             const endpoint = map[wsChannel]
-            
+
             endpoint.nsp[0] == "/" ? endpoint.nsp = endpoint.nsp.slice(1) : null
             endpoint.method = endpoint.channel[0] == "/" ? endpoint.channel.slice(1) : endpoint.channel
-            
+
             this.wsEndpoints[endpoint.method] = generateWSRequestDispatcher(this.wsInterface.sockets[endpoint.nsp ?? "main"], endpoint.channel)
         }
     }
