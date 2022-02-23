@@ -52,28 +52,53 @@ const Controllers = [
 ]
 
 async function _main() {
-    const server = new Server(undefined, Controllers, Middlewares)
+    const server = new Server({
+        onWSClientConnection: (socket) => {
+            const authToken = socket.handshake.auth?.token
+            console.log(`AUTH TOKEN: ${authToken}`)
+
+            if (!authToken) {
+                socket.emit("unauthorized", "No auth token provided!")
+                return socket.disconnect()
+            }
+
+            if (authToken !== "123") {
+                socket.emit("unauthorized", "invalid auth token!")
+                return socket.disconnect()
+            }
+        }
+    }, Controllers, Middlewares)
+
     const clientBridge = new Bridge({
         origin: server.HTTPAddress,
         wsOrigin: server.WSAddress,
+        wsMainSocketOptions: {
+            auth: {
+                token: "123"
+            }
+        },
+    }, {
+        onUnauthorized: (reason) => {
+            console.log(reason)
+        }
     })
 
     await server.initialize()
     await clientBridge.initialize()
 
-    const test = await clientBridge.endpoints.get.test()
-    const crashTest = await clientBridge.endpoints.get.crashtest().catch(error => {
-        console.log(error)
-        return false
-    })
-    const deleteTest = await clientBridge.endpoints.delete.test({
-        a: "test"
-    })
+    // const test = await clientBridge.endpoints.get.test()
+    // const crashTest = await clientBridge.endpoints.get.crashtest().catch(error => {
+    //     console.log(error)
+    //     return false
+    // })
+    // const deleteTest = await clientBridge.endpoints.delete.test({
+    //     a: "test"
+    // })
     const wsEpicEvent = await clientBridge.wsEndpoints.epicEvent("Hello", "World")
 
-    console.log(`[get.test] > ${test}`)
-    console.log(`[get.crashtest] > ${crashTest}`)
-    console.log(`[delete.test] > ${deleteTest}`)
+    // console.log(`[get.test] > ${test}`)
+    // console.log(`[get.crashtest] > ${crashTest}`)
+    // console.log(`[delete.test] > ${deleteTest}`)
     console.log(`[ws.epicEvent] > ${wsEpicEvent}`)
 }
 
