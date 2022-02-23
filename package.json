@@ -1,6 +1,6 @@
 {
   "name": "linebridge",
-  "version": "0.10.13",
+  "version": "0.10.14",
   "description": "A simple, fast, and powerful REST API interface library",
   "author": "RageStudio",
   "main": "./dist/client/index.js",
