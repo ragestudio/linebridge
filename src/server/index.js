@@ -39,7 +39,7 @@ const FixedMethods = {
 }
 
 if (process.env.NODE_ENV !== "production") {
-    defaultMiddlewares.push(require('morgan')("dev"))
+    defaultMiddlewares.push(require("morgan")("dev"))
 }
 
 class Server {
