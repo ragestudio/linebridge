@@ -119,7 +119,9 @@ class Server {
         // initialize http server
         await this.httpInterface.listen(this.HTTPlistenPort, this.params.listen ?? "0.0.0.0")
 
+        // output server info
         console.log(`✅ Server is up and running!`)
+        this.consoleOutputServerInfo()
     }
 
     handleWSClientConnection = async (socket) => {
@@ -272,6 +274,18 @@ class Server {
                     wsEndpointsMap: this.wsInterface.map,
                 })
             }
+        })
+    }
+
+    consoleOutputServerInfo = () => {
+        console.log(`🌐 Server info:`)
+        console.table({
+            "ID": this.id,
+            "Version": LINEBRIDGE_SERVER_VERSION,
+            "HTTP address": this.HTTPAddress,
+            "WS address": this.WSAddress,
+            "WS port": this.WSListenPort,
+            "HTTP port": this.HTTPlistenPort,
         })
     }
 }
