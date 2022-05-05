@@ -122,6 +122,11 @@ class Server {
         // output server info
         console.log(`✅ Server is up and running!`)
         this.consoleOutputServerInfo()
+
+        // handle exit events
+        process.on("SIGTERM", this.cleanupProcess)
+        process.on("SIGINT", this.cleanupProcess)
+        process.on("exit", this.cleanupProcess)
     }
 
     handleWSClientConnection = async (socket) => {
@@ -287,6 +292,13 @@ class Server {
             "WS port": this.WSListenPort,
             "HTTP port": this.HTTPlistenPort,
         })
+    }
+
+    cleanupProcess = () => {
+        console.log("🔴  Stopping server...")
+
+        this.httpInterface.close()
+        this.wsInterface.io.close()
     }
 }
 
