@@ -2,7 +2,7 @@ const path = require("path")
 const fs = require("fs")
 const net = require("corenode/net")
 
-const http = require("nanoexpress")
+const HyperExpress = require("hyper-express")
 const io = require("socket.io")
 
 const packageJSON = require(path.resolve(module.path, "../../package.json"))
@@ -26,7 +26,6 @@ global.DEFAULT_HEADERS = {
 }
 
 const defaultMiddlewares = [
-    require("@nanoexpress/middleware-body-parser/cjs")(),
     require('cors')({
         "origin": "*",
         "methods": DEFAULT_HEADERS["Access-Control-Allow-Methods"],
@@ -40,7 +39,7 @@ const FixedMethods = {
 }
 
 if (process.env.NODE_ENV !== "production") {
-    defaultMiddlewares.push(require('morgan')("dev"))
+    defaultMiddlewares.push(require("morgan")("dev"))
 }
 
 class Server {
@@ -51,7 +50,7 @@ class Server {
         this.headers = { ...DEFAULT_HEADERS, ...this.params.headers }
         this.endpointsMap = {}
 
-        this.WSListenPort = this.params.wsPort ?? 3011
+        this.WSListenPort = this.params.wsPort ?? 3020
         this.HTTPlistenPort = this.params.port ?? 3010
 
         // TODO: Handle HTTPS and WSS
@@ -59,7 +58,7 @@ class Server {
         this.WSAddress = `ws://${LOCALHOST_ADDRESS}:${this.WSListenPort}`
 
         //* set server basics
-        this.httpInterface = global.httpInterface = http()
+        this.httpInterface = global.httpInterface = new HyperExpress.Server()
         this.wsInterface = global.wsInterface = {
             io: new io.Server(this.WSListenPort),
             map: {},
@@ -120,7 +119,14 @@ class Server {
         // initialize http server
         await this.httpInterface.listen(this.HTTPlistenPort, this.params.listen ?? "0.0.0.0")
 
-        console.log(`✅  Ready on port ${this.HTTPlistenPort}!`)
+        // output server info
+        console.log(`✅ Server is up and running!`)
+        this.consoleOutputServerInfo()
+
+        // handle exit events
+        process.on("SIGTERM", this.cleanupProcess)
+        process.on("SIGINT", this.cleanupProcess)
+        process.on("exit", this.cleanupProcess)
     }
 
     handleWSClientConnection = async (socket) => {
@@ -274,6 +280,25 @@ class Server {
                 })
             }
         })
+    }
+
+    consoleOutputServerInfo = () => {
+        console.log(`🌐 Server info:`)
+        console.table({
+            "ID": this.id,
+            "Version": LINEBRIDGE_SERVER_VERSION,
+            "HTTP address": this.HTTPAddress,
+            "WS address": this.WSAddress,
+            "WS port": this.WSListenPort,
+            "HTTP port": this.HTTPlistenPort,
+        })
+    }
+
+    cleanupProcess = () => {
+        console.log("🔴  Stopping server...")
+
+        this.httpInterface.close()
+        this.wsInterface.io.close()
     }
 }
 
