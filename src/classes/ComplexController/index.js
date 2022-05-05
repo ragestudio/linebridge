@@ -45,6 +45,7 @@ export default class ComplexController {
                     if (typeof fn === "object") {
                         endpoint.middlewares = fn.middlewares
                         endpoint.fn = fn.fn
+                        endpoint.enabled = fn.enabled
                     }
 
                     endpoint.fn = this.createHandler(endpoint.fn)
