@@ -2,7 +2,7 @@ const path = require("path")
 const fs = require("fs")
 const net = require("corenode/net")
 
-const http = require("nanoexpress")
+const HyperExpress = require("hyper-express")
 const io = require("socket.io")
 
 const packageJSON = require(path.resolve(module.path, "../../package.json"))
@@ -26,7 +26,6 @@ global.DEFAULT_HEADERS = {
 }
 
 const defaultMiddlewares = [
-    require("@nanoexpress/middleware-body-parser/cjs")(),
     require('cors')({
         "origin": "*",
         "methods": DEFAULT_HEADERS["Access-Control-Allow-Methods"],
@@ -59,7 +58,7 @@ class Server {
         this.WSAddress = `ws://${LOCALHOST_ADDRESS}:${this.WSListenPort}`
 
         //* set server basics
-        this.httpInterface = global.httpInterface = http()
+        this.httpInterface = global.httpInterface = new HyperExpress.Server()
         this.wsInterface = global.wsInterface = {
             io: new io.Server(this.WSListenPort),
             map: {},
@@ -120,7 +119,7 @@ class Server {
         // initialize http server
         await this.httpInterface.listen(this.HTTPlistenPort, this.params.listen ?? "0.0.0.0")
 
-        console.log(`✅  Ready on port ${this.HTTPlistenPort}!`)
+        console.log(`✅ Server is up and running!`)
     }
 
     handleWSClientConnection = async (socket) => {
