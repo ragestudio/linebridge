@@ -50,7 +50,7 @@ class Server {
         this.headers = { ...DEFAULT_HEADERS, ...this.params.headers }
         this.endpointsMap = {}
 
-        this.WSListenPort = this.params.wsPort ?? 3011
+        this.WSListenPort = this.params.wsPort ?? 3020
         this.HTTPlistenPort = this.params.port ?? 3010
 
         // TODO: Handle HTTPS and WSS
