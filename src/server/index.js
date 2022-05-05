@@ -214,11 +214,17 @@ class Server {
             ...this.endpointsMap[endpoint.method],
             [endpoint.route]: {
                 route: endpoint.route,
-            }
+                enabled: endpoint.enabled ?? true,
+            },
         }
 
         this.httpInterface[endpoint.method](endpoint.route, ...middlewares, async (req, res) => {
             try {
+                // check if endpoint is disabled
+                if (!this.endpointsMap[endpoint.method][endpoint.route].enabled) {
+                    throw new Error("Endpoint is disabled!")
+                }
+
                 return await endpoint.fn(req, res)
             } catch (error) {
                 if (typeof this.params.onRouteError === "function") {
@@ -299,6 +305,18 @@ class Server {
 
         this.httpInterface.close()
         this.wsInterface.io.close()
+    }
+
+    toogleEndpointReachability = (method, route, enabled) => {
+        if (typeof this.endpointsMap[method] !== "object") {
+            throw new Error(`Cannot toogle endpoint, method [${method}] not set!`)
+        }
+
+        if (typeof this.endpointsMap[method][route] !== "object") {
+            throw new Error(`Cannot toogle endpoint [${route}], is not registered!`)
+        }
+
+        this.endpointsMap[method][route].enabled = enabled ?? !this.endpointsMap[method][route].enabled
     }
 }
 
