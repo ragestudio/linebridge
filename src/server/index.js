@@ -13,11 +13,15 @@ const { randomWord } = require("@corenode/utils")
 
 const { serverManifest } = require("../lib")
 
+// set globals default variables
 global.LOCALHOST_ADDRESS = net.ip.getHostAddress() ?? "localhost"
+
 global.FIXED_HTTP_METHODS = {
     "del": "delete"
 }
+
 global.VALID_HTTP_METHODS = ["get", "post", "put", "patch", "del", "delete", "trace", "head", "any", "options", "ws"]
+
 global.DEFAULT_HEADERS = {
     "Access-Control-Allow-Headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
     "Access-Control-Allow-Origin": "*",
@@ -25,7 +29,11 @@ global.DEFAULT_HEADERS = {
     "Access-Control-Allow-Credentials": "true",
 }
 
-const defaultMiddlewares = [
+global.DEFAULT_SERVER_PARAMS = {
+    urlencoded: true,
+}
+
+global.DEFAULT_MIDDLEWARES = [
     require('cors')({
         "origin": "*",
         "methods": DEFAULT_HEADERS["Access-Control-Allow-Methods"],
@@ -35,7 +43,7 @@ const defaultMiddlewares = [
 ]
 
 if (process.env.NODE_ENV !== "production") {
-    defaultMiddlewares.push(require("morgan")("dev"))
+    global.DEFAULT_MIDDLEWARES.push(require("morgan")("dev"))
 }
 
 function outputServerError({
@@ -48,18 +56,28 @@ function outputServerError({
 
 class Server {
     constructor(params = {}, controllers = [], middlewares = {}) {
-        this.params = { ...params }
-        this.controllers = [...controllers]
-        this.middlewares = { ...middlewares }
-        this.headers = { ...DEFAULT_HEADERS, ...this.params.headers }
+        this.params = {
+            ...global.DEFAULT_SERVER_PARAMS,
+            ...params
+        }
+        this.controllers = [
+            ...controllers
+        ]
+        this.middlewares = {
+            ...middlewares
+        }
+        this.headers = {
+            ...global.DEFAULT_HEADERS,
+            ...this.params.headers
+        }
         this.endpointsMap = {}
 
         this.WSListenPort = this.params.wsPort ?? 3020
         this.HTTPlistenPort = this.params.port ?? 3010
 
         // TODO: Handle HTTPS and WSS
-        this.HTTPAddress = `http://${LOCALHOST_ADDRESS}:${this.HTTPlistenPort}`
-        this.WSAddress = `ws://${LOCALHOST_ADDRESS}:${this.WSListenPort}`
+        this.HTTPAddress = `http://${global.LOCALHOST_ADDRESS}:${this.HTTPlistenPort}`
+        this.WSAddress = `ws://${global.LOCALHOST_ADDRESS}:${this.WSListenPort}`
 
         //* set server basics
         this.httpInterface = global.httpInterface = new HyperExpress.Server()
@@ -136,7 +154,7 @@ class Server {
     }
 
     initializeMiddlewares = () => {
-        const useMiddlewares = [...defaultMiddlewares, ...(this.params.middlewares ?? [])]
+        const useMiddlewares = [...global.DEFAULT_MIDDLEWARES, ...(this.params.middlewares ?? [])]
 
         useMiddlewares.forEach((middleware) => {
             if (typeof middleware === "function") {
