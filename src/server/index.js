@@ -192,24 +192,7 @@ class Server {
             },
         }
 
-        this.httpInterface[endpoint.method](endpoint.route, ...middlewares, async (req, res) => {
-            try {
-                // check if endpoint is disabled
-                if (!this.endpointsMap[endpoint.method][endpoint.route].enabled) {
-                    throw new Error("Endpoint is disabled!")
-                }
-
-                return await endpoint.fn(req, res)
-            } catch (error) {
-                if (typeof this.params.onRouteError === "function") {
-                    return this.params.onRouteError(req, res, error)
-                } else {
-                    return res.status(500).json({
-                        "error": error.message
-                    })
-                }
-            }
-        })
+        this.httpInterface[endpoint.method](endpoint.route, ...middlewares, this.handleHTTPRequest)
     }
 
     registerWSEndpoint = (endpoint, ...execs) => {
@@ -273,6 +256,25 @@ class Server {
     }
 
     // handlers
+    handleHTTPRequest = async (req, res) => {
+        try {
+            // check if endpoint is disabled
+            if (!this.endpointsMap[endpoint.method][endpoint.route].enabled) {
+                throw new Error("Endpoint is disabled!")
+            }
+
+            return await endpoint.fn(req, res)
+        } catch (error) {
+            if (typeof this.params.onRouteError === "function") {
+                return this.params.onRouteError(req, res, error)
+            } else {
+                return res.status(500).json({
+                    "error": error.message
+                })
+            }
+        }
+    }
+
     handleWSClientConnection = async (socket) => {
         socket.res = (...args) => {
             socket.emit("response", ...args)
