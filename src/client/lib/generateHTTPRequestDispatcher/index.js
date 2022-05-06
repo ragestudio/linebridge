@@ -1,4 +1,4 @@
-module.exports = function generateRequestDispatcher(instance, method, route, handleRequestContext, handleResponse) {
+function generateHTTPRequestDispatcher(instance, method, route, handleRequestContext, handleResponse) {
     return function (body, query, options) {
         return new Promise(async (resolve, reject) => {
             let requestParams = {
@@ -48,3 +48,5 @@ module.exports = function generateRequestDispatcher(instance, method, route, han
         })
     }
 }
+
+module.exports = generateHTTPRequestDispatcher

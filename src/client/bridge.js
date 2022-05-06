@@ -1,9 +1,8 @@
 const axios = require("axios")
-const WSInterface = require("../classes/ClientWSInterface")
 const camalize = require("@corenode/utils/dist/camalize").default
 
-const generateRequestDispatcher = require("./generateRequestDispatcher")
-const generateWSRequestDispatcher = require("./generateWSRequestDispatcher")
+const { WSInterface } = require("./classes")
+const { generateHTTPRequestDispatcher, generateWSRequestDispatcher } = require("./lib")
 
 const FixedMethods = {
     "del": "delete"
@@ -18,7 +17,7 @@ module.exports = class Bridge {
         this.events = events
 
         this.origin = this.params.origin
-        this.headers = { 
+        this.headers = {
             ...DefaultHeaders,
             ...this.params.headers,
         }
@@ -127,7 +126,7 @@ module.exports = class Bridge {
                     nameKey = "index"
                 }
 
-                this.endpoints[fixedMethod][nameKey] = generateRequestDispatcher(
+                this.endpoints[fixedMethod][nameKey] = generateHTTPRequestDispatcher(
                     this.httpInterface,
                     fixedMethod,
                     route,
