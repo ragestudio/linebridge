@@ -1,13 +1,26 @@
 const fs = require("fs")
 const path = require("path")
 
-const HyperExpress = require("hyper-express")
 const io = require("socket.io")
 
 const tokenizer = require("corenode/libs/tokenizer")
 const { randomWord } = require("@corenode/utils")
 
 const { serverManifest, outputServerError } = require("./lib")
+
+const HTTPEngines = {
+    "hyper-express": () => {
+        const engine = require("hyper-express")
+        return new engine.Server()
+    },
+    "nano-express": () => {
+        // fix delete http method
+        global.FIXED_HTTP_METHODS["del"] = "del"
+        global.FIXED_HTTP_METHODS["delete"] = "del"
+
+        return require("nanoexpress")()
+    },
+}
 
 class Server {
     constructor(params = {}, controllers = [], middlewares = {}) {
@@ -35,7 +48,7 @@ class Server {
         this.WSAddress = `ws://${global.LOCALHOST_ADDRESS}:${this.WSListenPort}`
 
         //* set server basics
-        this.httpInterface = global.httpInterface = new HyperExpress.Server()
+        this.httpInterface = global.httpInterface = HTTPEngines[this.params.httpEngine]()
         this.wsInterface = global.wsInterface = {
             io: new io.Server(this.WSListenPort),
             map: {},
@@ -77,10 +90,10 @@ class Server {
                 req.query = {}
             }
 
-            // if server has enabled urlencoded parser, parse the body
-            if (this.params.urlencoded) {
-                req.body = await req.urlencoded()
-            }
+            // // if server has enabled urlencoded parser, parse the body
+            // if (this.params.urlencoded) {
+            //     req.body = await req.urlencoded()
+            // }
         })
 
         return this
