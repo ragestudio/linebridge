@@ -123,7 +123,6 @@ class Server {
         // handle exit events
         process.on("SIGTERM", this.cleanupProcess)
         process.on("SIGINT", this.cleanupProcess)
-        process.on("exit", this.cleanupProcess)
     }
 
     initializeHeaders = () => {
@@ -271,10 +270,12 @@ class Server {
     }
 
     cleanupProcess = () => {
-        console.log("🔴  Stopping server...")
+        console.log("🛑  Stopping server...")
 
         this.httpInterface.close()
         this.wsInterface.io.close()
+
+        process.exit(1)
     }
 
     // handlers
