@@ -7,7 +7,7 @@ const io = require("socket.io")
 const tokenizer = require("corenode/libs/tokenizer")
 const { randomWord } = require("@corenode/utils")
 
-const { serverManifest, outputServerError } = require("../lib")
+const { serverManifest, outputServerError } = require("./lib")
 
 class Server {
     constructor(params = {}, controllers = [], middlewares = {}) {
