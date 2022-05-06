@@ -112,10 +112,7 @@ class Server {
 
         serverManifest.write({ lastStart: Date.now() })
 
-        return this
-    }
-
-    initialize = async () => {
+        // patch request model with a middleware
         this.httpInterface.use(async (req, res) => {
             // make sure req has an body and query
             if (typeof req.body === "undefined") {
@@ -131,6 +128,10 @@ class Server {
             }
         })
 
+        return this
+    }
+
+    initialize = async () => {
         //* set server defined headers
         this.initializeHeaders()
 
