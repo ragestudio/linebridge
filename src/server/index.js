@@ -116,7 +116,7 @@ class Server {
     }
 
     initialize = async () => {
-        this.httpInterface.use(async (req, res, next) => {
+        this.httpInterface.use(async (req, res) => {
             // make sure req has an body and query
             if (typeof req.body === "undefined") {
                 req.body = {}
@@ -129,8 +129,6 @@ class Server {
             if (this.params.urlencoded) {
                 req.body = await req.urlencoded()
             }
-
-            next()
         })
 
         //* set server defined headers
