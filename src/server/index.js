@@ -153,7 +153,7 @@ class Server {
 
             if (controller.disabled) {
                 console.warn(`⏩ Controller [${controller.name}] is disabled! Initialization skipped...`)
-                return false
+                continue
             }
 
             try {
