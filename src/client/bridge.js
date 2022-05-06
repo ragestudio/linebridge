@@ -7,9 +7,6 @@ const { generateHTTPRequestDispatcher, generateWSRequestDispatcher } = require("
 const FixedMethods = {
     "del": "delete"
 }
-const DefaultHeaders = {
-    "Content-Type": "application/x-www-form-urlencoded"
-}
 
 module.exports = class Bridge {
     constructor(params = {}, events = {}) {
@@ -18,7 +15,6 @@ module.exports = class Bridge {
 
         this.origin = this.params.origin
         this.headers = {
-            ...DefaultHeaders,
             ...this.params.headers,
         }
 
