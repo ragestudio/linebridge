@@ -151,6 +151,11 @@ class Server {
                 throw new Error(`Controller must use the controller class!`)
             }
 
+            if (controller.disabled) {
+                console.warn(`⏩ Controller [${controller.name}] is disabled! Initialization skipped...`)
+                return false
+            }
+
             try {
                 const ControllerInstance = new controller()
 
