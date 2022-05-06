@@ -174,16 +174,19 @@ class Server {
             endpoint.method = FixedMethods[endpoint.method]
         }
 
+        // grab the middlewares
         let middlewares = [...execs]
 
         if (endpoint.middlewares) {
             middlewares = [...middlewares, ...this.resolveMiddlewares(endpoint.middlewares)]
         }
 
+        // make sure method has root object on endpointsMap
         if (typeof this.endpointsMap[endpoint.method] !== "object") {
             this.endpointsMap[endpoint.method] = {}
         }
 
+        // extend to map
         this.endpointsMap[endpoint.method] = {
             ...this.endpointsMap[endpoint.method],
             [endpoint.route]: {
@@ -192,6 +195,7 @@ class Server {
             },
         }
 
+        // set handler
         this.httpInterface[endpoint.method](endpoint.route, ...middlewares, this.handleHTTPRequest)
     }
 
