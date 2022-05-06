@@ -1,6 +1,6 @@
-import io from "socket.io-client"
+const io = require("socket.io-client")
 
-module.exports = class WSInterface {
+class WSInterface {
     constructor(params = {}) {
         this.params = params
         this.manager = new io.Manager(this.params.origin, {
@@ -41,3 +41,5 @@ module.exports = class WSInterface {
         delete this.sockets[socketName]
     }
 }
+
+module.exports = WSInterface
