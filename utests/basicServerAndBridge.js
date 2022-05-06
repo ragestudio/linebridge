@@ -1,6 +1,5 @@
 import { Bridge } from "../src/client"
-import Server from "../src/server"
-import { ComplexController } from "../src/classes"
+import { Server, Controller } from "../src/server"
 
 const Middlewares = {
     "test": (req, res, next) => {
@@ -14,7 +13,7 @@ const Middlewares = {
 }
 
 const Controllers = [
-    class DisabledController extends ComplexController {
+    class DisabledController extends Controller {
         static disabled = true
 
         get = {
@@ -24,7 +23,7 @@ const Controllers = [
         }
 
     },
-    class TestController extends ComplexController {
+    class TestController extends Controller {
         static useMiddlewares = ["test"]
 
         channels = {
@@ -53,7 +52,7 @@ const Controllers = [
         }
 
         delete = {
-            "/test" : (req, res) => {
+            "/test": (req, res) => {
                 return res.send(`Deleting ${req.body.a}`)
             }
         }
