@@ -1,3 +1,4 @@
 module.exports = {
-    serverManifest: require("./serverManifest"),
+    serverManifest: require("./serverManifest.js"),
+    outputServerError: require("./outputServerError.js"),
 }
