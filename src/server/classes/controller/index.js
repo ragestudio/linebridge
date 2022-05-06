@@ -1,6 +1,6 @@
 const { EventEmitter } = require("events")
 
-export default class ComplexController {
+class Controller {
     constructor(params) {
         this.params = { ...params }
 
@@ -70,3 +70,5 @@ export default class ComplexController {
         })
     }
 }
+
+module.exports = Controller
