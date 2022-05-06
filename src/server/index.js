@@ -15,7 +15,7 @@ const { serverManifest } = require("../lib")
 
 global.LOCALHOST_ADDRESS = net.ip.getHostAddress() ?? "localhost"
 global.FIXED_HTTP_METHODS = {
-    "delete": "del",
+    "del": "delete"
 }
 global.VALID_HTTP_METHODS = ["get", "post", "put", "patch", "del", "delete", "trace", "head", "any", "options", "ws"]
 global.DEFAULT_HEADERS = {
@@ -34,12 +34,16 @@ const defaultMiddlewares = [
     }),
 ]
 
-const FixedMethods = {
-    "delete": "del",
-}
-
 if (process.env.NODE_ENV !== "production") {
     defaultMiddlewares.push(require("morgan")("dev"))
+}
+
+function outputServerError({
+    message = "Unexpected error",
+    description,
+    ref = "SERVER",
+}) {
+    console.error(`\n\x1b[41m\x1b[37m🆘 [${ref}] ${message}\x1b[0m ${description ? `\n ${description}` : ""} \n`)
 }
 
 class Server {
@@ -150,6 +154,8 @@ class Server {
 
             try {
                 const ControllerInstance = new controller()
+
+                // get endpoints from controller (ComplexController)
                 const HTTPEndpoints = ControllerInstance.getEndpoints()
                 const WSEndpoints = ControllerInstance.getWSEndpoints()
 
@@ -161,7 +167,11 @@ class Server {
                     this.registerWSEndpoint(endpoint)
                 })
             } catch (error) {
-                console.error(`🆘 [${controller.refName}] Failed to initialize controller: ${error.message}`)
+                outputServerError({
+                    message: "Controller initialization failed:",
+                    description: error.stack,
+                    ref: controller.refName ?? controller.name,
+                })
             }
         }
     }
@@ -170,8 +180,13 @@ class Server {
         // check and fix method
         endpoint.method = endpoint.method?.toLowerCase() ?? "get"
 
-        if (FixedMethods[endpoint.method]) {
-            endpoint.method = FixedMethods[endpoint.method]
+        if (global.FIXED_HTTP_METHODS[endpoint.method]) {
+            endpoint.method = global.FIXED_HTTP_METHODS[endpoint.method]
+        }
+
+        // check if method is supported
+        if (typeof this.httpInterface[endpoint.method] !== "function") {
+            throw new Error(`Method [${endpoint.method}] is not supported!`)
         }
 
         // grab the middlewares
@@ -186,6 +201,12 @@ class Server {
             this.endpointsMap[endpoint.method] = {}
         }
 
+        // create model for http interface router
+        const routeModel = [endpoint.route, ...middlewares, this.createHTTPRequestHandler(endpoint)]
+
+        // register endpoint to http interface router
+        this.httpInterface[endpoint.method](...routeModel)
+
         // extend to map
         this.endpointsMap[endpoint.method] = {
             ...this.endpointsMap[endpoint.method],
@@ -194,9 +215,6 @@ class Server {
                 enabled: endpoint.enabled ?? true,
             },
         }
-
-        // set handler
-        this.httpInterface[endpoint.method](endpoint.route, ...middlewares, this.handleHTTPRequest)
     }
 
     registerWSEndpoint = (endpoint, ...execs) => {
@@ -260,21 +278,23 @@ class Server {
     }
 
     // handlers
-    handleHTTPRequest = async (req, res) => {
-        try {
-            // check if endpoint is disabled
-            if (!this.endpointsMap[endpoint.method][endpoint.route].enabled) {
-                throw new Error("Endpoint is disabled!")
-            }
+    createHTTPRequestHandler = (endpoint) => {
+        return async (req, res) => {
+            try {
+                // check if endpoint is disabled
+                if (!this.endpointsMap[endpoint.method][endpoint.route].enabled) {
+                    throw new Error("Endpoint is disabled!")
+                }
 
-            return await endpoint.fn(req, res)
-        } catch (error) {
-            if (typeof this.params.onRouteError === "function") {
-                return this.params.onRouteError(req, res, error)
-            } else {
-                return res.status(500).json({
-                    "error": error.message
-                })
+                return await endpoint.fn(req, res)
+            } catch (error) {
+                if (typeof this.params.onRouteError === "function") {
+                    return this.params.onRouteError(req, res, error)
+                } else {
+                    return res.status(500).json({
+                        "error": error.message
+                    })
+                }
             }
         }
     }
