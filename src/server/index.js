@@ -297,6 +297,14 @@ class Server {
                 if (typeof this.params.onRouteError === "function") {
                     return this.params.onRouteError(req, res, error)
                 } else {
+                    if (!global.silentOutputServerErrors) {
+                        this.outputServerError({
+                            message: "Unhandled route error:",
+                            description: error.stack,
+                            ref: [endpoint.method, endpoint.route].join("|"),
+                        })
+                    }
+
                     return res.status(500).json({
                         "error": error.message
                     })
