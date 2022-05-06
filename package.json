@@ -19,6 +19,7 @@
   "license": "MIT",
   "dependencies": {
     "@corenode/utils": "0.28.26",
+    "@nanoexpress/middleware-body-parser": "^1.2.2",
     "axios": "0.27.2",
     "cors": "2.8.5",
     "hyper-express": "^6.1.1",
