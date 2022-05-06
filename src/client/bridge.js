@@ -8,6 +8,9 @@ const generateWSRequestDispatcher = require("./generateWSRequestDispatcher")
 const FixedMethods = {
     "del": "delete"
 }
+const DefaultHeaders = {
+    "Content-Type": "application/x-www-form-urlencoded"
+}
 
 module.exports = class Bridge {
     constructor(params = {}, events = {}) {
@@ -15,7 +18,10 @@ module.exports = class Bridge {
         this.events = events
 
         this.origin = this.params.origin
-        this.headers = { ...this.params.headers }
+        this.headers = { 
+            ...DefaultHeaders,
+            ...this.params.headers,
+        }
 
         this.httpInterface = axios.create({
             baseURL: this.origin,
@@ -126,7 +132,8 @@ module.exports = class Bridge {
                     fixedMethod,
                     route,
                     this.handleRequestContext,
-                    this.handleResponse
+                    this.handleResponse,
+                    this.params.requestHeaders
                 )
             })
         }
