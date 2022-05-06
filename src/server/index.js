@@ -294,6 +294,20 @@ class Server {
                     throw new Error("Endpoint is disabled!")
                 }
 
+                // make sure req has an body and query
+                if (typeof req.body === "undefined") {
+                    req.body = {}
+                }
+                if (typeof req.query === "undefined") {
+                    req.query = {}
+                }
+
+                // if server has enabled urlencoded parser, parse the body
+                if (this.params.urlencoded) {
+                    req.body = await req.urlencoded()
+                }
+
+                // return the returning call of the endpoint function
                 return await endpoint.fn(req, res)
             } catch (error) {
                 if (typeof this.params.onRouteError === "function") {
