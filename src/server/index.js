@@ -171,11 +171,13 @@ class Server {
                     this.registerWSEndpoint(endpoint)
                 })
             } catch (error) {
-                outputServerError({
-                    message: "Controller initialization failed:",
-                    description: error.stack,
-                    ref: controller.refName ?? controller.name,
-                })
+                if (!global.silentOutputServerErrors) {
+                    outputServerError({
+                        message: "Controller initialization failed:",
+                        description: error.stack,
+                        ref: controller.refName ?? controller.name,
+                    })
+                }
             }
         }
     }
@@ -298,7 +300,7 @@ class Server {
                     return this.params.onRouteError(req, res, error)
                 } else {
                     if (!global.silentOutputServerErrors) {
-                        this.outputServerError({
+                        outputServerError({
                             message: "Unhandled route error:",
                             description: error.stack,
                             ref: [endpoint.method, endpoint.route].join("|"),
