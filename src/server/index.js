@@ -116,6 +116,23 @@ class Server {
     }
 
     initialize = async () => {
+        this.httpInterface.use(async (req, res, next) => {
+            // make sure req has an body and query
+            if (typeof req.body === "undefined") {
+                req.body = {}
+            }
+            if (typeof req.query === "undefined") {
+                req.query = {}
+            }
+
+            // if server has enabled urlencoded parser, parse the body
+            if (this.params.urlencoded) {
+                req.body = await req.urlencoded()
+            }
+
+            next()
+        })
+
         //* set server defined headers
         this.initializeHeaders()
 
@@ -310,19 +327,6 @@ class Server {
                 // check if endpoint is disabled
                 if (!this.endpointsMap[endpoint.method][endpoint.route].enabled) {
                     throw new Error("Endpoint is disabled!")
-                }
-
-                // make sure req has an body and query
-                if (typeof req.body === "undefined") {
-                    req.body = {}
-                }
-                if (typeof req.query === "undefined") {
-                    req.query = {}
-                }
-
-                // if server has enabled urlencoded parser, parse the body
-                if (this.params.urlencoded) {
-                    req.body = await req.urlencoded()
                 }
 
                 // return the returning call of the endpoint function
