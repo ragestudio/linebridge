@@ -25,7 +25,6 @@ const Controllers = [
 
     },
     class TestController extends ComplexController {
-        static refName = "TestController"
         static useMiddlewares = ["test"]
 
         channels = {
