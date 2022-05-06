@@ -1,5 +1,5 @@
-const path = require('path')
-const fs = require('fs')
+const path = require("path")
+const fs = require("fs")
 
 // TODO: Volatile files
 // TODO: Redis cache
@@ -7,10 +7,10 @@ const fs = require('fs')
 class FilesystemDriver {
     constructor(params) {
         this.params = { ...params }
-        this.rootPath = this.params.root ?? path.resolve(process.cwd(), 'storage')
+        this.rootPath = this.params.root ?? path.resolve(process.cwd(), "storage")
 
         this.defaultWriteMode = "0777"
-        this.defaultWriteFlags = 'w+'
+        this.defaultWriteFlags = "w+"
 
         this.strictMimetypeCheck = this.strictMimetypeCheck ?? false
         this.checkMimetypes = this.params.checkMimetypes ?? false

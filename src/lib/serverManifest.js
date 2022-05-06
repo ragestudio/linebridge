@@ -12,7 +12,7 @@ const serverManifest = {
     get: (key) => {
         let data = {}
         if (fs.existsSync(SERVER_MANIFEST)) {
-            data = JSON.parse(fs.readFileSync(SERVER_MANIFEST_PATH, 'utf8'))
+            data = JSON.parse(fs.readFileSync(SERVER_MANIFEST_PATH, "utf8"))
         }
 
         if (typeof key === "string") {

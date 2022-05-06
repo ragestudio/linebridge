@@ -25,7 +25,7 @@ global.DEFAULT_SERVER_PARAMS = {
 }
 
 global.DEFAULT_MIDDLEWARES = [
-    require('cors')({
+    require("cors")({
         "origin": "*",
         "methods": DEFAULT_HEADERS["Access-Control-Allow-Methods"],
         "preflightContinue": false,
