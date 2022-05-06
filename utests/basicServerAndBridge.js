@@ -14,6 +14,16 @@ const Middlewares = {
 }
 
 const Controllers = [
+    class DisabledController extends ComplexController {
+        static disabled = true
+
+        get = {
+            "/unreachable": (req, res) => {
+                return res.send("this must not be reachable")
+            }
+        }
+
+    },
     class TestController extends ComplexController {
         static refName = "TestController"
         static useMiddlewares = ["test"]
