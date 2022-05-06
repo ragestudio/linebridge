@@ -18,6 +18,8 @@ const HTTPEngines = {
         global.FIXED_HTTP_METHODS["del"] = "del"
         global.FIXED_HTTP_METHODS["delete"] = "del"
 
+        global.DEFAULT_MIDDLEWARES.push(require("@nanoexpress/middleware-body-parser/cjs")())
+
         return require("nanoexpress")()
     },
 }
