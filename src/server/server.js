@@ -10,6 +10,8 @@ const { serverManifest, outputServerError } = require("./lib")
 
 const HTTPEngines = {
     "hyper-express": () => {
+        console.warn("Hyper-Express is not fully supported yet")
+        
         const engine = require("hyper-express")
         return new engine.Server()
     },
