@@ -7,6 +7,8 @@ const { randomWord } = require("@corenode/utils")
 
 const { serverManifest, outputServerError } = require("./lib")
 
+const builtInMiddlewares = []
+
 const HTTPEngines = {
     "hyper-express": () => {
         console.warn("Hyper-Express is not fully supported yet")
@@ -20,6 +22,22 @@ const HTTPEngines = {
         global.FIXED_HTTP_METHODS["delete"] = "del"
 
         global.DEFAULT_MIDDLEWARES.push(require("@nanoexpress/middleware-body-parser/cjs")())
+
+        // patch request model with a middleware
+        builtInMiddlewares.push(async (req, res) => {
+            // make sure req has an body and query
+            if (typeof req.body === "undefined") {
+                req.body = {}
+            }
+            if (typeof req.query === "undefined") {
+                req.query = {}
+            }
+
+            // // if server has enabled urlencoded parser, parse the body
+            // if (this.params.urlencoded) {
+            //     req.body = await req.urlencoded()
+            // }
+        })
 
         return require("nanoexpress")()
     },
@@ -88,22 +106,6 @@ class Server {
 
         serverManifest.write({ lastStart: Date.now() })
 
-        // patch request model with a middleware
-        this.httpInterface.use(async (req, res) => {
-            // make sure req has an body and query
-            if (typeof req.body === "undefined") {
-                req.body = {}
-            }
-            if (typeof req.query === "undefined") {
-                req.query = {}
-            }
-
-            // // if server has enabled urlencoded parser, parse the body
-            // if (this.params.urlencoded) {
-            //     req.body = await req.urlencoded()
-            // }
-        })
-
         return this
     }
 
@@ -146,7 +148,7 @@ class Server {
     }
 
     initializeMiddlewares = () => {
-        const useMiddlewares = [...global.DEFAULT_MIDDLEWARES, ...(this.params.middlewares ?? [])]
+        const useMiddlewares = [...builtInMiddlewares, ...global.DEFAULT_MIDDLEWARES, ...(this.params.middlewares ?? [])]
 
         useMiddlewares.forEach((middleware) => {
             if (typeof middleware === "function") {
