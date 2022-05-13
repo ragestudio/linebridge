@@ -22,6 +22,9 @@ const HTTPEngines = {
 
         return require("nanoexpress")()
     },
+    "express": () => {
+        return require("express")()
+    },
 }
 
 class Server {
