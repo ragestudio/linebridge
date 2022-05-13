@@ -24,6 +24,8 @@ const HTTPEngines = {
         return require("nanoexpress")()
     },
     "express": () => {
+
+
         return require("express")()
     },
 }
@@ -287,7 +289,10 @@ class Server {
     cleanupProcess = () => {
         console.log("🛑  Stopping server...")
 
-        this.httpInterface.close()
+        if (typeof this.httpInterface.close === "function") {
+            this.httpInterface.close()
+        }
+
         this.wsInterface.io.close()
 
         process.exit(1)
@@ -368,6 +373,7 @@ class Server {
         console.log(`🌐 Server info:`)
         console.table({
             "ID": this.id,
+            "HTTPEngine": this.params.httpEngine,
             "Version": LINEBRIDGE_SERVER_VERSION,
             "HTTP address": this.HTTPAddress,
             "WS address": this.WSAddress,
