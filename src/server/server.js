@@ -6,7 +6,7 @@ const io = require("socket.io")
 const tokenizer = require("corenode/libs/tokenizer")
 const { randomWord } = require("@corenode/utils")
 
-const { serverManifest, outputServerError } = require("./lib")
+const { serverManifest, outputServerError, resolveRemoteEvents } = require("./lib")
 
 const HTTPEngines = {
     "hyper-express": () => {
@@ -40,7 +40,10 @@ class Server {
             ...global.DEFAULT_HEADERS,
             ...this.params.headers
         }
+        // maps
         this.endpointsMap = {}
+        this.remoteEvents = {}
+        this.remoteLinkers = {}
 
         this.WSListenPort = this.params.wsPort ?? 3020
         this.HTTPlistenPort = this.params.port ?? 3010
@@ -103,10 +106,10 @@ class Server {
 
     initialize = async () => {
         //* set server defined headers
-        this.initializeHeaders()
+        await this.initializeHeaders()
 
         //* set server defined middlewares
-        this.initializeMiddlewares()
+        await this.initializeMiddlewares()
 
         //* register main index endpoint `/`
         await this.registerBaseEndpoints()
@@ -114,19 +117,56 @@ class Server {
         //* register controllers
         await this.initializeControllers()
 
+        //* register remotes endpoints
+        if (this.params.remoteLinker) {
+            await this.initializeRemoteLinker()
+        }
+
         // initialize socket.io
         this.wsInterface.io.on("connection", this.handleWSClientConnection)
 
         // initialize http server
         await this.httpInterface.listen(this.HTTPlistenPort, this.params.listen ?? "0.0.0.0")
 
-        // output server info
-        console.log(`✅ Server is up and running!`)
-        this.consoleOutputServerInfo()
+        if (!this.params.silent) {
+            // output server info
+            console.log(`✅ Server is up and running!`)
+            this.consoleOutputServerInfo()
+        }
 
         // handle exit events
         process.on("SIGTERM", this.cleanupProcess)
         process.on("SIGINT", this.cleanupProcess)
+    }
+
+    initializeRemoteLinker = async () => {
+        if (this.params.remoteLinker && !Array.isArray(this.params.remoteLinker)) {
+            this.params.remoteLinker = [this.params.remoteLinker]
+        }
+
+        for await (const remoteLinker of this.params.remoteLinker) {
+            if (typeof remoteLinker !== "object") {
+                console.warn(`Invalid remote linker: ${remoteLinker}`)
+                continue
+            }
+
+            if (!remoteLinker.namespace || !remoteLinker.origin) {
+                console.warn(`Missing namespace or origin in remote linker: ${remoteLinker}`)
+                continue
+            }
+
+            // first connect with server to fetch the map of events
+            const remoteEvents = await resolveRemoteEvents(remoteLinker.origin)
+
+            console.log(remoteEvents)
+
+            // create a object on linkers map
+            this.remoteLinkers[remoteLinker.namespace] = {}
+
+
+
+
+        }
     }
 
     initializeHeaders = () => {
@@ -163,6 +203,23 @@ class Server {
             try {
                 const ControllerInstance = new controller()
 
+                // check if controller has remote events defined
+                if (typeof (ControllerInstance.remoteEvents) === "object") {
+                    if (typeof this.remoteEvents[controller.name] === "undefined") {
+                        this.remoteEvents[controller.name] = {}
+                    }
+
+                    Object.keys(ControllerInstance.remoteEvents).forEach((eventName) => {
+                        this.remoteEvents[controller.name][eventName] = ControllerInstance.remoteEvents[eventName]
+                    })
+                }
+
+
+                // check if controller has remote linkers defined
+                if (controller.useRemoteEvents) {
+
+                }
+
                 // get endpoints from controller (ComplexController)
                 const HTTPEndpoints = ControllerInstance.getEndpoints()
                 const WSEndpoints = ControllerInstance.getWSEndpoints()
@@ -174,6 +231,7 @@ class Server {
                 WSEndpoints.forEach((endpoint) => {
                     this.registerWSEndpoint(endpoint)
                 })
+
             } catch (error) {
                 if (!global.silentOutputServerErrors) {
                     outputServerError({
@@ -253,6 +311,14 @@ class Server {
                     requestTime: new Date().getTime(),
                     endpointsMap: this.endpointsMap,
                     wsEndpointsMap: this.wsInterface.map,
+                    remoteEvents: Object.keys(this.remoteEvents).map((controller) => {
+                        return {
+                            controller: controller,
+                            events: Object.keys(this.remoteEvents[controller]).map((event) => {
+                                return event
+                            })
+                        }
+                    }),
                 })
             }
         })
