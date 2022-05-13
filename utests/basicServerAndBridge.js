@@ -23,8 +23,54 @@ const Controllers = [
         }
 
     },
-    class TestController extends Controller {
+    class TestControllerA extends Controller {
         static useMiddlewares = ["test"]
+
+        events = {
+            "remoteEventTest": (arg1, arg2) => {
+                console.log("[Recived on TestControllerA]remoteEventTest", arg1, arg2)
+            }
+        }
+
+        channels = {
+            "epicEvent": (socket, ...args) => {
+                console.log(`[SERVER WS EVENT] > ${socket.id} > `, ...args)
+                return socket.res("elo")
+            }
+        }
+
+        get = {
+            "/test/:name": {
+                fn: (req, res) => {
+                    const name = req.params.name
+
+                    return res.json({
+                        message: name ? `Hello ${name}!` : "Hello World!"
+                    })
+                },
+            },
+            "/crashTest": (req, res) => {
+                throw new Error("Boom!")
+            },
+            "/test": (req, res) => {
+                return res.send("Hello World!")
+            }
+        }
+
+        delete = {
+            "/test": (req, res) => {
+                return res.send(`Deleting ${req.body.a}`)
+            }
+        }
+    },
+    class TestControllerB extends Controller {
+        static useMiddlewares = ["test"]
+
+        events = {
+            "remoteEventTest": (arg1, arg2) => {
+                console.log("[Recived on TestControllerB]remoteEventTest", arg1, arg2)
+            }
+        }
 
         channels = {
             "epicEvent": (socket, ...args) => {
