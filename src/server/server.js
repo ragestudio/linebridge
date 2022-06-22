@@ -143,7 +143,7 @@ class Server {
 
         // output server info
         InternalConsole.log(`✅ Server is up and running!`)
-        this.InternalConsoleOutputServerInfo()
+        this.OutputServerInfo()
 
         // handle exit events
         process.on("SIGTERM", this.cleanupProcess)
@@ -260,6 +260,11 @@ class Server {
     }
 
     registerBaseEndpoints() {
+        if (this.params.disableBaseEndpoint) {
+            InternalConsole.warn("Base endpoint is disabled! Endpoints mapping will not be available, so linebridge client bridges will not work!")
+            return false
+        }
+
         //* register main index endpoint `/`
         // this is the default endpoint, should return the server info and the map of all endpoints (http & ws)
         this.registerHTTPEndpoint({
@@ -390,7 +395,7 @@ class Server {
     }
 
     // public methods
-    InternalConsoleOutputServerInfo = () => {
+    OutputServerInfo = () => {
         InternalConsole.log(`🌐 Server info:`)
         InternalConsole.table({
             "ID": this.id,
