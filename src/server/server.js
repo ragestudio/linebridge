@@ -5,13 +5,14 @@ const io = require("socket.io")
 const tokenizer = require("corenode/libs/tokenizer")
 const { randomWord } = require("@corenode/utils")
 
-const { serverManifest, outputServerError } = require("./lib")
+const { serverManifest, outputServerError, internalConsole } = require("./lib")
+const InternalConsole = global.InternalInternalConsole = internalConsole
 
 const builtInMiddlewares = []
 
 const HTTPEngines = {
     "hyper-express": () => {
-        console.warn("Hyper-Express is not fully supported yet")
+        InternalConsole.warn("Hyper-Express is not fully supported yet")
 
         const engine = require("hyper-express")
         return new engine.Server()
@@ -91,12 +92,12 @@ class Server {
         const MANIFEST_STAT = global.MANIFEST_STAT = serverManifest.stat()
 
         if (typeof MANIFEST_DATA.created === "undefined") {
-            console.warn("Server generation file not contains an creation date")
+            InternalConsole.warn("Server generation file not contains an creation date")
             serverManifest.write({ created: Date.parse(MANIFEST_STAT.birthtime) })
         }
 
         if (typeof MANIFEST_DATA.serverToken === "undefined") {
-            console.warn("Missing server token!")
+            InternalConsole.warn("Missing server token!")
             serverManifest.create()
         }
 
@@ -105,6 +106,18 @@ class Server {
         this.oskid = serverManifest.get("serverToken")
 
         serverManifest.write({ lastStart: Date.now() })
+
+        // handle silent mode
+        global.consoleSilent = this.params.silent
+
+        if (global.consoleSilent) {
+            // find morgan middleware and remove it
+            const morganMiddleware = global.DEFAULT_MIDDLEWARES.find(middleware => middleware.name === "logger")
+
+            if (morganMiddleware) {
+                global.DEFAULT_MIDDLEWARES.splice(global.DEFAULT_MIDDLEWARES.indexOf(morganMiddleware), 1)
+            }
+        }
 
         return this
     }
@@ -129,8 +142,8 @@ class Server {
         await this.httpInterface.listen(this.HTTPlistenPort, this.params.listen ?? "0.0.0.0")
 
         // output server info
-        console.log(`✅ Server is up and running!`)
-        this.consoleOutputServerInfo()
+        InternalConsole.log(`✅ Server is up and running!`)
+        this.InternalConsoleOutputServerInfo()
 
         // handle exit events
         process.on("SIGTERM", this.cleanupProcess)
@@ -164,7 +177,7 @@ class Server {
             }
 
             if (controller.disabled) {
-                console.warn(`⏩ Controller [${controller.name}] is disabled! Initialization skipped...`)
+                InternalConsole.warn(`⏩ Controller [${controller.name}] is disabled! Initialization skipped...`)
                 continue
             }
 
@@ -288,8 +301,14 @@ class Server {
         return middlewaresArray
     }
 
+    log = (...args) => {
+        if (!this.params.silent) {
+            InternalConsole.log(...args)
+        }
+    }
+
     cleanupProcess = () => {
-        console.log("🛑  Stopping server...")
+        this.log("🛑  Stopping server...")
 
         if (typeof this.httpInterface.close === "function") {
             this.httpInterface.close()
@@ -371,9 +390,9 @@ class Server {
     }
 
     // public methods
-    consoleOutputServerInfo = () => {
-        console.log(`🌐 Server info:`)
-        console.table({
+    InternalConsoleOutputServerInfo = () => {
+        InternalConsole.log(`🌐 Server info:`)
+        InternalConsole.table({
             "ID": this.id,
             "HTTPEngine": this.params.httpEngine,
             "Version": LINEBRIDGE_SERVER_VERSION,
