@@ -1,3 +1,1 @@
-module.exports = {
-    schematized: require("./schematized"),
-}
+export { default as Schematized } from "./schematized"

@@ -1,4 +1,4 @@
-module.exports = (schema = {}, fn) => {
+export default (schema = {}, fn) => {
     return async (req, res, next) => {
         if (typeof req.body === "undefined") {
             req.body = {}
