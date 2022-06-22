@@ -261,7 +261,7 @@ class Server {
 
     registerBaseEndpoints() {
         if (this.params.disableBaseEndpoint) {
-            InternalConsole.warn("Base endpoint is disabled! Endpoints mapping will not be available, so linebridge client bridges will not work!")
+            InternalConsole.warn("‼️ [disableBaseEndpoint] Base endpoint is disabled! Endpoints mapping will not be available, so linebridge client bridges will not work! ‼️")
             return false
         }
 
