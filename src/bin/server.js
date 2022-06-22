@@ -2,9 +2,9 @@
 const corenode = require("corenode")
 
 corenode.runInNewRuntime(() => {
-    const server = require("../server/index.js")
+    const { Server } = require("../server/index.js")
 
-    const instance = new server({
+    const instance = new Server({
         id: process.env.serverID,
     })
 
