@@ -1,5 +1,8 @@
 const fs = require("fs")
 
+const http = require("http")
+const https = require("https")
+
 const io = require("socket.io")
 
 const tokenizer = require("corenode/libs/tokenizer")
@@ -9,6 +12,11 @@ const { serverManifest, outputServerError, internalConsole } = require("./lib")
 const InternalConsole = global.InternalInternalConsole = internalConsole
 
 const builtInMiddlewares = []
+
+const HTTPProtocolsInstances = {
+    http: http,
+    https: https,
+}
 
 const HTTPEngines = {
     "hyper-express": () => {
@@ -67,17 +75,26 @@ class Server {
         }
         this.endpointsMap = {}
 
-        this.WSListenPort = this.params.wsPort ?? 3020
-        this.HTTPlistenPort = this.params.port ?? 3010
+        this.listenPort = this.params.port ?? 3010
 
         // TODO: Handle HTTPS and WSS
-        this.HTTPAddress = `http://${global.LOCALHOST_ADDRESS}:${this.HTTPlistenPort}`
-        this.WSAddress = `ws://${global.LOCALHOST_ADDRESS}:${this.WSListenPort}`
+        this.HTTPAddress = `${this.params.protocol}://${global.LOCALHOST_ADDRESS}:${this.listenPort}`
+        this.WSAddress = `${this.params.wsProtocol}://${global.LOCALHOST_ADDRESS}:${this.listenPort}`
 
         //* set server basics
-        this.httpInterface = global.httpInterface = HTTPEngines[this.params.httpEngine]()
+        // check if engine is supported
+        if (typeof HTTPProtocolsInstances[this.params.protocol].createServer !== "function") {
+            throw new Error("Invalid HTTP protocol (Missing createServer function)")
+        }
+
+        this.engineInstance = global.engineInstance = HTTPEngines[this.params.httpEngine]()
+        this.httpInstance = global.httpInstance = HTTPProtocolsInstances[this.params.protocol].createServer({
+            ...this.engineInstance,
+            key: this.params.key,
+            cert: this.params.cert,
+        })
         this.wsInterface = global.wsInterface = {
-            io: new io.Server(this.WSListenPort),
+            io: new io.Server(this.httpInstance),
             map: {},
             eventsChannels: [],
         }
@@ -139,7 +156,7 @@ class Server {
         this.wsInterface.io.on("connection", this.handleWSClientConnection)
 
         // initialize http server
-        await this.httpInterface.listen(this.HTTPlistenPort, this.params.listen ?? "0.0.0.0")
+        await this.httpInstance.listen(this.listenPort, this.params.listen ?? "0.0.0.0")
 
         // output server info
         InternalConsole.log(`✅ Server is up and running!`)
@@ -151,7 +168,7 @@ class Server {
     }
 
     initializeHeaders = () => {
-        this.httpInterface.use((req, res, next) => {
+        this.engineInstance.use((req, res, next) => {
             Object.keys(this.headers).forEach((key) => {
                 res.setHeader(key, this.headers[key])
             })
@@ -165,7 +182,7 @@ class Server {
 
         useMiddlewares.forEach((middleware) => {
             if (typeof middleware === "function") {
-                this.httpInterface.use(middleware)
+                this.engineInstance.use(middleware)
             }
         })
     }
@@ -216,7 +233,7 @@ class Server {
         }
 
         // check if method is supported
-        if (typeof this.httpInterface[endpoint.method] !== "function") {
+        if (typeof this.engineInstance[endpoint.method] !== "function") {
             throw new Error(`Method [${endpoint.method}] is not supported!`)
         }
 
@@ -236,7 +253,7 @@ class Server {
         const routeModel = [endpoint.route, ...middlewares, this.createHTTPRequestHandler(endpoint)]
 
         // register endpoint to http interface router
-        this.httpInterface[endpoint.method](...routeModel)
+        this.engineInstance[endpoint.method](...routeModel)
 
         // extend to map
         this.endpointsMap[endpoint.method] = {
@@ -315,8 +332,8 @@ class Server {
     cleanupProcess = () => {
         this.log("🛑  Stopping server...")
 
-        if (typeof this.httpInterface.close === "function") {
-            this.httpInterface.close()
+        if (typeof this.engineInstance.close === "function") {
+            this.engineInstance.close()
         }
 
         this.wsInterface.io.close()
@@ -401,10 +418,11 @@ class Server {
             "ID": this.id,
             "HTTPEngine": this.params.httpEngine,
             "Version": LINEBRIDGE_SERVER_VERSION,
+            "WS Protocol": this.params.wsProtocol,
+            "Protocol": this.params.protocol,
             "HTTP address": this.HTTPAddress,
             "WS address": this.WSAddress,
-            "WS port": this.WSListenPort,
-            "HTTP port": this.HTTPlistenPort,
+            "Listen port": this.listenPort,
         })
     }
 

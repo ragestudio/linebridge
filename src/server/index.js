@@ -23,6 +23,8 @@ global.DEFAULT_HEADERS = {
 global.DEFAULT_SERVER_PARAMS = {
     urlencoded: true,
     httpEngine: "express",
+    protocol: "http",
+    wsProtocol: "ws",
 }
 
 global.DEFAULT_MIDDLEWARES = [
