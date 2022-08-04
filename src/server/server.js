@@ -89,10 +89,8 @@ class Server {
 
         this.engineInstance = global.engineInstance = HTTPEngines[this.params.httpEngine]()
         this.httpInstance = global.httpInstance = HTTPProtocolsInstances[this.params.protocol].createServer({
-            ...this.engineInstance,
-            key: this.params.key,
-            cert: this.params.cert,
-        })
+            ...this.params.httpOptions ?? {},
+        }, this.engineInstance)
         this.wsInterface = global.wsInterface = {
             io: new io.Server(this.httpInstance),
             map: {},
