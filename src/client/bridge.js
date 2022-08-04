@@ -57,8 +57,8 @@ module.exports = class Bridge {
         const httpMap = instanceManifest.endpointsMap
         const wsMap = instanceManifest.wsEndpointsMap
 
-        await this.generateHTTPDispatchers(httpMap)
-        await this.generateWSDispatchers(wsMap)
+        await this.registerHTTPDispatchers(httpMap)
+        await this.registerWSDispatchers(wsMap)
 
         this.wsInterface.manager.open((err) => {
             if (err) {
@@ -86,7 +86,7 @@ module.exports = class Bridge {
         return false
     }
 
-    generateHTTPDispatchers = async (map) => {
+    registerHTTPDispatchers = async (map) => {
         if (typeof map !== "object") {
             console.error("[Bridge] > createHTTPDispatchers > map is not an object")
             return false
@@ -136,7 +136,7 @@ module.exports = class Bridge {
         return this.endpoints
     }
 
-    generateWSDispatchers = async (map) => {
+    registerWSDispatchers = async (map) => {
         if (typeof map !== "object") {
             console.error("[Bridge] > createWSDispatchers > map is not an object")
             return false
