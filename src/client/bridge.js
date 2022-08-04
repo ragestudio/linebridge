@@ -14,6 +14,9 @@ module.exports = class Bridge {
         this.events = events
 
         this.origin = this.params.origin
+        this.wsOrigin = this.origin.replace(/^http/, "ws")
+        this.wsOrigin = this.wsOrigin.replace(/^https/, "wss")
+
         this.headers = {
             ...this.params.headers,
         }
@@ -23,7 +26,7 @@ module.exports = class Bridge {
             headers: this.headers
         })
         this.wsInterface = new WSInterface({
-            origin: this.params.wsOrigin,
+            origin: this.wsOrigin,
             managerOptions: this.params.wsOptions,
             mainSocketOptions: this.params.wsMainSocketOptions,
         })
