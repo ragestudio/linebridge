@@ -22,7 +22,7 @@ global.DEFAULT_HEADERS = {
 
 global.DEFAULT_SERVER_PARAMS = {
     urlencoded: true,
-    httpEngine: "nano-express",
+    httpEngine: "express",
 }
 
 global.DEFAULT_MIDDLEWARES = [
