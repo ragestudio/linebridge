@@ -1,4 +1,5 @@
 const axios = require("axios")
+const axiosRetry = require("axios-retry")
 const camalize = require("@corenode/utils/dist/camalize").default
 
 const { WSInterface } = require("./classes")
@@ -46,13 +47,20 @@ module.exports = class Bridge {
             }
         })
 
+        if (this.params.enableRetry) {
+            axiosRetry(this.httpInterface, {
+                retries: this.params.onFailRetries ?? 1,
+                retryDelay: this.params.retryDelay ?? 0,
+            })
+        }
+
         return this
     }
 
     initialize = async () => {
         const instanceManifest = await this.httpInterface.get("/")
-            .then(res => res.data)
-            .catch(err => {
+            .then((res) => res.data)
+            .catch((err) => {
                 console.error(err)
                 throw new Error(`Could not get endpoints map from server. [${err.message}]`)
             })
