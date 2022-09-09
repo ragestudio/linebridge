@@ -94,19 +94,15 @@ async function _main() {
     await server.initialize()
     await clientBridge.initialize()
 
-    // const test = await clientBridge.endpoints.get.test()
-    // const crashTest = await clientBridge.endpoints.get.crashtest().catch(error => {
-    //     console.log(error)
-    //     return false
-    // })
-    // const deleteTest = await clientBridge.endpoints.delete.test({
-    //     a: "test"
-    // })
+    const test = await clientBridge.endpoints.get.test()
+    const crashTest = await clientBridge.endpoints.get.crashtest().catch(error => {
+        console.log(error)
+        return "Crash test passed!"
+    })
     const wsEpicEvent = await clientBridge.wsEndpoints.epicEvent("Hello", "World")
 
-    // console.log(`[get.test] > ${test}`)
-    // console.log(`[get.crashtest] > ${crashTest}`)
-    // console.log(`[delete.test] > ${deleteTest}`)
+    console.log(`[get.test] > ${test}`)
+    console.log(`[get.crashtest] > ${crashTest}`)
     console.log(`[ws.epicEvent] > ${wsEpicEvent}`)
 }
 
