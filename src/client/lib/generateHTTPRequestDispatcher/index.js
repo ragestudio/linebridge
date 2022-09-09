@@ -1,4 +1,11 @@
-export default function generateHTTPRequestDispatcher(instance, method, route, handleRequestContext, handleResponse) {
+export default function generateHTTPRequestDispatcher({
+    instance,
+    method,
+    route,
+    beforeRequest,
+    handleRequestContext,
+    handleResponse,
+}) {
     return function (body, query, options) {
         return new Promise(async (resolve, reject) => {
             let requestParams = {
@@ -8,6 +15,10 @@ export default function generateHTTPRequestDispatcher(instance, method, route, h
                 url: route,
                 data: body,
                 params: query,
+            }
+
+            if (typeof beforeRequest === "function") {
+                await beforeRequest(requestParams)
             }
 
             if (typeof handleRequestContext === "function") {

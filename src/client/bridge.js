@@ -100,6 +100,14 @@ module.exports = class Bridge {
         return false
     }
 
+    handleBeforeRequest = async (request) => {
+        if (typeof this.params.onBeforeRequest === "function") {
+            return await this.params.onBeforeRequest(request)
+        }
+
+        return false
+    }
+
     registerHTTPDispatchers = async (map) => {
         if (typeof map !== "object") {
             console.error("[Bridge] > createHTTPDispatchers > map is not an object")
@@ -136,14 +144,15 @@ module.exports = class Bridge {
                     nameKey = "index"
                 }
 
-                this.endpoints[fixedMethod][nameKey] = generateHTTPRequestDispatcher(
-                    this.httpInterface,
-                    fixedMethod,
-                    route,
-                    this.handleRequestContext,
-                    this.handleResponse,
-                    this.params.requestHeaders
-                )
+                this.endpoints[fixedMethod][nameKey] = generateHTTPRequestDispatcher({
+                    instance: this.httpInterface,
+                    method: fixedMethod,
+                    route: route,
+                    beforeRequest: this.handleBeforeRequest,
+                    handleRequestContext: this.handleRequestContext,
+                    handleResponse: this.handleResponse,
+                    requestHeaders: this.params.requestHeaders,
+                })
             })
         }
 
