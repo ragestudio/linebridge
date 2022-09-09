@@ -31,20 +31,24 @@ export default function generateHTTPRequestDispatcher({
                 error: null,
             }
 
-            const request = await instance(requestParams)
-                .then((response) => {
-                    result.response = response
+            const makeRequest = async () => {
+                return await instance(requestParams)
+                    .then((response) => {
+                        result.response = response
 
-                    return response
-                })
-                .catch((error) => {
-                    result.error = error.response.data.error ?? error.response.data
+                        return response
+                    })
+                    .catch((error) => {
+                        result.error = error.response.data.error ?? error.response.data
 
-                    return error
-                })
+                        return error
+                    })
+            }
+
+            const request = await makeRequest()
 
             if (typeof handleResponse === "function") {
-                await handleResponse(request)
+                await handleResponse(request, makeRequest)
             }
 
             if (requestParams.parseData) {
