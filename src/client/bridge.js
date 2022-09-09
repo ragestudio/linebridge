@@ -13,6 +13,7 @@ module.exports = class Bridge {
     constructor(params = {}, events = {}) {
         this.params = params
         this.events = events
+        this.internalAbortController = new AbortController()
 
         this.origin = this.params.origin
         this.wsOrigin = this.origin.replace(/^http/, "ws")
@@ -24,8 +25,10 @@ module.exports = class Bridge {
 
         this.httpInterface = axios.create({
             baseURL: this.origin,
-            headers: this.headers
+            headers: this.headers,
+            signal: this.params.signal ?? this.internalAbortController.signal
         })
+
         this.wsInterface = new WSInterface({
             origin: this.wsOrigin,
             managerOptions: this.params.wsOptions,
