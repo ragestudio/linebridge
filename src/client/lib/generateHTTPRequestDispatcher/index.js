@@ -1,4 +1,4 @@
-function generateHTTPRequestDispatcher(instance, method, route, handleRequestContext, handleResponse) {
+export default function generateHTTPRequestDispatcher(instance, method, route, handleRequestContext, handleResponse) {
     return function (body, query, options) {
         return new Promise(async (resolve, reject) => {
             let requestParams = {
