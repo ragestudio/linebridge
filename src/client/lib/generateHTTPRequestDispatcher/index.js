@@ -17,21 +17,21 @@ export default function generateHTTPRequestDispatcher({
                 params: query,
             }
 
-            if (typeof beforeRequest === "function") {
-                await beforeRequest(requestParams)
-            }
-
-            if (typeof handleRequestContext === "function") {
-                const context = await handleRequestContext()
-                requestParams = { ...requestParams, ...context }
-            }
-
             let result = {
                 response: null,
                 error: null,
             }
 
             const makeRequest = async () => {
+                if (typeof beforeRequest === "function") {
+                    await beforeRequest(requestParams)
+                }
+    
+                if (typeof handleRequestContext === "function") {
+                    const context = await handleRequestContext()
+                    requestParams = { ...requestParams, ...context }
+                }
+
                 return await instance(requestParams)
                     .then((response) => {
                         result.response = response
