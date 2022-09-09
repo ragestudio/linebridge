@@ -17,16 +17,18 @@ export default function generateHTTPRequestDispatcher({
                 params: query,
             }
 
-            let result = {
-                response: null,
-                error: null,
-            }
+            let result = {}
 
             const makeRequest = async () => {
+                result = {
+                    response: null,
+                    error: null,
+                }
+
                 if (typeof beforeRequest === "function") {
                     await beforeRequest(requestParams)
                 }
-    
+
                 if (typeof handleRequestContext === "function") {
                     const context = await handleRequestContext()
                     requestParams = { ...requestParams, ...context }
