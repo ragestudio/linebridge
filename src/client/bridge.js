@@ -84,25 +84,25 @@ module.exports = class Bridge {
         })
     }
 
-    handleRequestContext = async () => {
+    handleRequestContext = async (...args) => {
         if (typeof this.params.onRequest === "function") {
-            return await this.params.onRequest()
+            return await this.params.onRequest(...args)
         }
 
         return false
     }
 
-    handleResponse = async (response) => {
+    handleResponse = async (...args) => {
         if (typeof this.params.onResponse === "function") {
-            return await this.params.onResponse(response)
+            return await this.params.onResponse(...args)
         }
 
         return false
     }
 
-    handleBeforeRequest = async (request) => {
+    handleBeforeRequest = async (...args) => {
         if (typeof this.params.onBeforeRequest === "function") {
-            return await this.params.onBeforeRequest(request)
+            return await this.params.onBeforeRequest(...args)
         }
 
         return false
