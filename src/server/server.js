@@ -25,34 +25,7 @@ const HTTPEngines = {
         const engine = require("hyper-express")
         return new engine.Server()
     },
-    "nano-express": () => {
-        // fix delete http method
-        global.FIXED_HTTP_METHODS["del"] = "del"
-        global.FIXED_HTTP_METHODS["delete"] = "del"
-
-        global.DEFAULT_MIDDLEWARES.push(require("@nanoexpress/middleware-body-parser/cjs")())
-
-        // patch request model with a middleware
-        builtInMiddlewares.push(async (req, res) => {
-            // make sure req has an body and query
-            if (typeof req.body === "undefined") {
-                req.body = {}
-            }
-            if (typeof req.query === "undefined") {
-                req.query = {}
-            }
-
-            // // if server has enabled urlencoded parser, parse the body
-            // if (this.params.urlencoded) {
-            //     req.body = await req.urlencoded()
-            // }
-        })
-
-        return require("nanoexpress")()
-    },
     "express": () => {
-
-
         return require("express")()
     },
 }
