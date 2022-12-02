@@ -42,6 +42,10 @@ class Controller {
                         fn: fn,
                     }
 
+                    if (typeof this.constructor.useRoute === "string") {
+                        endpoint.route = this.constructor.useRoute + endpoint.route
+                    }
+
                     if (typeof fn === "object") {
                         endpoint.middlewares = fn.middlewares
                         endpoint.fn = fn.fn
