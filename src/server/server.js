@@ -123,7 +123,7 @@ class Server {
         //* register controllers
         await this.initializeControllers()
 
-        // initialize socket.io
+        // initialize main socket
         this.wsInterface.io.on("connection", this.handleWSClientConnection)
 
         // initialize http server
@@ -343,41 +343,41 @@ class Server {
         }
     }
 
-    handleWSClientConnection = async (socket) => {
-        socket.res = (...args) => {
-            socket.emit("response", ...args)
+    handleWSClientConnection = async (client) => {
+        client.res = (...args) => {
+            client.emit("response", ...args)
         }
-        socket.err = (...args) => {
-            socket.emit("responseError", ...args)
+        client.err = (...args) => {
+            client.emit("responseError", ...args)
         }
 
         if (typeof this.params.onWSClientConnection === "function") {
-            await this.params.onWSClientConnection(socket)
+            await this.params.onWSClientConnection(client)
         }
 
         for await (const [nsp, on, dispatch] of this.wsInterface.eventsChannels) {
-            socket.on(on, async (...args) => {
+            client.on(on, async (...args) => {
                 try {
-                    await dispatch(socket, ...args).catch((error) => {
-                        socket.err({
+                    await dispatch(client, ...args).catch((error) => {
+                        client.err({
                             message: error.message,
                         })
                     })
                 } catch (error) {
-                    socket.err({
+                    client.err({
                         message: error.message,
                     })
                 }
             })
         }
 
-        socket.on("ping", () => {
-            socket.emit("pong")
+        client.on("ping", () => {
+            client.emit("pong")
         })
 
-        socket.on("disconnect", async () => {
+        client.on("disconnect", async () => {
             if (typeof this.params.onWSClientDisconnect === "function") {
-                await this.params.onWSClientDisconnect(socket)
+                await this.params.onWSClientDisconnect(client)
             }
         })
     }
