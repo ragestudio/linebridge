@@ -1,6 +1,7 @@
 const path = require("path")
 const net = require("corenode/net")
 const packageJSON = require(path.resolve(module.path, "../../package.json"))
+const moduleAlias = require("module-alias")
 
 // set globals variables
 global.LINEBRIDGE_SERVER_VERSION = packageJSON.version
@@ -11,7 +12,19 @@ global.FIXED_HTTP_METHODS = {
     "del": "delete"
 }
 
-global.VALID_HTTP_METHODS = ["get", "post", "put", "patch", "del", "delete", "trace", "head", "any", "options", "ws"]
+global.VALID_HTTP_METHODS = [
+    "get",
+    "post",
+    "put",
+    "patch",
+    "del",
+    "delete",
+    "trace",
+    "head",
+    "any",
+    "options",
+    "ws"
+]
 
 global.DEFAULT_HEADERS = {
     "Access-Control-Allow-Headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
@@ -22,9 +35,9 @@ global.DEFAULT_HEADERS = {
 
 global.DEFAULT_SERVER_PARAMS = {
     urlencoded: true,
-    httpEngine: "express",
-    protocol: "http",
-    wsProtocol: "ws",
+    engine: "express",
+    http_protocol: "http",
+    ws_protocol: "ws",
 }
 
 global.DEFAULT_MIDDLEWARES = [
@@ -36,11 +49,24 @@ global.DEFAULT_MIDDLEWARES = [
     }),
 ]
 
-if (process.env.NODE_ENV !== "production") {
-    global.DEFAULT_MIDDLEWARES.push(require("morgan")("dev"))
+if (process.env.LOG_REQUESTS === "true") {
+    global.DEFAULT_MIDDLEWARES.push(require("morgan")(process.env.NODE_ENV === "development" ? "dev" : "combined"))
+}
+
+function registerBaseAliases() {
+    moduleAlias.addAliases({
+        "@controllers": path.resolve(process.cwd(), "src", "controllers"),
+        "@middlewares": path.resolve(process.cwd(), "src", "middlewares"),
+        "@models": path.resolve(process.cwd(), "src", "models"),
+        "@classes": path.resolve(process.cwd(), "src", "classes"),
+        "@lib": path.resolve(process.cwd(), "src", "lib"),
+        "@utils": path.resolve(process.cwd(), "src", "utils"),
+    })
 }
 
 module.exports = {
+    registerBaseAliases: registerBaseAliases,
     Server: require("./server.js"),
     Controller: require("./classes/controller"),
+    Endpoint: require("./classes/endpoint"),
 }
