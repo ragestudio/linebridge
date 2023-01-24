@@ -1,3 +1,4 @@
 module.exports = {
-    Storage: require("./Storage"),
+    Controller: require("./controller"),
+    Endpoint: require("./endpoint"),
 }
