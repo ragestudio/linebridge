@@ -30,7 +30,7 @@ const serverManifest = {
     create: () => {
         let data = {
             created: Date.now(),
-            serverToken: tokenizer.generateOSKID()
+            server_token: tokenizer.generateOSKID()
         }
 
         serverManifest.write(data)
