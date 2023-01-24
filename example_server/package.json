@@ -1,0 +1,9 @@
+{
+  "name": "example_server",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "start": "corenode-node ./src/index.js"
+  }
+}
