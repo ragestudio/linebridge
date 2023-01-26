@@ -60,7 +60,7 @@ module.exports = class Controller {
                             this.customHandler = objEndpoint.customHandler
                         }
                     }
-                } else if (typeof endpoint === "function" && typeof endpoint.prototype.constructor === "undefined") {
+                } else if (typeof endpoint === "function" && typeof endpoint.prototype?.constructor === "undefined") {
                     // Handle endpoint transformation as a function
                     const endpointFn = endpoint
 
