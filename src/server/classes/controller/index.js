@@ -28,6 +28,10 @@ module.exports = class Controller {
     __get_http_endpoints() {
         let endpoints = []
 
+        if (!this.httpEndpoints) {
+            return endpoints
+        }
+
         global.VALID_HTTP_METHODS.forEach((httpMethodKey) => {
             const endpointsByMethod = this.httpEndpoints[httpMethodKey]
 
