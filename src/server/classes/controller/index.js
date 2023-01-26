@@ -120,8 +120,6 @@ module.exports = class Controller {
 
         return (...args) => new Promise(async (resolve, reject) => {
             try {
-                console.log(fn)
-
                 const result = await fn(...args)
 
                 return resolve(result)
