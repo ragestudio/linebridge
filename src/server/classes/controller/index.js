@@ -60,10 +60,8 @@ module.exports = class Controller {
                             this.customHandler = objEndpoint.customHandler
                         }
                     }
-                }
-
-                // Handle endpoint transformation as a function
-                if (typeof endpoint === "function") {
+                } else if (typeof endpoint === "function") {
+                    // Handle endpoint transformation as a function
                     const endpointFn = endpoint
 
                     endpoint = class extends Endpoint {
@@ -122,6 +120,8 @@ module.exports = class Controller {
 
         return (...args) => new Promise(async (resolve, reject) => {
             try {
+                console.log(fn)
+
                 const result = await fn(...args)
 
                 return resolve(result)
