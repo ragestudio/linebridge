@@ -43,7 +43,7 @@ module.exports = class Controller {
             const methodEndpoints = Object.entries(endpointsByMethod)
 
             for (let [endpointKey, endpoint] of methodEndpoints) {
-                // check if endpoint is a class or an object, if it's a object, create a new class from it extending Endpoint
+                // Handle endpoint transformation as an object
                 if (typeof endpoint === "object") {
                     const objEndpoint = endpoint
 
@@ -58,6 +58,21 @@ module.exports = class Controller {
                             this.fn = objEndpoint.fn
                             this.onCatch = objEndpoint.onCatch
                             this.customHandler = objEndpoint.customHandler
+                        }
+                    }
+                }
+
+                // Handle endpoint transformation as a function
+                if (typeof endpoint === "function") {
+                    const endpointFn = endpoint
+
+                    endpoint = class extends Endpoint {
+                        static method = httpMethodKey
+                        static route = endpointKey
+
+                        constructor(args) {
+                            super(args)
+                            this.fn = endpointFn
                         }
                     }
                 }
