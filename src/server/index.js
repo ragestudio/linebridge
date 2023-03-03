@@ -53,14 +53,14 @@ if (process.env.LOG_REQUESTS === "true") {
     global.DEFAULT_MIDDLEWARES.push(require("morgan")(process.env.NODE_ENV === "development" ? "dev" : "combined"))
 }
 
-function registerBaseAliases() {
+function registerBaseAliases(srcPath = "src") {
     moduleAlias.addAliases({
-        "@controllers": path.resolve(process.cwd(), "src", "controllers"),
-        "@middlewares": path.resolve(process.cwd(), "src", "middlewares"),
-        "@models": path.resolve(process.cwd(), "src", "models"),
-        "@classes": path.resolve(process.cwd(), "src", "classes"),
-        "@lib": path.resolve(process.cwd(), "src", "lib"),
-        "@utils": path.resolve(process.cwd(), "src", "utils"),
+        "@controllers": path.resolve(process.cwd(), srcPath, "controllers"),
+        "@middlewares": path.resolve(process.cwd(), srcPath, "middlewares"),
+        "@models": path.resolve(process.cwd(), srcPath, "models"),
+        "@classes": path.resolve(process.cwd(), srcPath, "classes"),
+        "@lib": path.resolve(process.cwd(), srcPath, "lib"),
+        "@utils": path.resolve(process.cwd(), srcPath, "utils"),
     })
 }
 
