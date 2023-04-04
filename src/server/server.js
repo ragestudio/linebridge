@@ -1,8 +1,10 @@
 const fs = require("fs")
+const path = require("path")
 const http = require("http")
 const https = require("https")
-
 const io = require("socket.io")
+
+const pkgjson = require(path.resolve(process.cwd(), "package.json"))
 
 const tokenizer = require("corenode/libs/tokenizer")
 const { serverManifest, outputServerError, internalConsole } = require("./lib")
@@ -272,6 +274,7 @@ class Server {
             fn: (req, res) => {
                 return res.json({
                     LINEBRIDGE_SERVER_VERSION: LINEBRIDGE_SERVER_VERSION,
+                    version: pkgjson.version ?? "unknown",
                     usid: this.usid,
                     requestTime: new Date().getTime(),
                     endpointsMap: this.endpoints_map,
