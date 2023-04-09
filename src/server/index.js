@@ -53,7 +53,7 @@ if (process.env.LOG_REQUESTS === "true") {
     global.DEFAULT_MIDDLEWARES.push(require("morgan")(process.env.NODE_ENV === "development" ? "dev" : "combined"))
 }
 
-function registerBaseAliases(fromPath) {
+function registerBaseAliases(fromPath, customAliases = {}) {
     if (typeof fromPath === "undefined") {
         if (module.parent.filename.includes("dist")) {
             fromPath = path.resolve(process.cwd(), "dist")
@@ -63,6 +63,7 @@ function registerBaseAliases(fromPath) {
     }
 
     moduleAlias.addAliases({
+        ...customAliases,
         "@controllers": path.resolve(fromPath, "controllers"),
         "@middlewares": path.resolve(fromPath, "middlewares"),
         "@models": path.resolve(fromPath, "models"),
