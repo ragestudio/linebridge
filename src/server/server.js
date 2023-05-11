@@ -16,7 +16,7 @@ const HTTPProtocolsInstances = {
 
 const HTTPEngines = {
     "hyper-express": () => {
-        global.InternalConsole.warn("Hyper-Express is not fully supported yet")
+        console.warn("HyperExpress is not fully supported yet!")
 
         const engine = require("hyper-express")
         return new engine.Server()
@@ -78,7 +78,7 @@ class Server {
             eventsChannels: [],
         }
 
-        this.internalConsole = global.InternalConsole = new internalConsole({
+        this.InternalConsole = new internalConsole({
             server_name: this.params.name
         })
 
@@ -114,12 +114,12 @@ class Server {
         const MANIFEST_STAT = global.MANIFEST_STAT = serverManifest.stat()
 
         if (typeof MANIFEST_DATA.created === "undefined") {
-            InternalConsole.warn("Server generation file not contains an creation date")
+            this.InternalConsole.warn("Server generation file not contains an creation date")
             serverManifest.write({ created: Date.parse(MANIFEST_STAT.birthtime) })
         }
 
         if (typeof MANIFEST_DATA.server_token === "undefined") {
-            InternalConsole.warn("Missing server token!")
+            this.InternalConsole.warn("Missing server token!")
             serverManifest.create()
         }
 
@@ -130,14 +130,14 @@ class Server {
     }
 
     initialize = async () => {
-        if (!this.params.no_brand) {
-            if (!this.params.minimal) {
-                InternalConsole.log(linebridge_ascii)
-            }
-        }
+        // if (!this.params.no_brand) {
+        //     if (!this.params.minimal) {
+        //         this.InternalConsole.log(linebridge_ascii)
+        //     }
+        // }
 
         if (!this.params.minimal) {
-            InternalConsole.info(`🚀 Starting server...`)
+            this.InternalConsole.info(`🚀 Starting server...`)
         }
 
         //* set server defined headers
@@ -157,7 +157,7 @@ class Server {
 
         // initialize http server
         await this.http_instance.listen(this.params.listen_port, this.params.listen_ip ?? "0.0.0.0", () => {
-            InternalConsole.info(`✅ Server ready on => ${this.params.listen_ip}:${this.params.listen_port}`)
+            this.InternalConsole.info(`✅ Server ready on => ${this.params.listen_ip}:${this.params.listen_port}`)
 
             if (!this.params.minimal) {
                 this.outputServerInfo()
@@ -194,7 +194,7 @@ class Server {
             }
 
             if (controller.disabled) {
-                InternalConsole.warn(`⏩ Controller [${controller.name}] is disabled! Initialization skipped...`)
+                this.InternalConsole.warn(`⏩ Controller [${controller.name}] is disabled! Initialization skipped...`)
                 continue
             }
 
@@ -214,11 +214,7 @@ class Server {
                 })
             } catch (error) {
                 if (!global.silentOutputServerErrors) {
-                    outputServerError({
-                        message: "Controller initialization failed:",
-                        description: error.stack,
-                        ref: controller.refName ?? controller.name,
-                    })
+                    this.InternalConsole.error(`\n\x1b[41m\x1b[37m🆘 [${controller.refName ?? controller.name}] Controller initialization failed:\x1b[0m ${error.stack} \n`)
                 }
             }
         }
@@ -278,7 +274,7 @@ class Server {
 
     registerBaseEndpoints() {
         if (this.params.disableBaseEndpoint) {
-            InternalConsole.warn("‼️ [disableBaseEndpoint] Base endpoint is disabled! Endpoints mapping will not be available, so linebridge client bridges will not work! ‼️")
+            this.InternalConsole.warn("‼️ [disableBaseEndpoint] Base endpoint is disabled! Endpoints mapping will not be available, so linebridge client bridges will not work! ‼️")
             return false
         }
 
@@ -325,7 +321,7 @@ class Server {
 
 
     cleanupProcess = () => {
-        InternalConsole.log("🛑  Stopping server...")
+        this.InternalConsole.log("🛑  Stopping server...")
 
         if (typeof this.engine_instance.close === "function") {
             this.engine_instance.close()
@@ -408,7 +404,7 @@ class Server {
 
     // public methods
     outputServerInfo = () => {
-        InternalConsole.table({
+        this.InternalConsole.table({
             "linebridge_version": LINEBRIDGE_SERVER_VERSION,
             "engine": this.params.engine,
             "http_address": this.params.http_address,
