@@ -16,7 +16,7 @@ const HTTPProtocolsInstances = {
 
 const HTTPEngines = {
     "hyper-express": () => {
-        InternalConsole.warn("Hyper-Express is not fully supported yet")
+        global.InternalConsole.warn("Hyper-Express is not fully supported yet")
 
         const engine = require("hyper-express")
         return new engine.Server()
