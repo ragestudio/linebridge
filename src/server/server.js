@@ -8,7 +8,6 @@ const pkgjson = require(path.resolve(process.cwd(), "package.json"))
 
 const tokenizer = require("corenode/libs/tokenizer")
 const { serverManifest, outputServerError, internalConsole } = require("./lib")
-const InternalConsole = global.InternalInternalConsole = internalConsole
 
 const HTTPProtocolsInstances = {
     http: http,
@@ -33,8 +32,10 @@ class Server {
     constructor(params = {}, controllers = {}, middlewares = {}, headers = {}) {
         // register aliases
         this.params = {
+            minimal: false,
+            no_brand: false,
             ...global.DEFAULT_SERVER_PARAMS,
-            ...params
+            ...params,
         }
 
         this.controllers = {
@@ -51,6 +52,7 @@ class Server {
         this.endpoints_map = {}
 
         // fix and fulfill params
+        this.params.listen_ip = this.params.listen_ip ?? "0.0.0.0"
         this.params.listen_port = this.params.listen_port ?? 3000
         this.params.http_protocol = this.params.http_protocol ?? "http"
         this.params.ws_protocol = this.params.ws_protocol ?? "ws"
@@ -75,6 +77,10 @@ class Server {
             map: {},
             eventsChannels: [],
         }
+
+        this.internalConsole = global.InternalConsole = new internalConsole({
+            server_name: this.params.name
+        })
 
         this.initializeManifest()
 
@@ -124,8 +130,15 @@ class Server {
     }
 
     initialize = async () => {
-        InternalConsole.log(linebridge_ascii)
-        InternalConsole.info(`🚀 Starting server...`)
+        if (!this.params.no_brand) {
+            if (!this.params.minimal) {
+                InternalConsole.log(linebridge_ascii)
+            }
+        }
+
+        if (!this.params.minimal) {
+            InternalConsole.info(`🚀 Starting server...`)
+        }
 
         //* set server defined headers
         this.initializeHeaders()
@@ -144,8 +157,11 @@ class Server {
 
         // initialize http server
         await this.http_instance.listen(this.params.listen_port, this.params.listen_ip ?? "0.0.0.0", () => {
-            // output server info
-            this.outputServerInfo()
+            InternalConsole.info(`✅ Server ready on => ${this.params.listen_ip}:${this.params.listen_port}`)
+
+            if (!this.params.minimal) {
+                this.outputServerInfo()
+            }
         })
     }
 
@@ -392,8 +408,6 @@ class Server {
 
     // public methods
     outputServerInfo = () => {
-        InternalConsole.log("✅ Ready !")
-
         InternalConsole.table({
             "linebridge_version": LINEBRIDGE_SERVER_VERSION,
             "engine": this.params.engine,

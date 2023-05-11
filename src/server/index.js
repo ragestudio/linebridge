@@ -1,5 +1,6 @@
 const path = require("path")
 const net = require("corenode/net")
+
 const packageJSON = require(path.resolve(module.path, "../../package.json"))
 const moduleAlias = require("module-alias")
 
@@ -50,7 +51,7 @@ global.DEFAULT_MIDDLEWARES = [
 ]
 
 if (process.env.LOG_REQUESTS === "true") {
-    global.DEFAULT_MIDDLEWARES.push(require("morgan")(process.env.NODE_ENV === "development" ? "dev" : "combined"))
+    global.DEFAULT_MIDDLEWARES.push(require("morgan")(process.env.MORGAN_FORMAT ?? ":method :url :status - :response-time ms"))
 }
 
 function registerBaseAliases(fromPath, customAliases = {}) {
