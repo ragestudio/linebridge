@@ -1,37 +1,36 @@
 module.exports = class InternalConsole {
-    static log = (...args) => {
-        if (!global.consoleSilent) {
-            console.log(...args)
-        }
+    constructor(params = {}) {
+        this.params = params
     }
 
-    static error = (...args) => {
-        if (!global.consoleSilent) {
-            console.error(...args)
+    exec = (type, ...args) => {
+        if (global.consoleSilent) {
+            return false
         }
+
+        // fix unsupported types
+        switch (type) {
+            case "table": {
+                return console.table(...args)
+            }
+        }
+
+        if (this.params.server_name) {
+            args.unshift(`[${this.params.server_name}]`)
+        }
+
+        return console[type](...args)
     }
 
-    static warn = (...args) => {
-        if (!global.consoleSilent) {
-            console.warn(...args)
-        }
-    }
+    log = (...args) => this.exec("log", ...args)
 
-    static info = (...args) => {
-        if (!global.consoleSilent) {
-            console.info(...args)
-        }
-    }
+    error = (...args) => this.exec("error", ...args)
 
-    static debug = (...args) => {
-        if (!global.consoleSilent) {
-            console.debug(...args)
-        }
-    }
+    warn = (...args) => this.exec("warn", ...args)
 
-    static table = (...args) => {
-        if (!global.consoleSilent) {
-            console.table(...args)
-        }
-    }
+    info = (...args) => this.exec("info", ...args)
+
+    debug = (...args) => this.exec("debug", ...args)
+
+    table = (...args) => this.exec("table", ...args)
 }
