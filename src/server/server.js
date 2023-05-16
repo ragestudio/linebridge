@@ -26,8 +26,6 @@ const HTTPEngines = {
     },
 }
 
-const linebridge_ascii = require("./linebridge_ascii.js")
-
 class Server {
     constructor(params = {}, controllers = {}, middlewares = {}, headers = {}) {
         // register aliases
@@ -130,12 +128,6 @@ class Server {
     }
 
     initialize = async () => {
-        // if (!this.params.no_brand) {
-        //     if (!this.params.minimal) {
-        //         this.InternalConsole.log(linebridge_ascii)
-        //     }
-        // }
-
         if (!this.params.minimal) {
             this.InternalConsole.info(`🚀 Starting server...`)
         }
