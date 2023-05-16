@@ -7,7 +7,7 @@ const io = require("socket.io")
 const pkgjson = require(path.resolve(process.cwd(), "package.json"))
 
 const tokenizer = require("corenode/libs/tokenizer")
-const { serverManifest, outputServerError, internalConsole } = require("./lib")
+const { serverManifest, internalConsole } = require("./lib")
 
 const HTTPProtocolsInstances = {
     http: http,
@@ -348,7 +348,7 @@ class Server {
                     return this.params.onRouteError(req, res, error)
                 } else {
                     if (!global.silentOutputServerErrors) {
-                        outputServerError({
+                        console.error({
                             message: "Unhandled route error:",
                             description: error.stack,
                             ref: [endpoint.method, endpoint.route].join("|"),
