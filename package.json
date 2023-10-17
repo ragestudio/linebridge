@@ -1,12 +1,12 @@
 {
   "name": "linebridge",
-  "version": "0.15.12",
+  "version": "0.16.0",
   "description": "A simple, fast, and powerful REST API interface library",
   "author": "RageStudio",
   "main": "./dist/client/index.js",
   "scripts": {
-    "start": "corenode-node ./src/bin/server.js",
-    "build": "corenode-cli build --parallel --clean && chmod -R 777 ./dist",
+    "start": "hermes-node ./src/bin/server.js",
+    "build": "hermes build --parallel --clean",
     "test": "mocha"
   },
   "publishConfig": {
@@ -18,8 +18,7 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "@corenode/utils": "0.28.26",
-    "axios": "1.2.4",
+    "axios": "^1.5.1",
     "axios-retry": "3.4.0",
     "cors": "2.8.5",
     "express": "4.18.2",
@@ -27,13 +26,13 @@
     "md5": "2.3.0",
     "module-alias": "2.2.2",
     "morgan": "1.10.0",
-    "nanoid": "4.0.0",
     "socket.io": "4.5.4",
     "socket.io-client": "4.5.4",
     "uuid": "9.0.0"
   },
   "devDependencies": {
-    "corenode": "^0.28.26",
+    "@corenode/utils": "0.28.26",
+    "@ragestudio/hermes": "^0.1.0",
     "mocha": "^9.1.3"
   }
 }
