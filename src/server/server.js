@@ -1,28 +1,43 @@
 const fs = require("fs")
 const path = require("path")
-const http = require("http")
-const https = require("https")
-const io = require("socket.io")
-
-const pkgjson = require(path.resolve(process.cwd(), "package.json"))
+const rtengine = require("./classes/RTEngine").default
 
 const tokenizer = require("corenode/libs/tokenizer")
 const { serverManifest, internalConsole } = require("./lib")
 
-const HTTPProtocolsInstances = {
-    http: http,
-    https: https,
-}
+const pkgjson = require(path.resolve(process.cwd(), "package.json"))
 
-const HTTPEngines = {
+const Engines = {
     "hyper-express": () => {
         console.warn("HyperExpress is not fully supported yet!")
 
         const engine = require("hyper-express")
+
         return new engine.Server()
     },
-    "express": () => {
-        return require("express")()
+    "express": (params) => {
+        const { createServer } = require("node:http")
+        const express = require("express")
+        const socketio = require("socket.io")
+
+        const app = express()
+        const http = createServer(app)
+
+        const io = new socketio.Server(http)
+        const ws = new rtengine({
+            ...params,
+            io: io,
+            http: false,
+        })
+
+        app.use(express.json())
+        app.use(express.urlencoded({ extended: true }))
+
+        return {
+            ws,
+            http,
+            app,
+        }
     },
 }
 
@@ -51,30 +66,11 @@ class Server {
 
         // fix and fulfill params
         this.params.listen_ip = this.params.listen_ip ?? "0.0.0.0"
-        this.params.listen_port = this.params.listen_port ?? 3000
+        this.params.listen_port = this.constructor.listen_port ?? this.params.listen_port ?? 3000
         this.params.http_protocol = this.params.http_protocol ?? "http"
-        this.params.ws_protocol = this.params.ws_protocol ?? "ws"
-
         this.params.http_address = `${this.params.http_protocol}://${global.LOCALHOST_ADDRESS}:${this.params.listen_port}`
-        this.params.ws_address = `${this.params.ws_protocol}://${global.LOCALHOST_ADDRESS}:${this.params.listen_port}`
 
-        // check if engine is supported
-        if (typeof HTTPProtocolsInstances[this.params.http_protocol]?.createServer !== "function") {
-            throw new Error("Invalid HTTP protocol (Missing createServer function)")
-        }
-
-        // create instances the 3 main instances of the server (Engine, HTTP, WebSocket)
-        this.engine_instance = global.engine_instance = HTTPEngines[this.params.engine]()
-
-        this.http_instance = global.http_instance = HTTPProtocolsInstances[this.params.http_protocol].createServer({
-            ...this.params.httpOptions ?? {},
-        }, this.engine_instance)
-
-        this.websocket_instance = global.websocket_instance = {
-            io: new io.Server(this.http_instance),
-            map: {},
-            eventsChannels: [],
-        }
+        this.engine = null
 
         this.InternalConsole = new internalConsole({
             server_name: this.params.name
@@ -94,11 +90,50 @@ class Server {
             }
         }
 
-        // handle exit events
-        process.on("SIGTERM", this.cleanupProcess)
-        process.on("SIGINT", this.cleanupProcess)
-
         return this
+    }
+
+    initialize = async () => {
+        if (!this.params.minimal) {
+            this.InternalConsole.info(`🚀 Starting server...`)
+        }
+
+        // initialize engine
+        this.engine = global.engine = Engines[this.params.engine]({
+            ...this.params,
+            handleAuth: this.handleWsAuth,
+            requireAuth: this.constructor.requireWSAuth,
+        })
+
+        if (typeof this.onInitialize === "function") {
+            await this.onInitialize()
+        }
+
+        //* set server defined headers
+        this.initializeHeaders()
+
+        //* set server defined middlewares
+        this.initializeRequiredMiddlewares()
+
+        //* register controllers
+        await this.initializeControllers()
+
+        //* register main index endpoint `/`
+        await this.registerBaseEndpoints()
+
+        if (typeof this.engine.ws?.initialize !== "function") {
+            console.warn("❌ WebSocket is not supported!")
+        } else {
+            await this.engine.ws.initialize()
+        }
+
+        await this.engine.http.listen(this.params.listen_port)
+
+        this.InternalConsole.info(`✅ Server ready on => ${this.params.listen_ip}:${this.params.listen_port}`)
+
+        if (!this.params.minimal) {
+            this.outputServerInfo()
+        }
     }
 
     initializeManifest = () => {
@@ -127,38 +162,8 @@ class Server {
         serverManifest.write({ last_start: Date.now() })
     }
 
-    initialize = async () => {
-        if (!this.params.minimal) {
-            this.InternalConsole.info(`🚀 Starting server...`)
-        }
-
-        //* set server defined headers
-        this.initializeHeaders()
-
-        //* set server defined middlewares
-        this.initializeRequiredMiddlewares()
-
-        //* register controllers
-        await this.initializeControllers()
-
-        //* register main index endpoint `/`
-        await this.registerBaseEndpoints()
-
-        // initialize main socket
-        this.websocket_instance.io.on("connection", this.handleWSClientConnection)
-
-        // initialize http server
-        await this.http_instance.listen(this.params.listen_port, this.params.listen_ip ?? "0.0.0.0", () => {
-            this.InternalConsole.info(`✅ Server ready on => ${this.params.listen_ip}:${this.params.listen_port}`)
-
-            if (!this.params.minimal) {
-                this.outputServerInfo()
-            }
-        })
-    }
-
     initializeHeaders = () => {
-        this.engine_instance.use((req, res, next) => {
+        this.engine.app.use((req, res, next) => {
             Object.keys(this.headers).forEach((key) => {
                 res.setHeader(key, this.headers[key])
             })
@@ -172,7 +177,7 @@ class Server {
 
         useMiddlewares.forEach((middleware) => {
             if (typeof middleware === "function") {
-                this.engine_instance.use(middleware)
+                this.engine.app.use(middleware)
             }
         })
     }
@@ -201,9 +206,9 @@ class Server {
                     this.registerHTTPEndpoint(endpoint, ...this.resolveMiddlewares(controller.useMiddlewares))
                 })
 
-                WSEndpoints.forEach((endpoint) => {
-                    this.registerWSEndpoint(endpoint)
-                })
+                // WSEndpoints.forEach((endpoint) => {
+                //     this.registerWSEndpoint(endpoint)
+                // })
             } catch (error) {
                 if (!global.silentOutputServerErrors) {
                     this.InternalConsole.error(`\n\x1b[41m\x1b[37m🆘 [${controller.refName ?? controller.name}] Controller initialization failed:\x1b[0m ${error.stack} \n`)
@@ -221,7 +226,7 @@ class Server {
         }
 
         // check if method is supported
-        if (typeof this.engine_instance[endpoint.method] !== "function") {
+        if (typeof this.engine.app[endpoint.method] !== "function") {
             throw new Error(`Method [${endpoint.method}] is not supported!`)
         }
 
@@ -241,7 +246,7 @@ class Server {
         const routeModel = [endpoint.route, ...middlewares, this.createHTTPRequestHandler(endpoint)]
 
         // register endpoint to http interface router
-        this.engine_instance[endpoint.method](...routeModel)
+        this.engine.app[endpoint.method](...routeModel)
 
         // extend to map
         this.endpoints_map[endpoint.method] = {
@@ -270,8 +275,6 @@ class Server {
             return false
         }
 
-        //* register main index endpoint `/`
-        // this is the default endpoint, should return the server info and the map of all endpoints (http & ws)
         this.registerHTTPEndpoint({
             method: "get",
             route: "/",
@@ -281,8 +284,16 @@ class Server {
                     version: pkgjson.version ?? "unknown",
                     usid: this.usid,
                     requestTime: new Date().getTime(),
+                })
+            }
+        })
+
+        this.registerHTTPEndpoint({
+            method: "GET",
+            route: "/__http_map",
+            fn: (req, res) => {
+                return res.json({
                     endpointsMap: this.endpoints_map,
-                    wsEndpointsMap: this.websocket_instance.map,
                 })
             }
         })
@@ -315,13 +326,11 @@ class Server {
     cleanupProcess = () => {
         this.InternalConsole.log("🛑  Stopping server...")
 
-        if (typeof this.engine_instance.close === "function") {
-            this.engine_instance.close()
+        if (typeof this.engine.app.close === "function") {
+            this.engine.app.close()
         }
 
-        this.websocket_instance.io.close()
-
-        process.exit(1)
+        this.engine.io.close()
     }
 
     // handlers
@@ -355,52 +364,12 @@ class Server {
         }
     }
 
-    handleWSClientConnection = async (client) => {
-        client.res = (...args) => {
-            client.emit("response", ...args)
-        }
-        client.err = (...args) => {
-            client.emit("responseError", ...args)
-        }
-
-        if (typeof this.params.onWSClientConnection === "function") {
-            await this.params.onWSClientConnection(client)
-        }
-
-        for await (const [nsp, on, dispatch] of this.websocket_instance.eventsChannels) {
-            client.on(on, async (...args) => {
-                try {
-                    await dispatch(client, ...args).catch((error) => {
-                        client.err({
-                            message: error.message,
-                        })
-                    })
-                } catch (error) {
-                    client.err({
-                        message: error.message,
-                    })
-                }
-            })
-        }
-
-        client.on("ping", () => {
-            client.emit("pong")
-        })
-
-        client.on("disconnect", async () => {
-            if (typeof this.params.onWSClientDisconnect === "function") {
-                await this.params.onWSClientDisconnect(client)
-            }
-        })
-    }
-
     // public methods
     outputServerInfo = () => {
         this.InternalConsole.table({
             "linebridge_version": LINEBRIDGE_SERVER_VERSION,
             "engine": this.params.engine,
-            "http_address": this.params.http_address,
-            "websocket_address": this.params.ws_address,
+            "address": this.params.http_address,
             "listen_port": this.params.listen_port,
         })
     }

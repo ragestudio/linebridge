@@ -18,17 +18,24 @@
   ],
   "license": "MIT",
   "dependencies": {
+    "@foxify/events": "^2.1.0",
+    "@socket.io/cluster-adapter": "^0.2.2",
+    "@socket.io/redis-adapter": "^8.2.1",
+    "@socket.io/redis-emitter": "^5.1.0",
+    "@socket.io/sticky": "^1.0.4",
     "axios": "^1.5.1",
     "axios-retry": "3.4.0",
     "cors": "2.8.5",
     "express": "4.18.2",
     "hyper-express": "6.5.5",
+    "infisical-node": "^1.5.0",
+    "ioredis": "^5.3.2",
     "md5": "2.3.0",
     "module-alias": "2.2.2",
     "morgan": "1.10.0",
-    "socket.io": "4.5.4",
+    "socket.io": "^4.7.2",
     "socket.io-client": "4.5.4",
-    "uuid": "9.0.0"
+    "uuid": "3.4.0"
   },
   "devDependencies": {
     "@corenode/utils": "0.28.26",

@@ -54,6 +54,38 @@ if (process.env.LOG_REQUESTS === "true") {
     global.DEFAULT_MIDDLEWARES.push(require("morgan")(process.env.MORGAN_FORMAT ?? ":method :url :status - :response-time ms"))
 }
 
+// patches
+const { Buffer } = require("buffer")
+
+global.b64Decode = (data) => {
+    return Buffer.from(data, "base64").toString("utf-8")
+}
+global.b64Encode = (data) => {
+    return Buffer.from(data, "utf-8").toString("base64")
+}
+
+Array.prototype.updateFromObjectKeys = function (obj) {
+    this.forEach((value, index) => {
+        if (obj[value] !== undefined) {
+            this[index] = obj[value]
+        }
+    })
+
+    return this
+}
+
+global.toBoolean = (value) => {
+    if (typeof value === "boolean") {
+        return value
+    }
+
+    if (typeof value === "string") {
+        return value.toLowerCase() === "true"
+    }
+
+    return false
+}
+
 function registerBaseAliases(fromPath, customAliases = {}) {
     if (typeof fromPath === "undefined") {
         if (module.parent.filename.includes("dist")) {
@@ -79,4 +111,5 @@ module.exports = {
     Server: require("./server.js"),
     Controller: require("./classes/controller"),
     Endpoint: require("./classes/endpoint"),
+    version: require("../../package.json").version,
 }
