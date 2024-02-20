@@ -198,7 +198,7 @@ export default class RTEngineServer {
         return socket
     }
 
-    async initialize() {
+    async initialize({ host, port, username, password, db } = {}) {
         console.log("🌐 Initializing RTEngine server...")
 
         process.on("exit", this.cleanUp)
@@ -207,11 +207,35 @@ export default class RTEngineServer {
         process.on("SIGBREAK", this.cleanUp)
         process.on("SIGHUP", this.cleanUp)
 
+        // fullfill args
+        if (typeof host === "undefined") {
+            host = this.params.redis?.host ?? process.env.REDIS_HOST ?? "localhost"
+        }
+
+        if (typeof port === "undefined") {
+            port = this.params.redis?.port ?? process.env.REDIS_PORT ?? 6379
+        }
+
+        if (typeof username === "undefined") {
+            username = this.params.redis?.username ?? process.env.REDIS_USERNAME ?? (process.env.REDIS_AUTH && process.env.REDIS_AUTH.split(":")[0])
+        }
+
+        if (typeof password === "undefined") {
+            password = this.params.redis?.password ?? process.env.REDIS_PASSWORD ?? (process.env.REDIS_AUTH && process.env.REDIS_AUTH.split(":")[1])
+        }
+
+        if (typeof db === "undefined") {
+            db = this.params.redis?.db ?? process.env.REDIS_DB ?? 0
+        }
+
         // create default servers
         if (typeof this.redis === "undefined") {
-            this.redis = new redis(process.env.REDIS_HOST, process.env.REDIS_PORT, {
-                password: process.env.REDIS_PASSWORD,
-                db: process.env.REDIS_DB,
+            this.redis = new redis({
+                host,
+                port,
+                username: username,
+                password: password,
+                db: db,
             })
         }
 
