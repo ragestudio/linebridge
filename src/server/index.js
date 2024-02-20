@@ -1,10 +1,13 @@
 const path = require("path")
+const fs = require("fs")
 const net = require("corenode/net")
 
+const experimentalFlag = path.resolve(module.path, "../../.experimental")
 const packageJSON = require(path.resolve(module.path, "../../package.json"))
 const moduleAlias = require("module-alias")
 
 // set globals variables
+global.LINEBRIDGE_SERVER_EXPERIMENTAL = fs.existsSync(experimentalFlag)
 global.LINEBRIDGE_SERVER_VERSION = packageJSON.version
 
 global.LOCALHOST_ADDRESS = net.ip.getHostAddress() ?? "localhost"
@@ -48,11 +51,8 @@ global.DEFAULT_MIDDLEWARES = [
         "preflightContinue": false,
         "optionsSuccessStatus": 204
     }),
+    require("morgan")(process.env.MORGAN_FORMAT ?? ":method :status :url - :response-time ms")
 ]
-
-if (process.env.LOG_REQUESTS === "true") {
-    global.DEFAULT_MIDDLEWARES.push(require("morgan")(process.env.MORGAN_FORMAT ?? ":method :url :status - :response-time ms"))
-}
 
 // patches
 const { Buffer } = require("buffer")
