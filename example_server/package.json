@@ -4,6 +4,6 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
-    "start": "corenode-node ./src/index.js"
+    "start": "hermes-node ./src/index.js"
   }
 }
