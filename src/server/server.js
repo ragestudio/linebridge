@@ -1,6 +1,8 @@
 const fs = require("fs")
 const path = require("path")
-const rtengine = require("./classes/RTEngine").default
+const rtengine = require("./classes/rtengine").default
+
+const { EventEmitter } = require("@foxify/events")
 
 const tokenizer = require("corenode/libs/tokenizer")
 const { serverManifest, internalConsole } = require("./lib")
@@ -42,11 +44,15 @@ const Engines = {
 }
 
 class Server {
+    eventBus = new EventEmitter()
+
     constructor(params = {}, controllers = {}, middlewares = {}, headers = {}) {
+        if (global.LINEBRIDGE_SERVER_EXPERIMENTAL) {
+            console.warn("🚧🚧🚧 This version of Linebridge is experimental!")
+        }
+
         // register aliases
         this.params = {
-            minimal: false,
-            no_brand: false,
             ...global.DEFAULT_SERVER_PARAMS,
             ...params,
         }
@@ -94,8 +100,14 @@ class Server {
     }
 
     initialize = async () => {
-        if (!this.params.minimal) {
-            this.InternalConsole.info(`🚀 Starting server...`)
+        if (this.events) {
+            if (this.events.default) {
+                this.events = this.events.default
+            }
+
+            for (const [eventName, eventHandler] of Object.entries(this.events)) {
+                this.eventBus.on(eventName, eventHandler)
+            }
         }
 
         // initialize engine
@@ -105,35 +117,38 @@ class Server {
             requireAuth: this.constructor.requireWSAuth,
         })
 
+        // before initialize headers, middlewares and controllers, try to execute onInitialize hook.
         if (typeof this.onInitialize === "function") {
             await this.onInitialize()
         }
 
-        //* set server defined headers
+        // set server defined headers
         this.initializeHeaders()
 
-        //* set server defined middlewares
+        // set server defined middlewares
         this.initializeRequiredMiddlewares()
 
-        //* register controllers
+        // register controllers
         await this.initializeControllers()
 
-        //* register main index endpoint `/`
+        // register main index endpoint `/`
         await this.registerBaseEndpoints()
 
         if (typeof this.engine.ws?.initialize !== "function") {
-            console.warn("❌ WebSocket is not supported!")
+            this.InternalConsole.warn("❌ WebSocket is not supported!")
         } else {
-            await this.engine.ws.initialize()
+            await this.engine.ws.initialize({
+                redisInstance: this.redis
+            })
+        }
+
+        if (typeof this.beforeInitialize === "function") {
+            await this.beforeInitialize()
         }
 
         await this.engine.http.listen(this.params.listen_port)
 
         this.InternalConsole.info(`✅ Server ready on => ${this.params.listen_ip}:${this.params.listen_port}`)
-
-        if (!this.params.minimal) {
-            this.outputServerInfo()
-        }
     }
 
     initializeManifest = () => {
@@ -322,7 +337,6 @@ class Server {
         return execs
     }
 
-
     cleanupProcess = () => {
         this.InternalConsole.log("🛑  Stopping server...")
 
@@ -349,7 +363,7 @@ class Server {
                     return this.params.onRouteError(req, res, error)
                 } else {
                     if (!global.silentOutputServerErrors) {
-                        console.error({
+                        this.InternalConsole.error({
                             message: "Unhandled route error:",
                             description: error.stack,
                             ref: [endpoint.method, endpoint.route].join("|"),
@@ -362,16 +376,6 @@ class Server {
                 }
             }
         }
-    }
-
-    // public methods
-    outputServerInfo = () => {
-        this.InternalConsole.table({
-            "linebridge_version": LINEBRIDGE_SERVER_VERSION,
-            "engine": this.params.engine,
-            "address": this.params.http_address,
-            "listen_port": this.params.listen_port,
-        })
     }
 
     toogleEndpointReachability = (method, route, enabled) => {
