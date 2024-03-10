@@ -67,7 +67,7 @@ global.toBoolean = (value) => {
 }
 
 async function injectEnvFromInfisical() {
-    const envMode = global.FORCE_ENV ?? global.isProduction ? "prod" : "dev"
+    const envMode = "dev"
 
     console.log(`🔑 Injecting env variables from INFISICAL in [${envMode}] mode...`)
 

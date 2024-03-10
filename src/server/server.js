@@ -1,105 +1,82 @@
-const fs = require("fs")
-const path = require("path")
-const rtengine = require("./classes/rtengine").default
+import("./patches")
 
-const { EventEmitter } = require("@foxify/events")
+import fs from "node:fs"
+import path from "node:path"
+import { EventEmitter } from "@foxify/events"
 
-const tokenizer = require("corenode/libs/tokenizer")
-const { serverManifest, internalConsole } = require("./lib")
+import Endpoint from "./classes/endpoint"
 
-const pkgjson = require(path.resolve(process.cwd(), "package.json"))
+import defaults from "./defaults"
 
-const Engines = {
-    "hyper-express": () => {
-        console.warn("HyperExpress is not fully supported yet!")
+import IPCClient from "./classes/IPCClient"
 
-        const engine = require("hyper-express")
+async function loadEngine(engine) {
+    const enginesPath = path.resolve(__dirname, "engines")
 
-        return new engine.Server()
-    },
-    "express": (params) => {
-        const { createServer } = require("node:http")
-        const express = require("express")
-        const socketio = require("socket.io")
+    const selectedEnginePath = path.resolve(enginesPath, engine)
 
-        const app = express()
-        const http = createServer(app)
+    if (!fs.existsSync(selectedEnginePath)) {
+        throw new Error(`Engine ${engine} not found!`)
+    }
 
-        const io = new socketio.Server(http)
-        const ws = new rtengine({
-            ...params,
-            io: io,
-            http: false,
-        })
-
-        app.use(express.json())
-        app.use(express.urlencoded({ extended: true }))
-
-        return {
-            ws,
-            http,
-            app,
-        }
-    },
+    return require(selectedEnginePath).default
 }
 
 class Server {
-    eventBus = new EventEmitter()
-
     constructor(params = {}, controllers = {}, middlewares = {}, headers = {}) {
-        if (global.LINEBRIDGE_SERVER_EXPERIMENTAL) {
-            console.warn("🚧🚧🚧 This version of Linebridge is experimental!")
+        this.isExperimental = defaults.isExperimental ?? false
+
+        if (this.isExperimental) {
+            console.warn("🚧 This version of Linebridge is experimental! 🚧")
         }
 
-        // register aliases
         this.params = {
-            ...global.DEFAULT_SERVER_PARAMS,
-            ...params,
+            ...defaults.params,
+            ...params.default ?? params,
         }
 
         this.controllers = {
-            ...controllers
+            ...controllers.default ?? controllers,
         }
+
         this.middlewares = {
             ...middlewares.default ?? middlewares,
         }
+
         this.headers = {
-            ...global.DEFAULT_SERVER_HEADERS,
-            ...headers
+            ...defaults.headers,
+            ...headers.default ?? headers,
         }
 
-        this.endpoints_map = {}
+        this.valid_http_methods = defaults.valid_http_methods
 
         // fix and fulfill params
+        this.params.useMiddlewares = this.params.useMiddlewares ?? []
+        this.params.name = this.constructor.refName ?? this.params.refName
+        this.params.useEngine = this.constructor.useEngine ?? this.params.useEngine ?? "express"
         this.params.listen_ip = this.params.listen_ip ?? "0.0.0.0"
         this.params.listen_port = this.constructor.listen_port ?? this.params.listen_port ?? 3000
         this.params.http_protocol = this.params.http_protocol ?? "http"
-        this.params.http_address = `${this.params.http_protocol}://${global.LOCALHOST_ADDRESS}:${this.params.listen_port}`
-
-        this.engine = null
-
-        this.InternalConsole = new internalConsole({
-            server_name: this.params.name
-        })
-
-        this.initializeManifest()
-
-        // handle silent mode
-        global.consoleSilent = this.params.silent
-
-        if (global.consoleSilent) {
-            // find morgan middleware and remove it
-            const morganMiddleware = global.DEFAULT_MIDDLEWARES.find(middleware => middleware.name === "logger")
-
-            if (morganMiddleware) {
-                global.DEFAULT_MIDDLEWARES.splice(global.DEFAULT_MIDDLEWARES.indexOf(morganMiddleware), 1)
-            }
-        }
+        this.params.http_address = `${this.params.http_protocol}://${defaults.localhost_address}:${this.params.listen_port}`
+        this.params.routesPath = this.constructor.routesPath ?? this.params.routesPath
 
         return this
     }
 
+    engine = null
+
+    events = null
+
+    ipc = null
+
+    ipcEvents = null
+
+    eventBus = new EventEmitter()
+
     initialize = async () => {
+        const startHrTime = process.hrtime()
+
+        // register events
         if (this.events) {
             if (this.events.default) {
                 this.events = this.events.default
@@ -111,73 +88,80 @@ class Server {
         }
 
         // initialize engine
-        this.engine = global.engine = Engines[this.params.engine]({
+        this.engine = await loadEngine(this.params.useEngine)
+
+        this.engine = new this.engine({
             ...this.params,
-            handleAuth: this.handleWsAuth,
-            requireAuth: this.constructor.requireWSAuth,
+            handleAuth: this.handleHttpAuth,
+            requireAuth: this.constructor.requireHttpAuth,
         })
 
-        // before initialize headers, middlewares and controllers, try to execute onInitialize hook.
+        if (typeof this.engine.init === "function") {
+            await this.engine.init(this.params)
+        }
+
+        // create a router map
+        if (typeof this.engine.router.map !== "object") {
+            this.engine.router.map = []
+        }
+
+        // try to execute onInitialize hook
         if (typeof this.onInitialize === "function") {
             await this.onInitialize()
         }
 
         // set server defined headers
-        this.initializeHeaders()
+        this.useDefaultHeaders()
 
         // set server defined middlewares
-        this.initializeRequiredMiddlewares()
+        this.useDefaultMiddlewares()
 
         // register controllers
         await this.initializeControllers()
 
+        // register routes
+        await this.initializeRoutes()
+
         // register main index endpoint `/`
         await this.registerBaseEndpoints()
 
-        if (typeof this.engine.ws?.initialize !== "function") {
-            this.InternalConsole.warn("❌ WebSocket is not supported!")
-        } else {
+        // use main router
+        await this.engine.app.use(this.engine.router)
+
+        // initialize websocket init hook if needed
+        if (typeof this.engine.ws?.initialize == "function") {
             await this.engine.ws.initialize({
                 redisInstance: this.redis
             })
         }
 
-        if (typeof this.beforeInitialize === "function") {
-            await this.beforeInitialize()
+        // if is a linebridge service then initialize IPC Channels
+        if (process.env.lb_service) {
+            await this.initializeIpc()
         }
 
-        await this.engine.http.listen(this.params.listen_port)
+        // try to execute beforeInitialize hook.
+        if (typeof this.afterInitialize === "function") {
+            await this.afterInitialize()
+        }
 
-        this.InternalConsole.info(`✅ Server ready on => ${this.params.listen_ip}:${this.params.listen_port}`)
+        // listen
+        await this.engine.listen()
+
+        // calculate elapsed time on ms, to fixed 2
+        const elapsedHrTime = process.hrtime(startHrTime)
+        const elapsedTimeInMs = elapsedHrTime[0] * 1e3 + elapsedHrTime[1] / 1e6
+
+        console.info(`🛰  Server ready!\n\t - ${this.params.http_protocol}://${this.params.listen_ip}:${this.params.listen_port}  \n\t - Tooks ${elapsedTimeInMs.toFixed(2)}ms`)
     }
 
-    initializeManifest = () => {
-        // check if origin.server exists
-        if (!fs.existsSync(serverManifest.filepath)) {
-            serverManifest.create()
-        }
+    initializeIpc = async () => {
+        console.info("🚄 Starting IPC client")
 
-        // check origin.server integrity
-        const MANIFEST_DATA = global.MANIFEST_DATA = serverManifest.get()
-        const MANIFEST_STAT = global.MANIFEST_STAT = serverManifest.stat()
-
-        if (typeof MANIFEST_DATA.created === "undefined") {
-            this.InternalConsole.warn("Server generation file not contains an creation date")
-            serverManifest.write({ created: Date.parse(MANIFEST_STAT.birthtime) })
-        }
-
-        if (typeof MANIFEST_DATA.server_token === "undefined") {
-            this.InternalConsole.warn("Missing server token!")
-            serverManifest.create()
-        }
-
-        this.usid = tokenizer.generateUSID()
-        this.server_token = serverManifest.get("server_token")
-
-        serverManifest.write({ last_start: Date.now() })
+        this.ipc = global.ipc = new IPCClient(this, process)
     }
 
-    initializeHeaders = () => {
+    useDefaultHeaders = () => {
         this.engine.app.use((req, res, next) => {
             Object.keys(this.headers).forEach((key) => {
                 res.setHeader(key, this.headers[key])
@@ -187,13 +171,14 @@ class Server {
         })
     }
 
-    initializeRequiredMiddlewares = () => {
-        const useMiddlewares = [...this.params.useMiddlewares ?? [], ...global.DEFAULT_MIDDLEWARES]
+    useDefaultMiddlewares = async () => {
+        const middlewares = await this.resolveMiddlewares([
+            ...this.params.useMiddlewares,
+            ...defaults.useMiddlewares,
+        ])
 
-        useMiddlewares.forEach((middleware) => {
-            if (typeof middleware === "function") {
-                this.engine.app.use(middleware)
-            }
+        middlewares.forEach((middleware) => {
+            this.engine.app.use(middleware)
         })
     }
 
@@ -206,7 +191,7 @@ class Server {
             }
 
             if (controller.disabled) {
-                this.InternalConsole.warn(`⏩ Controller [${controller.name}] is disabled! Initialization skipped...`)
+                console.warn(`⏩ Controller [${controller.name}] is disabled! Initialization skipped...`)
                 continue
             }
 
@@ -218,115 +203,190 @@ class Server {
                 const WSEndpoints = ControllerInstance.__get_ws_endpoints()
 
                 HTTPEndpoints.forEach((endpoint) => {
-                    this.registerHTTPEndpoint(endpoint, ...this.resolveMiddlewares(controller.useMiddlewares))
+                    this.register.http(endpoint, ...this.resolveMiddlewares(controller.useMiddlewares))
                 })
 
                 // WSEndpoints.forEach((endpoint) => {
                 //     this.registerWSEndpoint(endpoint)
                 // })
             } catch (error) {
-                if (!global.silentOutputServerErrors) {
-                    this.InternalConsole.error(`\n\x1b[41m\x1b[37m🆘 [${controller.refName ?? controller.name}] Controller initialization failed:\x1b[0m ${error.stack} \n`)
-                }
+                console.error(`\n\x1b[41m\x1b[37m🆘 [${controller.refName ?? controller.name}] Controller initialization failed:\x1b[0m ${error.stack} \n`)
             }
         }
     }
 
-    registerHTTPEndpoint = (endpoint, ...execs) => {
-        // check and fix method
-        endpoint.method = endpoint.method?.toLowerCase() ?? "get"
-
-        if (global.FIXED_HTTP_METHODS[endpoint.method]) {
-            endpoint.method = global.FIXED_HTTP_METHODS[endpoint.method]
-        }
-
-        // check if method is supported
-        if (typeof this.engine.app[endpoint.method] !== "function") {
-            throw new Error(`Method [${endpoint.method}] is not supported!`)
-        }
-
-        // grab the middlewares
-        let middlewares = [...execs]
-
-        if (endpoint.middlewares) {
-            middlewares = [...middlewares, ...this.resolveMiddlewares(endpoint.middlewares)]
-        }
-
-        // make sure method has root object on endpointsMap
-        if (typeof this.endpoints_map[endpoint.method] !== "object") {
-            this.endpoints_map[endpoint.method] = {}
-        }
-
-        // create model for http interface router
-        const routeModel = [endpoint.route, ...middlewares, this.createHTTPRequestHandler(endpoint)]
-
-        // register endpoint to http interface router
-        this.engine.app[endpoint.method](...routeModel)
-
-        // extend to map
-        this.endpoints_map[endpoint.method] = {
-            ...this.endpoints_map[endpoint.method],
-            [endpoint.route]: {
-                route: endpoint.route,
-                enabled: endpoint.enabled ?? true,
-            },
-        }
-    }
-
-    registerWSEndpoint = (endpoint, ...execs) => {
-        endpoint.nsp = endpoint.nsp ?? "/main"
-
-        this.websocket_instance.eventsChannels.push([endpoint.nsp, endpoint.on, endpoint.dispatch])
-
-        this.websocket_instance.map[endpoint.on] = {
-            nsp: endpoint.nsp,
-            channel: endpoint.on,
-        }
-    }
-
-    registerBaseEndpoints() {
-        if (this.params.disableBaseEndpoint) {
-            this.InternalConsole.warn("‼️ [disableBaseEndpoint] Base endpoint is disabled! Endpoints mapping will not be available, so linebridge client bridges will not work! ‼️")
+    initializeRoutes = async (filePath) => {
+        if (!this.params.routesPath) {
             return false
         }
 
-        this.registerHTTPEndpoint({
-            method: "get",
-            route: "/",
-            fn: (req, res) => {
-                return res.json({
-                    LINEBRIDGE_SERVER_VERSION: LINEBRIDGE_SERVER_VERSION,
-                    version: pkgjson.version ?? "unknown",
-                    usid: this.usid,
-                    requestTime: new Date().getTime(),
-                })
-            }
-        })
+        const scanPath = filePath ?? this.params.routesPath
 
-        this.registerHTTPEndpoint({
-            method: "GET",
-            route: "/__http_map",
-            fn: (req, res) => {
-                return res.json({
-                    endpointsMap: this.endpoints_map,
+        const files = fs.readdirSync(scanPath)
+
+        for await (const file of files) {
+            const filePath = `${scanPath}/${file}`
+
+            const stat = fs.statSync(filePath)
+
+            if (stat.isDirectory()) {
+                await this.initializeRoutes(filePath)
+
+                continue
+            } else if (file.endsWith(".js") || file.endsWith(".jsx") || file.endsWith(".ts") || file.endsWith(".tsx")) {
+                let splitedFilePath = filePath.split("/")
+
+                splitedFilePath = splitedFilePath.slice(splitedFilePath.indexOf("routes") + 1)
+
+                const method = splitedFilePath[splitedFilePath.length - 1].split(".")[0].toLocaleLowerCase()
+
+                splitedFilePath = splitedFilePath.slice(0, splitedFilePath.length - 1)
+
+                // parse parametrized routes
+                const parametersRegex = /\[([a-zA-Z0-9_]+)\]/g
+
+                splitedFilePath = splitedFilePath.map((route) => {
+                    if (route.match(parametersRegex)) {
+                        route = route.replace(parametersRegex, ":$1")
+                    }
+
+                    route = route.replace("[$]", "*")
+
+                    return route
                 })
+
+                let route = splitedFilePath.join("/")
+
+                route = route.replace(".jsx", "")
+                route = route.replace(".js", "")
+                route = route.replace(".ts", "")
+                route = route.replace(".tsx", "")
+
+                if (route.endsWith("/index")) {
+                    route = route.replace("/index", "")
+                }
+
+                route = `/${route}`
+
+                // import route
+                let routeFile = require(filePath)
+
+                routeFile = routeFile.default ?? routeFile
+
+                if (typeof routeFile !== "function") {
+                    if (!routeFile.fn) {
+                        console.warn(`Missing fn handler in [${method}][${route}]`)
+                        continue
+                    }
+
+                    if (Array.isArray(routeFile.useContext)) {
+                        let contexts = {}
+
+                        for (const context of routeFile.useContext) {
+                            contexts[context] = this.contexts[context]
+                        }
+
+                        routeFile.contexts = contexts
+
+                        routeFile.fn.bind({ contexts })
+                    }
+                }
+
+                new Endpoint(
+                    this,
+                    {
+                        route: route,
+                        enabled: true,
+                        middlewares: routeFile.middlewares,
+                        handlers: {
+                            [method]: routeFile.fn ?? routeFile,
+                        }
+                    }
+                )
+
+                continue
             }
-        })
+        }
     }
 
-    //* resolvers
+    register = {
+        http: (endpoint, ..._middlewares) => {
+            // check and fix method
+            endpoint.method = endpoint.method?.toLowerCase() ?? "get"
+
+            if (defaults.fixed_http_methods[endpoint.method]) {
+                endpoint.method = defaults.fixed_http_methods[endpoint.method]
+            }
+
+            // check if method is supported
+            if (typeof this.engine.router[endpoint.method] !== "function") {
+                throw new Error(`Method [${endpoint.method}] is not supported!`)
+            }
+
+            // grab the middlewares
+            let middlewares = [..._middlewares]
+
+            if (endpoint.middlewares) {
+                middlewares = [...middlewares, ...this.resolveMiddlewares(endpoint.middlewares)]
+            }
+
+            this.engine.router.map[endpoint.route] = {
+                method: endpoint.method,
+                path: endpoint.route,
+            }
+
+            // register endpoint to http interface router
+            this.engine.router[endpoint.method](endpoint.route, ...middlewares, endpoint.fn)
+        },
+        ws: (endpoint, ...execs) => {
+            endpoint.nsp = endpoint.nsp ?? "/main"
+
+            this.websocket_instance.eventsChannels.push([endpoint.nsp, endpoint.on, endpoint.dispatch])
+
+            this.websocket_instance.map[endpoint.on] = {
+                nsp: endpoint.nsp,
+                channel: endpoint.on,
+            }
+        },
+    }
+
+    async registerBaseEndpoints() {
+        if (this.params.disableBaseEndpoint) {
+            console.warn("‼️ [disableBaseEndpoint] Base endpoint is disabled! Endpoints mapping will not be available, so linebridge client bridges will not work! ‼️")
+            return false
+        }
+
+        const scanPath = path.join(__dirname, "baseEndpoints")
+        const files = fs.readdirSync(scanPath)
+
+        for await (const file of files) {
+            if (file === "index.js") {
+                continue
+            }
+
+            let endpoint = require(path.join(scanPath, file)).default
+
+            new endpoint(this)
+        }
+    }
+
     resolveMiddlewares = (requestedMiddlewares) => {
+        const middlewares = {
+            ...this.middlewares,
+            ...defaults.middlewares,
+        }
+
         requestedMiddlewares = Array.isArray(requestedMiddlewares) ? requestedMiddlewares : [requestedMiddlewares]
 
         const execs = []
 
         requestedMiddlewares.forEach((middlewareKey) => {
             if (typeof middlewareKey === "string") {
-                if (typeof this.middlewares[middlewareKey] !== "function") {
+                if (typeof middlewares[middlewareKey] !== "function") {
                     throw new Error(`Middleware ${middlewareKey} not found!`)
                 }
 
-                execs.push(this.middlewares[middlewareKey])
+                execs.push(middlewares[middlewareKey])
             }
 
             if (typeof middlewareKey === "function") {
@@ -337,47 +397,7 @@ class Server {
         return execs
     }
 
-    cleanupProcess = () => {
-        this.InternalConsole.log("🛑  Stopping server...")
-
-        if (typeof this.engine.app.close === "function") {
-            this.engine.app.close()
-        }
-
-        this.engine.io.close()
-    }
-
-    // handlers
-    createHTTPRequestHandler = (endpoint) => {
-        return async (req, res) => {
-            try {
-                // check if endpoint is disabled
-                if (!this.endpoints_map[endpoint.method][endpoint.route].enabled) {
-                    throw new Error("Endpoint is disabled!")
-                }
-
-                // return the returning call of the endpoint function
-                return await endpoint.fn(req, res)
-            } catch (error) {
-                if (typeof this.params.onRouteError === "function") {
-                    return this.params.onRouteError(req, res, error)
-                } else {
-                    if (!global.silentOutputServerErrors) {
-                        this.InternalConsole.error({
-                            message: "Unhandled route error:",
-                            description: error.stack,
-                            ref: [endpoint.method, endpoint.route].join("|"),
-                        })
-                    }
-
-                    return res.status(500).json({
-                        "error": error.message
-                    })
-                }
-            }
-        }
-    }
-
+    // Utilities
     toogleEndpointReachability = (method, route, enabled) => {
         if (typeof this.endpoints_map[method] !== "object") {
             throw new Error(`Cannot toogle endpoint, method [${method}] not set!`)

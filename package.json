@@ -1,6 +1,6 @@
 {
   "name": "linebridge",
-  "version": "0.16.0",
+  "version": "0.18.0",
   "description": "A simple, fast, and powerful REST API interface library",
   "author": "RageStudio",
   "main": "./dist/client/index.js",
@@ -13,12 +13,14 @@
     "access": "public"
   },
   "files": [
+    "src/**/**",
     "dist/**/**",
     "./package.json"
   ],
   "license": "MIT",
   "dependencies": {
     "@foxify/events": "^2.1.0",
+    "@gullerya/object-observer": "^6.1.3",
     "@socket.io/cluster-adapter": "^0.2.2",
     "@socket.io/redis-adapter": "^8.2.1",
     "@socket.io/redis-emitter": "^5.1.0",
