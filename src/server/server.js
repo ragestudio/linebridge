@@ -58,6 +58,7 @@ class Server {
         this.params.listen_port = this.constructor.listenPort ?? this.constructor.listen_port ?? this.params.listen_port ?? 3000
         this.params.http_protocol = this.params.http_protocol ?? "http"
         this.params.http_address = `${this.params.http_protocol}://${defaults.localhost_address}:${this.params.listen_port}`
+        this.params.disableWebSockets = this.constructor.disableWebSockets ?? this.params.disableWebSockets ?? false
 
         this.params.routesPath = this.constructor.routesPath ?? this.params.routesPath
         this.params.wsRoutesPath = this.constructor.wsRoutesPath ?? this.params.wsRoutesPath
@@ -135,10 +136,12 @@ class Server {
         await this.engine.app.use(this.engine.router)
 
         // initialize websocket init hook if needed
-        if (typeof this.engine.ws?.initialize == "function") {
-            await this.engine.ws.initialize({
-                redisInstance: this.redis
-            })
+        if (this.engine.ws) {
+            if (typeof this.engine.ws?.initialize == "function") {
+                await this.engine.ws.initialize({
+                    redisInstance: this.redis
+                })
+            }
         }
 
         // if is a linebridge service then initialize IPC Channels
