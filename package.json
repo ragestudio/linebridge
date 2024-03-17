@@ -1,6 +1,6 @@
 {
   "name": "linebridge",
-  "version": "0.18.3",
+  "version": "0.18.4",
   "description": "API Framework for RageStudio backends",
   "author": "RageStudio",
   "main": "./dist/client/index.js",
@@ -40,6 +40,7 @@
     "morgan": "1.10.0",
     "socket.io": "^4.7.4",
     "socket.io-client": "4.5.4",
+    "sucrase": "^3.35.0",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
