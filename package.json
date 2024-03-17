@@ -1,9 +1,12 @@
 {
   "name": "linebridge",
-  "version": "0.18.2",
+  "version": "0.18.3",
   "description": "API Framework for RageStudio backends",
   "author": "RageStudio",
   "main": "./dist/client/index.js",
+  "bin": {
+    "linebridge-boot": "./bin/boot.js"
+  },
   "scripts": {
     "start": "hermes-node ./src/bin/server.js",
     "build": "hermes build --parallel --clean",
