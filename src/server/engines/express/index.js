@@ -16,6 +16,8 @@ export default class Engine {
     router = express.Router()
 
     init = async (params) => {
+        console.warn("⚠️  Warning: Express engine is deprecated, use HyperExpress instead!")
+
         this.app = express()
         this.http = createServer(this.app)
         this.io = new socketio.Server(this.http)

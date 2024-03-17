@@ -1,15 +1,12 @@
-import socketio from "socket.io"
+import cluster from "node:cluster"
 import redis from "ioredis"
 
-import EventEmitter from "@foxify/events"
+import { EventEmitter } from "@foxify/events"
 
 import { createAdapter as createRedisAdapter } from "@socket.io/redis-adapter"
 import { createAdapter as createClusterAdapter } from "@socket.io/cluster-adapter"
 import { setupWorker } from "@socket.io/sticky"
 import { Emitter } from "@socket.io/redis-emitter"
-
-import http from "node:http"
-import cluster from "node:cluster"
 
 import RedisMap from "../../lib/redis_map"
 
@@ -17,8 +14,6 @@ export default class RTEngineServer {
     constructor(params = {}) {
         this.params = params
 
-        // servers
-        this.http = this.params.http ?? undefined
         this.io = this.params.io ?? undefined
         this.redis = this.params.redis ?? undefined
         this.redisEmitter = null
@@ -27,6 +22,10 @@ export default class RTEngineServer {
 
         this.connections = null
         this.users = null
+
+        if (!this.io) {
+            throw new Error("No io provided")
+        }
     }
 
     onConnect = async (socket) => {
@@ -62,9 +61,9 @@ export default class RTEngineServer {
         console.log(`⚙️ Awaiting authentication for client [${socket.id}]`)
 
         if (this.params.requireAuth) {
-            await this.authenticateClient(socket, null, this.handleAuth ?? this.params.handleAuth)
-        } else if (socket.handshake.auth.token) {
-            await this.authenticateClient(socket, socket.handshake.auth.token, this.handleAuth ?? this.params.handleAuth)
+            await this.authenticateClient(socket, null, (this.params.handleAuth ?? this.handleAuth))
+        } else if (socket.handshake.auth.token ?? socket.handshake.query.auth) {
+            await this.authenticateClient(socket, (socket.handshake.auth.token ?? socket.handshake.query.auth), (this.params.handleAuth ?? this.handleAuth))
         }
 
         if (process.env.NODE_ENV === "development") {
@@ -107,6 +106,9 @@ export default class RTEngineServer {
         if (!token) {
             if (socket.handshake.auth.token) {
                 token = socket.handshake.auth.token
+            }
+            if (socket.handshake.query.auth) {
+                token = socket.handshake.query.auth
             }
         }
 
@@ -239,20 +241,6 @@ export default class RTEngineServer {
             })
         }
 
-        if (typeof this.http === "undefined") {
-            this.http = http.createServer()
-        }
-
-        if (typeof this.io === "undefined") {
-            this.io = new socketio.Server(this.http, {
-                cors: {
-                    origin: "*",
-                    methods: ["GET", "POST"],
-                    credentials: true,
-                },
-            })
-        }
-
         // create mappers
         this.connections = new RedisMap(this.redis, {
             refKey: "connections",
@@ -303,7 +291,7 @@ export default class RTEngineServer {
             await this.onInit()
         }
 
-        console.log(`✅ RTEngine server is running on port [${process.env.LISTEN_PORT}] ${this.clusterMode ? `on clustered mode [${cluster.worker.id}]` : ""}`)
+        console.log(`✅ RTEngine server is running on port [${this.params.listen_port}] ${this.clusterMode ? `on clustered mode [${cluster.worker.id}]` : ""}`)
 
         return true
     }
@@ -311,7 +299,9 @@ export default class RTEngineServer {
     cleanUp = async () => {
         console.log(`Cleaning up RTEngine server...`)
 
-        this.connections.flush(cluster.worker.id)
+        if (this.clusterMode) {
+            this.connections.flush(cluster.worker.id)
+        }
 
         if (this.io) {
             this.io.close()

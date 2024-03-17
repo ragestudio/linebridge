@@ -54,11 +54,13 @@ class Server {
         this.params.useMiddlewares = this.params.useMiddlewares ?? []
         this.params.name = this.constructor.refName ?? this.params.refName
         this.params.useEngine = this.constructor.useEngine ?? this.params.useEngine ?? "express"
-        this.params.listen_ip = this.params.listen_ip ?? "0.0.0.0"
-        this.params.listen_port = this.constructor.listen_port ?? this.params.listen_port ?? 3000
+        this.params.listen_ip = this.constructor.listenIp ?? this.constructor.listen_ip ?? this.params.listen_ip ?? "0.0.0.0"
+        this.params.listen_port = this.constructor.listenPort ?? this.constructor.listen_port ?? this.params.listen_port ?? 3000
         this.params.http_protocol = this.params.http_protocol ?? "http"
         this.params.http_address = `${this.params.http_protocol}://${defaults.localhost_address}:${this.params.listen_port}`
+
         this.params.routesPath = this.constructor.routesPath ?? this.params.routesPath
+        this.params.wsRoutesPath = this.constructor.wsRoutesPath ?? this.params.wsRoutesPath
 
         return this
     }
@@ -87,22 +89,26 @@ class Server {
             }
         }
 
+        const engineParams = {
+            ...this.params,
+            handleWsAuth: this.handleWsAuth,
+            handleAuth: this.handleHttpAuth,
+            requireAuth: this.constructor.requireHttpAuth,
+            refName: this.constructor.refName ?? this.params.refName,
+        }
+
         // initialize engine
         this.engine = await loadEngine(this.params.useEngine)
 
-        this.engine = new this.engine({
-            ...this.params,
-            handleAuth: this.handleHttpAuth,
-            requireAuth: this.constructor.requireHttpAuth,
-        })
+        this.engine = new this.engine(engineParams)
 
         if (typeof this.engine.init === "function") {
-            await this.engine.init(this.params)
+            await this.engine.init(engineParams)
         }
 
         // create a router map
         if (typeof this.engine.router.map !== "object") {
-            this.engine.router.map = []
+            this.engine.router.map = {}
         }
 
         // try to execute onInitialize hook
@@ -146,7 +152,7 @@ class Server {
         }
 
         // listen
-        await this.engine.listen()
+        await this.engine.listen(engineParams)
 
         // calculate elapsed time on ms, to fixed 2
         const elapsedHrTime = process.hrtime(startHrTime)

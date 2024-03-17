@@ -46,6 +46,8 @@ export default class IPCRouter {
             return false
         }
 
+        //console.log(`[IPC:ROUTER] Routing event [${event}] to service [${target}] from [${from}]`)
+
         targetService.instance.send({
             event: event,
             payload: payload

@@ -17,6 +17,8 @@ export default class IPCClient {
                 return false
             }
 
+            //console.log(`[IPC:CLIENT] Received event [${event}] from [${payload.from}]`)
+
             if (event.startsWith("ipc:exec")) {
                 return this.handleExecution(payload)
             }
@@ -89,6 +91,8 @@ export default class IPCClient {
     // call a command on a remote service, and waits to get a response from akn (async)
     call = async (to_service_id, command, ...args) => {
         const remote_call_id = Date.now()
+
+        //console.debug(`[IPC:CLIENT] Invoking command [${command}] on service [${to_service_id}]`)
 
         const response = await new Promise((resolve, reject) => {
             try {

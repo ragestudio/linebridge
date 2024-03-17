@@ -42,7 +42,7 @@ export default {
         logs: require("./middlewares/logger").default,
     },
     useMiddlewares: [
-        "cors",
+        //"cors",
         "logs",
     ],
     controllers: [],

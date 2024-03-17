@@ -1,4 +1,4 @@
-const { EventEmitter } = require("events")
+const { EventEmitter } = require("@foxify/events")
 const Endpoint = require("../endpoint")
 
 module.exports = class Controller {
