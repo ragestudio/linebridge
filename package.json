@@ -18,8 +18,7 @@
   "files": [
     "src/**/**",
     "dist/**/**",
-    "./package.json",
-    "boot"
+    "./package.json"
   ],
   "license": "MIT",
   "dependencies": {
@@ -41,8 +40,8 @@
     "morgan": "1.10.0",
     "socket.io": "^4.7.4",
     "socket.io-client": "4.5.4",
-    "uuid": "^9.0.1",
-    "sucrase": "^3.35.0"
+    "sucrase": "^3.35.0",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "@ragestudio/hermes": "^0.1.0",
