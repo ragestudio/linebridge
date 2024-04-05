@@ -1,6 +1,6 @@
 {
   "name": "linebridge",
-  "version": "0.19.1",
+  "version": "0.19.2",
   "description": "API Framework for RageStudio backends",
   "author": "RageStudio",
   "main": "./dist/client/index.js",
