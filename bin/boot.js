@@ -26,11 +26,12 @@ global["aliases"] = {
     "src": global["__src"],
 
     // expose shared resources
-    "@db_models": path.resolve(__dirname, "db_models"),
-    "@shared-utils": path.resolve(__dirname, "utils"),
-    "@shared-classes": path.resolve(__dirname, "classes"),
-    "@shared-lib": path.resolve(__dirname, "lib"),
-    "@shared-middlewares": path.resolve(__dirname, "middlewares"),
+    "@db": path.resolve(process.cwd(), "db_models"),
+    "@db_models": path.resolve(process.cwd(), "db_models"),
+    "@shared-utils": path.resolve(process.cwd(), "utils"),
+    "@shared-classes": path.resolve(process.cwd(), "classes"),
+    "@shared-lib": path.resolve(process.cwd(), "lib"),
+    "@shared-middlewares": path.resolve(process.cwd(), "middlewares"),
 
     // expose internal resources
     "@lib": path.resolve(global["__src"], "lib"),
