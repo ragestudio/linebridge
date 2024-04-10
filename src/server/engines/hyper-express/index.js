@@ -27,9 +27,10 @@ export default class Engine {
         })
 
         await this.app.use(async (req, res, next) => {
-            res.setHeader("Access-Control-Allow-Headers", "Origin, Content-Type, Authorization")
-
             if (req.method === "OPTIONS") {
+                res.setHeader("Access-Control-Allow-Origin", "*")
+                res.setHeader("Access-Control-Allow-Headers", "Origin, Content-Type, Authorization")
+
                 return res.status(204).end()
             }
 
