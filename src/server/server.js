@@ -3,12 +3,15 @@ import("./patches")
 import fs from "node:fs"
 import path from "node:path"
 import { EventEmitter } from "@foxify/events"
-
-import Endpoint from "./classes/endpoint"
+import { onExit } from "signal-exit"
 
 import defaults from "./defaults"
 
 import IPCClient from "./classes/IPCClient"
+
+import registerBaseEndpoints from "./initializators/registerBaseEndpoints"
+import registerWebsocketsEvents from "./initializators/registerWebsocketsEvents"
+import registerHttpRoutes from "./initializators/registerHttpRoutes"
 
 async function loadEngine(engine) {
     const enginesPath = path.resolve(__dirname, "engines")
@@ -27,7 +30,8 @@ class Server {
         this.isExperimental = defaults.isExperimental ?? false
 
         if (this.isExperimental) {
-            console.warn("🚧 This version of Linebridge is experimental! 🚧")
+            console.warn("\n🚧 This version of Linebridge is experimental! 🚧")
+            console.warn(`Version: ${defaults.version}\n`)
         }
 
         this.params = {
@@ -53,15 +57,15 @@ class Server {
         // fix and fulfill params
         this.params.useMiddlewares = this.params.useMiddlewares ?? []
         this.params.name = this.constructor.refName ?? this.params.refName
-        this.params.useEngine = this.constructor.useEngine ?? this.params.useEngine ?? "express"
+        this.params.useEngine = this.constructor.useEngine ?? this.params.useEngine ?? "hyper-express"
         this.params.listen_ip = this.constructor.listenIp ?? this.constructor.listen_ip ?? this.params.listen_ip ?? "0.0.0.0"
         this.params.listen_port = this.constructor.listenPort ?? this.constructor.listen_port ?? this.params.listen_port ?? 3000
         this.params.http_protocol = this.params.http_protocol ?? "http"
         this.params.http_address = `${this.params.http_protocol}://${defaults.localhost_address}:${this.params.listen_port}`
         this.params.disableWebSockets = this.constructor.disableWebSockets ?? this.params.disableWebSockets ?? false
 
-        this.params.routesPath = this.constructor.routesPath ?? this.params.routesPath
-        this.params.wsRoutesPath = this.constructor.wsRoutesPath ?? this.params.wsRoutesPath
+        this.params.routesPath = this.constructor.routesPath ?? this.params.routesPath ?? path.resolve(process.cwd(), "routes")
+        this.params.wsRoutesPath = this.constructor.wsRoutesPath ?? this.params.wsRoutesPath ?? path.resolve(process.cwd(), "routes_ws")
 
         return this
     }
@@ -77,6 +81,11 @@ class Server {
     eventBus = new EventEmitter()
 
     initialize = async () => {
+        onExit((code, signal) => {
+            this.engine.close()
+            process.exit(code)
+        })
+
         const startHrTime = process.hrtime()
 
         // register events
@@ -103,46 +112,47 @@ class Server {
 
         this.engine = new this.engine(engineParams)
 
-        if (typeof this.engine.init === "function") {
-            await this.engine.init(engineParams)
+        if (typeof this.engine.initialize === "function") {
+            await this.engine.initialize(engineParams)
         }
 
-        // create a router map
-        if (typeof this.engine.router.map !== "object") {
-            this.engine.router.map = {}
+        // check if ws events are defined
+        if (typeof this.wsEvents !== "undefined") {
+            if (!this.engine.ws) {
+                console.warn("`wsEvents` detected, but Websockets are not enabled! Ignoring...")
+            } else {
+                for (const [eventName, eventHandler] of Object.entries(this.wsEvents)) {
+                    this.engine.ws.events.set(eventName, eventHandler)
+                }
+            }
         }
 
         // try to execute onInitialize hook
         if (typeof this.onInitialize === "function") {
-            await this.onInitialize()
+            try {
+                await this.onInitialize()
+            }
+            catch (err) {
+                console.error(err)
+                process.exit(1)
+            }
         }
 
-        // set server defined headers
+        // set defaults
         this.useDefaultHeaders()
-
-        // set server defined middlewares
         this.useDefaultMiddlewares()
 
-        // register controllers
-        await this.initializeControllers()
+        // register http & ws routes
+        this.engine = await registerHttpRoutes(this.params.routesPath, this.engine, this)
+        this.engine = await registerWebsocketsEvents(this.params.wsRoutesPath, this.engine)
 
-        // register routes
-        await this.initializeRoutes()
-
-        // register main index endpoint `/`
-        await this.registerBaseEndpoints()
+        // register base endpoints if enabled
+        if (!this.params.disableBaseEndpoint) {
+            await registerBaseEndpoints(this)
+        }
 
         // use main router
         await this.engine.app.use(this.engine.router)
-
-        // initialize websocket init hook if needed
-        if (this.engine.ws) {
-            if (typeof this.engine.ws?.initialize == "function") {
-                await this.engine.ws.initialize({
-                    redisInstance: this.redis
-                })
-            }
-        }
 
         // if is a linebridge service then initialize IPC Channels
         if (process.env.lb_service) {
@@ -183,139 +193,13 @@ class Server {
     useDefaultMiddlewares = async () => {
         const middlewares = await this.resolveMiddlewares([
             ...this.params.useMiddlewares,
+            ...this.useMiddlewares ?? [],
             ...defaults.useMiddlewares,
         ])
 
         middlewares.forEach((middleware) => {
             this.engine.app.use(middleware)
         })
-    }
-
-    initializeControllers = async () => {
-        const controllers = Object.entries(this.controllers)
-
-        for await (let [key, controller] of controllers) {
-            if (typeof controller !== "function") {
-                throw new Error(`Controller must use the controller class!`)
-            }
-
-            if (controller.disabled) {
-                console.warn(`⏩ Controller [${controller.name}] is disabled! Initialization skipped...`)
-                continue
-            }
-
-            try {
-                const ControllerInstance = new controller()
-
-                // get endpoints from controller (ComplexController)
-                const HTTPEndpoints = ControllerInstance.__get_http_endpoints()
-                const WSEndpoints = ControllerInstance.__get_ws_endpoints()
-
-                HTTPEndpoints.forEach((endpoint) => {
-                    this.register.http(endpoint, ...this.resolveMiddlewares(controller.useMiddlewares))
-                })
-
-                // WSEndpoints.forEach((endpoint) => {
-                //     this.registerWSEndpoint(endpoint)
-                // })
-            } catch (error) {
-                console.error(`\n\x1b[41m\x1b[37m🆘 [${controller.refName ?? controller.name}] Controller initialization failed:\x1b[0m ${error.stack} \n`)
-            }
-        }
-    }
-
-    initializeRoutes = async (filePath) => {
-        if (!this.params.routesPath) {
-            return false
-        }
-
-        const scanPath = filePath ?? this.params.routesPath
-
-        const files = fs.readdirSync(scanPath)
-
-        for await (const file of files) {
-            const filePath = `${scanPath}/${file}`
-
-            const stat = fs.statSync(filePath)
-
-            if (stat.isDirectory()) {
-                await this.initializeRoutes(filePath)
-
-                continue
-            } else if (file.endsWith(".js") || file.endsWith(".jsx") || file.endsWith(".ts") || file.endsWith(".tsx")) {
-                let splitedFilePath = filePath.split("/")
-
-                splitedFilePath = splitedFilePath.slice(splitedFilePath.indexOf("routes") + 1)
-
-                const method = splitedFilePath[splitedFilePath.length - 1].split(".")[0].toLocaleLowerCase()
-
-                splitedFilePath = splitedFilePath.slice(0, splitedFilePath.length - 1)
-
-                // parse parametrized routes
-                const parametersRegex = /\[([a-zA-Z0-9_]+)\]/g
-
-                splitedFilePath = splitedFilePath.map((route) => {
-                    if (route.match(parametersRegex)) {
-                        route = route.replace(parametersRegex, ":$1")
-                    }
-
-                    route = route.replace("[$]", "*")
-
-                    return route
-                })
-
-                let route = splitedFilePath.join("/")
-
-                route = route.replace(".jsx", "")
-                route = route.replace(".js", "")
-                route = route.replace(".ts", "")
-                route = route.replace(".tsx", "")
-
-                if (route.endsWith("/index")) {
-                    route = route.replace("/index", "")
-                }
-
-                route = `/${route}`
-
-                // import route
-                let routeFile = require(filePath)
-
-                routeFile = routeFile.default ?? routeFile
-
-                if (typeof routeFile !== "function") {
-                    if (!routeFile.fn) {
-                        console.warn(`Missing fn handler in [${method}][${route}]`)
-                        continue
-                    }
-
-                    if (Array.isArray(routeFile.useContext)) {
-                        let contexts = {}
-
-                        for (const context of routeFile.useContext) {
-                            contexts[context] = this.contexts[context]
-                        }
-
-                        routeFile.contexts = contexts
-
-                        routeFile.fn.bind({ contexts })
-                    }
-                }
-
-                new Endpoint(
-                    this,
-                    {
-                        route: route,
-                        enabled: true,
-                        middlewares: routeFile.middlewares,
-                        handlers: {
-                            [method]: routeFile.fn ?? routeFile,
-                        }
-                    }
-                )
-
-                continue
-            }
-        }
     }
 
     register = {
@@ -336,6 +220,10 @@ class Server {
             let middlewares = [..._middlewares]
 
             if (endpoint.middlewares) {
+                if (!Array.isArray(endpoint.middlewares)) {
+                    endpoint.middlewares = [endpoint.middlewares]
+                }
+
                 middlewares = [...middlewares, ...this.resolveMiddlewares(endpoint.middlewares)]
             }
 
@@ -347,36 +235,6 @@ class Server {
             // register endpoint to http interface router
             this.engine.router[endpoint.method](endpoint.route, ...middlewares, endpoint.fn)
         },
-        ws: (endpoint, ...execs) => {
-            endpoint.nsp = endpoint.nsp ?? "/main"
-
-            this.websocket_instance.eventsChannels.push([endpoint.nsp, endpoint.on, endpoint.dispatch])
-
-            this.websocket_instance.map[endpoint.on] = {
-                nsp: endpoint.nsp,
-                channel: endpoint.on,
-            }
-        },
-    }
-
-    async registerBaseEndpoints() {
-        if (this.params.disableBaseEndpoint) {
-            console.warn("‼️ [disableBaseEndpoint] Base endpoint is disabled! Endpoints mapping will not be available, so linebridge client bridges will not work! ‼️")
-            return false
-        }
-
-        const scanPath = path.join(__dirname, "baseEndpoints")
-        const files = fs.readdirSync(scanPath)
-
-        for await (const file of files) {
-            if (file === "index.js") {
-                continue
-            }
-
-            let endpoint = require(path.join(scanPath, file)).default
-
-            new endpoint(this)
-        }
     }
 
     resolveMiddlewares = (requestedMiddlewares) => {
@@ -385,7 +243,9 @@ class Server {
             ...defaults.middlewares,
         }
 
-        requestedMiddlewares = Array.isArray(requestedMiddlewares) ? requestedMiddlewares : [requestedMiddlewares]
+        if (typeof requestedMiddlewares === "string") {
+            requestedMiddlewares = [requestedMiddlewares]
+        }
 
         const execs = []
 
@@ -404,19 +264,6 @@ class Server {
         })
 
         return execs
-    }
-
-    // Utilities
-    toogleEndpointReachability = (method, route, enabled) => {
-        if (typeof this.endpoints_map[method] !== "object") {
-            throw new Error(`Cannot toogle endpoint, method [${method}] not set!`)
-        }
-
-        if (typeof this.endpoints_map[method][route] !== "object") {
-            throw new Error(`Cannot toogle endpoint [${route}], is not registered!`)
-        }
-
-        this.endpoints_map[method][route].enabled = enabled ?? !this.endpoints_map[method][route].enabled
     }
 }
 

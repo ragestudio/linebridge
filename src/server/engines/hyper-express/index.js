@@ -1,6 +1,5 @@
 import he from "hyper-express"
 import rtengine from "../../classes/rtengine"
-import SocketIO from "socket.io"
 
 export default class Engine {
     constructor(params) {
@@ -13,17 +12,28 @@ export default class Engine {
 
     router = new he.Router()
 
-    io = null
-
     ws = null
 
-    init = async (params) => {
+    initialize = async (params) => {
+        // create a router map
+        if (typeof this.router.map !== "object") {
+            this.router.map = {}
+        }
+
         // register 404
         await this.router.any("*", (req, res) => {
             return res.status(404).json({
                 code: 404,
                 message: "Not found"
             })
+        })
+
+        this.app.use((req, res, next) => {
+            if (req.method === "OPTIONS") {
+                return res.status(204).end()
+            }
+
+            next()
         })
 
         // register body parser
@@ -37,17 +47,15 @@ export default class Engine {
         })
 
         if (!params.disableWebSockets) {
-            this.io = new SocketIO.Server({
-                path: `/${params.refName}`,
-            })
-
-            this.io.attachApp(this.app.uws_instance)
-
-            this.ws = global.rtengine = new rtengine({
+            this.ws = global.websocket = new rtengine({
                 ...params,
                 handleAuth: params.handleWsAuth,
-                io: this.io,
+                root: `/${params.refName}`
             })
+
+            this.ws.initialize()
+
+            await this.ws.io.attachApp(this.app.uws_instance)
         }
     }
 
@@ -106,10 +114,16 @@ export default class Engine {
     }
 
     close = async () => {
-        if (this.io) {
-            this.io.close()
+        if (this.ws.events) {
+            this.ws.clear()
         }
 
-        await this.app.close()
+        if (typeof this.ws?.close === "function") {
+            await this.ws.close()
+        }
+
+        if (typeof this.app?.close === "function") {
+            await this.app.close()
+        }
     }
 }

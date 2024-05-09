@@ -4,39 +4,50 @@ export default class RedisMap {
             throw new Error("redis client is required")
         }
 
+        if (!params.refKey) {
+            throw new Error("refKey is required")
+        }
+
+        if (!params.worker_id) {
+            throw new Error("worker_id is required")
+        }
+
         this.redis = redis
         this.params = params
 
         this.refKey = this.params.refKey
-
-        if (!this.refKey) {
-            throw new Error("refKey is required")
-        }
+        this.worker_id = this.params.worker_id
     }
+
+    localMap = new Map()
 
     set = async (key, value) => {
         if (!key) {
-            console.warn(`[redis:${this.refKey}] Failed to set entry with no key`)
+            console.warn(`[redismap] (${this.refKey}) Failed to set entry with no key`)
             return
         }
 
         if (!value) {
-            console.warn(`[redis:${this.refKey}] Failed to set entry [${key}] with no value`)
+            console.warn(`[redismap] (${this.refKey}) Failed to set entry [${key}] with no value`)
             return
         }
 
         const redisKey = `${this.refKey}:${key}`
 
-        //console.log(`[redis:${this.refKey}] Setting entry [${key}]`,)
+        this.localMap.set(key, value)
 
-        await this.redis.hset(redisKey, value)
+       // console.log(`[redismap] (${this.refKey}) Set entry [${key}] to [${value}]`)
+
+        await this.redis.hset(redisKey, {
+            worker_id: this.worker_id,
+        })
 
         return value
     }
 
     get = async (key, value) => {
         if (!key) {
-            console.warn(`[redis:${this.refKey}] Failed to get entry with no key`)
+            console.warn(`[redismap] (${this.refKey}) Failed to get entry with no key`)
             return
         }
 
@@ -44,58 +55,24 @@ export default class RedisMap {
 
         let result = null
 
-        if (value) {
-            result = await this.redis.hget(redisKey, value)
+        if (this.localMap.has(key)) {
+            result = this.localMap.get(key)
         } else {
-            result = await this.redis.hgetall(redisKey)
-        }
+            const remoteWorkerID = await this.redis.hget(redisKey, value)
 
-        if (Object.keys(result).length === 0) {
-            result = null
+            if (!remoteWorkerID) {
+                return null
+            }
+
+            throw new Error("Redis stream data, not implemented...")
         }
 
         return result
     }
 
-    getMany = async (keys) => {
-        if (!keys) {
-            console.warn(`[redis:${this.refKey}] Failed to get entry with no key`)
-            return
-        }
-
-        const redisKeys = keys.map((key) => `${this.refKey}:${key}`)
-
-        const pipeline = this.redis.pipeline()
-
-        for (const redisKey of redisKeys) {
-            pipeline.hgetall(redisKey)
-        }
-
-        let results = await pipeline.exec()
-
-        results = results.map((result) => {
-            return result[1]
-        })
-
-        // delete null or empty objects
-        results = results.filter((result) => {
-            if (result === null) {
-                return false
-            }
-
-            if (Object.keys(result).length === 0) {
-                return false
-            }
-
-            return true
-        })
-
-        return results
-    }
-
     del = async (key) => {
         if (!key) {
-            console.warn(`[redis:${this.refKey}] Failed to delete entry with no key`)
+            console.warn(`[redismap] (${this.refKey}) Failed to delete entry with no key`)
             return false
         }
 
@@ -107,37 +84,18 @@ export default class RedisMap {
             return false
         }
 
-        await this.redis.hdel(redisKey, Object.keys(data))
+        if (this.localMap.has(key)) {
+            this.localMap.delete(key)
+        }
+
+        await this.redis.hdel(redisKey, ["worker_id"])
 
         return true
     }
 
-    getAll = async () => {
-        let map = []
-
-        let nextIndex = 0
-
-        do {
-            const [nextIndexAsStr, results] = await this.redis.scan(
-                nextIndex,
-                "MATCH",
-                `${this.refKey}:*`,
-                "COUNT",
-                100
-            )
-
-            nextIndex = parseInt(nextIndexAsStr, 10)
-
-            map = map.concat(results)
-
-        } while (nextIndex !== 0)
-
-        return map
-    }
-
     update = async (key, data) => {
         if (!key) {
-            console.warn(`[redis:${this.refKey}] Failed to update entry with no key`)
+            console.warn(`[redismap] (${this.refKey}) Failed to update entry with no key`)
             return
         }
 
@@ -146,7 +104,7 @@ export default class RedisMap {
         let new_data = await this.get(key)
 
         if (!new_data) {
-            console.warn(`[redis:${this.refKey}] Object [${key}] not exist, nothing to update`)
+            console.warn(`[redismap] (${this.refKey}) Object [${key}] not exist, nothing to update`)
 
             return false
         }
@@ -156,68 +114,93 @@ export default class RedisMap {
             ...data,
         }
 
-        await this.redis.hset(redisKey, new_data)
+        //console.log(`[redismap] (${this.refKey}) Object [${key}] updated`)
+
+        this.localMap.set(key, new_data)
+
+        await this.redis.hset(redisKey, {
+            worker_id: this.worker_id,
+        })
 
         return new_data
     }
 
-    flush = async (worker_id) => {
-        let nextIndex = 0
+    has = async (key) => {
+        if (!key) {
+            console.warn(`[redismap] (${this.refKey}) Failed to check entry with no key`)
+            return false
+        }
 
-        do {
-            const [nextIndexAsStr, results] = await this.redis.scan(
-                nextIndex,
-                "MATCH",
-                `${this.refKey}:*`,
-                "COUNT",
-                100
-            )
+        const redisKey = `${this.refKey}:${key}`
 
-            nextIndex = parseInt(nextIndexAsStr, 10)
+        if (this.localMap.has(key)) {
+            return true
+        }
 
-            const pipeline = this.redis.pipeline()
+        if (await this.redis.hget(redisKey, "worker_id")) {
+            return true
+        }
 
-            for await (const key of results) {
-                const key_id = key.split(this.refKey + ":")[1]
-
-                const data = await this.get(key_id)
-
-                if (!data) {
-                    continue
-                }
-
-                if (worker_id) {
-                    if (data.worker_id !== worker_id) {
-                        continue
-                    }
-                }
-
-                pipeline.hdel(key, Object.keys(data))
-            }
-
-            await pipeline.exec()
-        } while (nextIndex !== 0)
+        return false
     }
 
-    size = async () => {
-        let count = 0
+    // flush = async (worker_id) => {
+    //     let nextIndex = 0
 
-        let nextIndex = 0
+    //     do {
+    //         const [nextIndexAsStr, results] = await this.redis.scan(
+    //             nextIndex,
+    //             "MATCH",
+    //             `${this.refKey}:*`,
+    //             "COUNT",
+    //             100
+    //         )
 
-        do {
-            const [nextIndexAsStr, results] = await this.redis.scan(
-                nextIndex,
-                "MATCH",
-                `${this.refKey}:*`,
-                "COUNT",
-                100
-            )
+    //         nextIndex = parseInt(nextIndexAsStr, 10)
 
-            nextIndex = parseInt(nextIndexAsStr, 10)
+    //         const pipeline = this.redis.pipeline()
 
-            count = count + results.length
-        } while (nextIndex !== 0)
+    //         for await (const key of results) {
+    //             const key_id = key.split(this.refKey + ":")[1]
 
-        return count
-    }
+    //             const data = await this.get(key_id)
+
+    //             if (!data) {
+    //                 continue
+    //             }
+
+    //             if (worker_id) {
+    //                 if (data.worker_id !== worker_id) {
+    //                     continue
+    //                 }
+    //             }
+
+    //             pipeline.hdel(key, Object.keys(data))
+    //         }
+
+    //         await pipeline.exec()
+    //     } while (nextIndex !== 0)
+    // }
+
+    // size = async () => {
+    //     let count = 0
+
+    //     let nextIndex = 0
+
+    //     do {
+    //         const [nextIndexAsStr, results] = await this.redis.scan(
+    //             nextIndex,
+    //             "MATCH",
+    //             `${this.refKey}:*`,
+    //             "COUNT",
+    //             100
+    //         )
+
+    //         nextIndex = parseInt(nextIndexAsStr, 10)
+
+    //         count = count + results.length
+    //     } while (nextIndex !== 0)
+
+    //     return count
+    // }
 }
