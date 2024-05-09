@@ -38,6 +38,14 @@ export default class Engine {
 
         // register body parser
         await this.app.use(async (req, res, next) => {
+            if (req.method === "OPTIONS") {
+                res.setHeader("Access-Control-Allow-Methods", "*")
+                res.setHeader("Access-Control-Allow-Origin", "*")
+                res.setHeader("Access-Control-Allow-Headers", "*")
+
+                return res.status(204).end()
+            }
+
             if (req.headers["content-type"]) {
                 if (!req.headers["content-type"].startsWith("multipart/form-data")) {
                     req.body = await req.urlencoded()

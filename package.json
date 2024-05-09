@@ -1,6 +1,6 @@
 {
   "name": "linebridge",
-  "version": "0.20.0",
+  "version": "0.19.4",
   "description": "API Framework for RageStudio backends",
   "author": "RageStudio",
   "main": "./dist/client/index.js",
@@ -18,8 +18,7 @@
   "files": [
     "src/**/**",
     "dist/**/**",
-    "./package.json",
-    "boot"
+    "./package.json"
   ],
   "license": "MIT",
   "dependencies": {
