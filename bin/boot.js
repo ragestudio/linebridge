@@ -126,26 +126,31 @@ async function injectEnvFromInfisical() {
 }
 
 async function Boot(main) {
-    if (!main) {
-        throw new Error("main class is not defined")
+    try {
+        if (!main) {
+            throw new Error("main class is not defined")
+        }
+    
+        if (process.env.INFISICAL_TOKEN) {
+            console.log(`[BOOT] INFISICAL_TOKEN found, injecting env variables from INFISICAL...`)
+            await injectEnvFromInfisical()
+        }
+    
+        const instance = new main()
+    
+        await instance.initialize()
+    
+        if (process.env.lb_service && process.send) {
+            process.send({
+                status: "ready"
+            })
+        }
+    
+        return instance
+    } catch (error) {
+        console.error(error)
+        process.exit(1)
     }
-
-    if (process.env.INFISICAL_TOKEN) {
-        console.log(`[BOOT] INFISICAL_TOKEN found, injecting env variables from INFISICAL...`)
-        await injectEnvFromInfisical()
-    }
-
-    const instance = new main()
-
-    await instance.initialize()
-
-    if (process.env.lb_service && process.send) {
-        process.send({
-            status: "ready"
-        })
-    }
-
-    return instance
 }
 
 console.log(`[BOOT] Booting in [${global.isProduction ? "production" : "development"}] mode...`)
