@@ -33,7 +33,7 @@ npm install linebridge
 Create a http server
 ```js
 // index.js
-import { Server } from "./linebridge/src"
+import { Server } from "linebridge"
 
 class MyAPI extends Server {
     // set a id for the server
