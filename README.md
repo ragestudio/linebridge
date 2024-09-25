@@ -1,7 +1,25 @@
-# linebridge
+<img 
+    src="https://raw.githubusercontent.com/ragestudio/linebridge/refs/heads/master/resources/linebridge-color-b.svg" 
+    width="100%" 
+    height="150px"
+/>
+# Linebridge
 A multiproposal framework to build fast, scalable, and secure servers.
 
 Currently used on RageStudio's services backends, like [Comty](https://github.com/ragestudio/comty)
+
+## Suported Engines
+- [hyper-express](https://github.com/kartikk221/hyper-express) (default) | High Performance Node.js Webserver.
+- worker | IPC Worker for sharding.
+
+## Features
+- Multiproposal
+- Modular and extensible
+- 🚀 Fast and scalable
+- 🔐 Secure by default
+- Supports WebSockets
+- 📦 Supports multiple protocols
+- Transcompiler included on bootloader
 
 ## Getting Started
 ### Installation
