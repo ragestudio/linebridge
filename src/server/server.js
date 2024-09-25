@@ -3,7 +3,6 @@ import("./patches")
 import fs from "node:fs"
 import path from "node:path"
 import { EventEmitter } from "@foxify/events"
-import { onExit } from "signal-exit"
 
 import defaults from "./defaults"
 
@@ -63,6 +62,7 @@ class Server {
         this.params.http_protocol = this.params.http_protocol ?? "http"
         this.params.http_address = `${this.params.http_protocol}://${defaults.localhost_address}:${this.params.listen_port}`
         this.params.disableWebSockets = this.constructor.disableWebSockets ?? this.params.disableWebSockets ?? false
+        this.params.ignoreCors = this.constructor.ignoreCors ?? this.params.ignoreCors ?? true
 
         this.params.routesPath = this.constructor.routesPath ?? this.params.routesPath ?? path.resolve(process.cwd(), "routes")
         this.params.wsRoutesPath = this.constructor.wsRoutesPath ?? this.params.wsRoutesPath ?? path.resolve(process.cwd(), "routes_ws")
@@ -81,11 +81,6 @@ class Server {
     eventBus = new EventEmitter()
 
     initialize = async () => {
-        onExit((code, signal) => {
-            this.engine.close()
-            process.exit(code)
-        })
-
         const startHrTime = process.hrtime()
 
         // register events
@@ -105,6 +100,7 @@ class Server {
             handleAuth: this.handleHttpAuth,
             requireAuth: this.constructor.requireHttpAuth,
             refName: this.constructor.refName ?? this.params.refName,
+            ssl: this.ssl ?? {},
         }
 
         // initialize engine
