@@ -6,21 +6,24 @@ export default class Engine {
         this.params = params
     }
 
-    app = new he.Server({
-        max_body_length: 50 * 1024 * 1024, //50MB in bytes
-    })
-
-    router = new he.Router()
-
+    app = null
+    router = null
     ws = null
 
     initialize = async (params) => {
+        this.app = new he.Server({
+            max_body_length: 50 * 1024 * 1024, //50MB in bytes,
+            key_file_name: params.ssl?.key ?? null,
+            cert_file_name: params.ssl?.cert ?? null,
+        })
+
+        this.router = new he.Router()
+
         // create a router map
         if (typeof this.router.map !== "object") {
             this.router.map = {}
         }
 
-        // register 404
         await this.router.any("*", (req, res) => {
             return res.status(404).json({
                 code: 404,
@@ -28,24 +31,19 @@ export default class Engine {
             })
         })
 
-        this.app.use((req, res, next) => {
-            if (req.method === "OPTIONS") {
-                return res.status(204).end()
-            }
-
-            next()
-        })
-
-        // register body parser
         await this.app.use(async (req, res, next) => {
             if (req.method === "OPTIONS") {
-                res.setHeader("Access-Control-Allow-Methods", "*")
-                res.setHeader("Access-Control-Allow-Origin", "*")
-                res.setHeader("Access-Control-Allow-Headers", "*")
+                // handle cors
+                if (params.ignoreCors) {
+                    res.setHeader("Access-Control-Allow-Methods", "*")
+                    res.setHeader("Access-Control-Allow-Origin", "*")
+                    res.setHeader("Access-Control-Allow-Headers", "*")
+                }
 
                 return res.status(204).end()
             }
 
+            // register body parser
             if (req.headers["content-type"]) {
                 if (!req.headers["content-type"].startsWith("multipart/form-data")) {
                     req.body = await req.urlencoded()
@@ -121,17 +119,18 @@ export default class Engine {
         await this.app.listen(this.params.listen_port)
     }
 
-    close = async () => {
-        if (this.ws.events) {
+    // close should be synchronous
+    close = () => {
+        if (this.ws) {
             this.ws.clear()
-        }
 
-        if (typeof this.ws?.close === "function") {
-            await this.ws.close()
+            if (typeof this.ws?.close === "function") {
+                this.ws.close()
+            }
         }
 
         if (typeof this.app?.close === "function") {
-            await this.app.close()
+            this.app.close()
         }
     }
 }
