@@ -1,10 +1,15 @@
 export default class Endpoint {
-    constructor(ctx, params = {}) {
-        this.ctx = ctx
+    constructor(server, params = {}, ctx = {}) {
+        this.server = server
         this.params = params
+        this.ctx = ctx
 
-        this.route = this.constructor.route ?? this.params.route
-        this.enabled = this.constructor.enabled ?? this.params.enabled ?? true
+        if (!server) {
+            throw new Error("Server is not defined")
+        }
+
+        this.route = this.route ?? this.constructor.route ?? this.params.route
+        this.enabled = this.enabled ?? this.constructor.enabled ?? this.params.enabled ?? true
 
         this.middlewares = [
             ...this.middlewares ?? [],
@@ -12,7 +17,7 @@ export default class Endpoint {
         ]
 
         if (this.params.handlers) {
-            for (const method of this.ctx.valid_http_methods) {
+            for (const method of globalThis._linebridge.validHttpMethods) {
                 if (typeof this.params.handlers[method] === "function") {
                     this[method] = this.params.handlers[method]
                 }
@@ -21,13 +26,23 @@ export default class Endpoint {
 
         this.selfRegister()
 
+        if (Array.isArray(this.params.useContexts)) {
+            for (const contextRef of this.params.useContexts) {
+                this.endpointContext[contextRef] = this.server.contexts[contextRef]
+            }
+        }
+
         return this
     }
 
+    endpointContext = {}
+
     createHandler(fn) {
+        fn = fn.bind(this.server)
+
         return async (req, res) => {
             try {
-                const result = await fn(req, res)
+                const result = await fn(req, res, this.endpointContext)
 
                 if (result) {
                     return res.json(result)
@@ -52,15 +67,13 @@ export default class Endpoint {
     }
 
     selfRegister = async () => {
-        const validMethods = this.ctx.valid_http_methods
-
-        for await (const method of validMethods) {
+        for await (const method of globalThis._linebridge.validHttpMethods) {
             const methodHandler = this[method]
 
             if (typeof methodHandler !== "undefined") {
                 const fn = this.createHandler(this[method].fn ?? this[method])
 
-                this.ctx.register.http(
+                this.server.register.http(
                     {
                         method,
                         route: this.route,

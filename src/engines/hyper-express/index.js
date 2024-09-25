@@ -11,11 +11,16 @@ export default class Engine {
     ws = null
 
     initialize = async (params) => {
-        this.app = new he.Server({
+        const serverParams = {
             max_body_length: 50 * 1024 * 1024, //50MB in bytes,
-            key_file_name: params.ssl?.key ?? null,
-            cert_file_name: params.ssl?.cert ?? null,
-        })
+        }
+
+        if (params.ssl) {
+            serverParams.key_file_name = params.ssl?.key ?? null
+            serverParams.cert_file_name = params.ssl?.cert ?? null
+        }
+
+        this.app = new he.Server(serverParams)
 
         this.router = new he.Router()
 
@@ -52,7 +57,7 @@ export default class Engine {
             }
         })
 
-        if (!params.disableWebSockets) {
+        if (params.enableWebsockets) {
             this.ws = global.websocket = new rtengine({
                 ...params,
                 handleAuth: params.handleWsAuth,
@@ -83,7 +88,7 @@ export default class Engine {
                 return true
             })
 
-            if (!params.disableWebSockets) {
+            if (params.enableWebsockets) {
                 process.send({
                     type: "router:ws:register",
                     id: process.env.lb_service.id,

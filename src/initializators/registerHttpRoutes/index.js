@@ -5,7 +5,7 @@ import RecursiveRegister from "../../lib/recursiveRegister"
 
 const parametersRegex = /\[([a-zA-Z0-9_]+)\]/g
 
-export default async (startDir, engine, ctx) => {
+export default async (startDir, engine, server) => {
     if (!fs.existsSync(startDir)) {
         return engine
     }
@@ -52,7 +52,7 @@ export default async (startDir, engine, ctx) => {
                     let contexts = {}
 
                     for (const context of fn.useContext) {
-                        contexts[context] = ctx.contexts[context]
+                        contexts[context] = server.contexts[context]
                     }
 
                     fn.contexts = contexts
@@ -62,7 +62,7 @@ export default async (startDir, engine, ctx) => {
             }
 
             new Endpoint(
-                ctx,
+                server,
                 {
                     route: route,
                     enabled: true,

@@ -9,12 +9,10 @@ export default class MainEndpoint extends Endpoint {
     route = "/"
 
     get = async (req, res) => {
-        const { params } = this.ctx
-
         return {
-            name: params.name ?? "unknown",
+            name: globalThis._linebridge.name ?? "unknown",
             version: projectPkg.version ?? "unknown",
-            engine: params.useEngine ?? "unknown",
+            engine: globalThis._linebridge.useEngine ?? "unknown",
             request_time: new Date().getTime(),
             lb_version: defaults.version ?? "unknown",
             experimental: defaults.isExperimental.toString() ?? "unknown",

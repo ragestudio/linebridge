@@ -1,10 +1,13 @@
 {
   "name": "linebridge",
-  "version": "0.21.4",
-  "description": "API Framework for RageStudio backends",
-  "author": "RageStudio",
+  "version": "0.22.0",
+  "description": "Multiproposal framework to build fast, scalable, and secure servers.",
+  "author": "RageStudio <support@ragestudio.net>",
+  "bugs": {
+    "url": "https://github.com/ragestudio/linebridge/issues"
+  },
   "license": "MIT",
-  "main": "./dist/client/index.js",
+  "main": "./dist/index.js",
   "bin": {
     "linebridge-boot": "./bin/boot.js"
   },

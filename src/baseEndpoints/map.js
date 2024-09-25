@@ -4,7 +4,7 @@ export default class MainEndpoint extends Endpoint {
     route = "/_map"
 
     get = async (req, res) => {
-        const httpMap = Object.entries(this.ctx.engine.router.map).reduce((acc, [route, { method, path }]) => {
+        const httpMap = Object.entries(this.server.engine.router.map).reduce((acc, [route, { method, path }]) => {
             if (!acc[method]) {
                 acc[method] = []
             }

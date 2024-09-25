@@ -1,7 +1,7 @@
 import fs from "node:fs"
 import path from "node:path"
 
-export default async (ctx) => {
+export default async (server) => {
     const scanPath = path.join(__dirname, "../../", "baseEndpoints")
     const files = fs.readdirSync(scanPath)
 
@@ -12,6 +12,6 @@ export default async (ctx) => {
 
         let endpoint = require(path.join(scanPath, file)).default
 
-        new endpoint(ctx)
+        new endpoint(server)
     }
 }

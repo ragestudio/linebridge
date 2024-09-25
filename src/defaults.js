@@ -1,7 +1,7 @@
 const path = require("path")
 const fs = require("fs")
 const os = require("os")
-const packageJSON = require(path.resolve(module.path, "../../package.json"))
+const packageJSON = require(path.resolve(module.path, "../package.json"))
 
 function getHostAddress() {
     const interfaces = os.networkInterfaces()
@@ -22,7 +22,7 @@ function getHostAddress() {
 }
 
 export default {
-    isExperimental: fs.existsSync(path.resolve(module.path, "../../.experimental")),
+    isExperimental: fs.existsSync(path.resolve(module.path, "../.experimental")),
     version: packageJSON.version,
     localhost_address: getHostAddress() ?? "localhost",
     params: {

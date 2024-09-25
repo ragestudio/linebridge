@@ -7,6 +7,7 @@ import { EventEmitter } from "@foxify/events"
 import defaults from "./defaults"
 
 import IPCClient from "./classes/IPCClient"
+import Endpoint from "./classes/endpoint"
 
 import registerBaseEndpoints from "./initializators/registerBaseEndpoints"
 import registerWebsocketsEvents from "./initializators/registerWebsocketsEvents"
@@ -51,8 +52,6 @@ class Server {
             ...headers.default ?? headers,
         }
 
-        this.valid_http_methods = defaults.valid_http_methods
-
         // fix and fulfill params
         this.params.useMiddlewares = this.params.useMiddlewares ?? []
         this.params.name = this.constructor.refName ?? this.params.refName
@@ -61,11 +60,24 @@ class Server {
         this.params.listen_port = this.constructor.listenPort ?? this.constructor.listen_port ?? this.params.listen_port ?? 3000
         this.params.http_protocol = this.params.http_protocol ?? "http"
         this.params.http_address = `${this.params.http_protocol}://${defaults.localhost_address}:${this.params.listen_port}`
-        this.params.disableWebSockets = this.constructor.disableWebSockets ?? this.params.disableWebSockets ?? false
+        this.params.enableWebsockets = this.constructor.enableWebsockets ?? this.params.enableWebsockets ?? false
         this.params.ignoreCors = this.constructor.ignoreCors ?? this.params.ignoreCors ?? true
 
         this.params.routesPath = this.constructor.routesPath ?? this.params.routesPath ?? path.resolve(process.cwd(), "routes")
         this.params.wsRoutesPath = this.constructor.wsRoutesPath ?? this.params.wsRoutesPath ?? path.resolve(process.cwd(), "routes_ws")
+
+        globalThis._linebridge = {
+            name: this.params.name,
+            useEngine: this.params.useEngine,
+            listenIp: this.params.listen_ip,
+            listenPort: this.params.listen_port,
+            httpProtocol: this.params.http_protocol,
+            httpAddress: this.params.http_address,
+            enableWebsockets: this.params.enableWebsockets,
+            ignoreCors: this.params.ignoreCors,
+            routesPath: this.params.routesPath,
+            validHttpMethods: defaults.valid_http_methods,
+        }
 
         return this
     }
@@ -100,7 +112,7 @@ class Server {
             handleAuth: this.handleHttpAuth,
             requireAuth: this.constructor.requireHttpAuth,
             refName: this.constructor.refName ?? this.params.refName,
-            ssl: this.ssl ?? {},
+            ssl: this.ssl,
         }
 
         // initialize engine
@@ -137,6 +149,21 @@ class Server {
         // set defaults
         this.useDefaultHeaders()
         this.useDefaultMiddlewares()
+
+        if (this.routes) {
+            for (const [route, endpoint] of Object.entries(this.routes)) {
+                this.engine.router.map[route] = new Endpoint(
+                    this,
+                    {
+                        ...endpoint,
+                        route: route,
+                        handlers: {
+                            [endpoint.method]: endpoint.fn,
+                        },
+                    }
+                )
+            }
+        }
 
         // register http & ws routes
         this.engine = await registerHttpRoutes(this.params.routesPath, this.engine, this)
