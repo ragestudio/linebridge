@@ -10,23 +10,24 @@ Currently used on RageStudio's services backends, like [Comty](https://github.co
 
 ## Suported Engines
 - [hyper-express](https://github.com/kartikk221/hyper-express) (default) | High Performance Node.js Webserver.
-- worker | IPC Worker for sharding.
+- worker | IPC Worker for sharding and efficient multi-threading.
 
 ## Features
-- Multiproposal
-- Modular and extensible
-- 🚀 Fast and scalable
-- 🔐 Secure by default
-- Supports WebSockets
-- 📦 Supports multiple protocols
-- Transcompiler included on bootloader
+- Multiproposal architecture | Designed to adapt to different project needs.
+- Modular and Extensible | Easily add or replace components as needed.
+- 🚀 Fast & Scalable | Optimized for performance under high traffic.
+- 🔐 Secure by Default | Security-focused setup right out of the box.
+- 📡 Supports WebSockets | Real-time communication ready.
+- 📦 Multi-Protocol Support | Communicate over multiple protocols effortlessly.
+- 🔧 Built-in Transcompiler | Automatically transcompiles code on boot for smoother deployment.
 
 ## Getting Started
 ### Installation
 ```bash
 npm install linebridge
 ```
-> Note: Use of Yarn can cause some issues to install the package.
+> [!WARNING]
+> If you're using Yarn, you might encounter installation issues. We recommend using npm.
 
 ### Example
 Create a http server
@@ -134,5 +135,5 @@ linebridge-boot index.js
 ```
 
 ## Documentation
-> On the way
+> The official documentation is on its way. Stay tuned for detailed guides and API references to help you unlock the full potential of Linebridge.
 <!-- For more information, please visit the [documentation](https://docs.linebridge.com). -->
