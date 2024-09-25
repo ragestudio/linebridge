@@ -2,13 +2,13 @@
 require("dotenv").config()
 require("sucrase/register")
 
-const path = require("path")
-const Module = require("module")
-const { Buffer } = require("buffer")
-const { webcrypto: crypto } = require("crypto")
+const path = require("node:path")
+const Module = require("node:module")
+const { Buffer } = require("node:buffer")
+const { webcrypto: crypto } = require("node:crypto")
 const { InfisicalClient } = require("@infisical/sdk")
-
 const moduleAlias = require("module-alias")
+const { onExit } = require("signal-exit")
 
 // Override file execution arg
 process.argv.splice(1, 1)
@@ -108,7 +108,12 @@ async function injectEnvFromInfisical() {
     console.log(`[BOOT] 🔑 Injecting env variables from INFISICAL in [${envMode}] mode...`)
 
     const client = new InfisicalClient({
-        accessToken: process.env.INFISICAL_TOKEN,
+        auth: {
+            universalAuth: {
+                clientId: process.env.INFISICAL_CLIENT_ID,
+                clientSecret: process.env.INFISICAL_CLIENT_SECRET,
+            }
+        },
     })
 
     const secrets = await client.listSecrets({
@@ -127,40 +132,51 @@ async function injectEnvFromInfisical() {
 }
 
 async function Boot(main) {
-    try {
-        if (!main) {
-            throw new Error("main class is not defined")
-        }
-    
-        if (process.env.INFISICAL_TOKEN) {
-            console.log(`[BOOT] INFISICAL_TOKEN found, injecting env variables from INFISICAL...`)
-            await injectEnvFromInfisical()
-        }
-    
-        const instance = new main()
-    
-        await instance.initialize()
-    
-        if (process.env.lb_service && process.send) {
-            process.send({
-                status: "ready"
-            })
-        }
-    
-        return instance
-    } catch (error) {
-        console.error(error)
-        process.exit(1)
+    if (!main) {
+        throw new Error("main class is not defined")
     }
+
+    console.log(`[BOOT] Booting in [${global.isProduction ? "production" : "development"}] mode...`)
+
+    if (process.env.INFISICAL_CLIENT_ID && process.env.INFISICAL_CLIENT_SECRET) {
+        console.log(`[BOOT] INFISICAL Credentials found, injecting env variables from INFISICAL...`)
+        await injectEnvFromInfisical()
+    }
+
+    const instance = new main()
+
+    onExit((code, signal) => {
+        console.log(`[BOOT] Cleaning up...`)
+
+        if (typeof instance.onClose === "function") {
+            instance.onClose()
+        }
+
+        instance.engine.close()
+    }, {
+        alwaysLast: true,
+    })
+
+    await instance.initialize()
+
+    if (process.env.lb_service && process.send) {
+        process.send({
+            status: "ready"
+        })
+    }
+
+    return instance
 }
 
-console.log(`[BOOT] Booting in [${global.isProduction ? "production" : "development"}] mode...`)
+try {
+    // Apply patches
+    registerPatches()
 
-// Apply patches
-registerPatches()
+    // Apply aliases
+    registerAliases()
 
-// Apply aliases
-registerAliases()
-
-// execute main
-Module.runMain()
+    // execute main
+    Module.runMain()
+} catch (error) {
+    console.error("[BOOT] ❌ Boot error: ", error)
+}
