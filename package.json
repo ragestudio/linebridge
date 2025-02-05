@@ -1,54 +1,54 @@
 {
-  "name": "linebridge",
-  "version": "0.22.0",
-  "description": "Multiproposal framework to build fast, scalable, and secure servers.",
-  "author": "RageStudio <support@ragestudio.net>",
-  "bugs": {
-    "url": "https://github.com/ragestudio/linebridge/issues"
-  },
-  "license": "MIT",
-  "main": "./dist/index.js",
-  "bin": {
-    "linebridge-boot": "./bin/boot.js"
-  },
-  "publishConfig": {
-    "access": "public"
-  },
-  "files": [
-    "src/**/**",
-    "dist/**/**",
-    "./package.json"
-  ],
-  "scripts": {
-    "start": "hermes-node ./src/bin/server.js",
-    "build": "hermes build --parallel --clean",
-    "test": "mocha"
-  },
-  "dependencies": {
-    "@foxify/events": "^2.1.0",
-    "@gullerya/object-observer": "^6.1.3",
-    "@infisical/sdk": "^2.1.8",
-    "@socket.io/cluster-adapter": "^0.2.2",
-    "@socket.io/redis-adapter": "^8.2.1",
-    "@socket.io/redis-emitter": "^5.1.0",
-    "@socket.io/sticky": "^1.0.4",
-    "axios": "^1.6.7",
-    "axios-retry": "3.4.0",
-    "cors": "2.8.5",
-    "dotenv": "^16.4.4",
-    "hyper-express": "^6.17.2",
-    "ioredis": "^5.3.2",
-    "md5": "^2.3.0",
-    "module-alias": "2.2.2",
-    "morgan": "1.10.0",
-    "signal-exit": "^4.1.0",
-    "socket.io": "^4.7.4",
-    "socket.io-client": "4.5.4",
-    "sucrase": "^3.35.0",
-    "uuid": "^9.0.1"
-  },
-  "devDependencies": {
-    "@ragestudio/hermes": "^1.0.0",
-    "mocha": "^9.1.3"
-  }
+	"name": "linebridge",
+	"version": "0.22.2",
+	"description": "Multiproposal framework to build fast, scalable, and secure servers.",
+	"author": "RageStudio <support@ragestudio.net>",
+	"bugs": {
+		"url": "https://github.com/ragestudio/linebridge/issues"
+	},
+	"license": "MIT",
+	"main": "./dist/index.js",
+	"bin": {
+		"linebridge-boot": "./bin/boot.js"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"files": [
+		"src/**/**",
+		"dist/**/**",
+		"./package.json"
+	],
+	"scripts": {
+		"start": "hermes-node ./src/bin/server.js",
+		"build": "hermes build --parallel --clean",
+		"test": "mocha"
+	},
+	"dependencies": {
+		"@foxify/events": "^2.1.0",
+		"@gullerya/object-observer": "^6.1.3",
+		"@infisical/sdk": "^2.1.8",
+		"@socket.io/cluster-adapter": "^0.2.2",
+		"@socket.io/redis-adapter": "^8.2.1",
+		"@socket.io/redis-emitter": "^5.1.0",
+		"@socket.io/sticky": "^1.0.4",
+		"axios": "^1.6.7",
+		"axios-retry": "3.4.0",
+		"cors": "2.8.5",
+		"dotenv": "^16.4.4",
+		"hyper-express": "^6.17.2",
+		"ioredis": "^5.3.2",
+		"md5": "^2.3.0",
+		"module-alias": "2.2.2",
+		"morgan": "1.10.0",
+		"signal-exit": "^4.1.0",
+		"socket.io": "^4.8.1",
+		"socket.io-client": "^4.5.4",
+		"sucrase": "^3.35.0",
+		"uuid": "^9.0.1"
+	},
+	"devDependencies": {
+		"@ragestudio/hermes": "^1.0.0",
+		"mocha": "^11.1.0"
+	}
 }
