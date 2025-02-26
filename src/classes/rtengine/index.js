@@ -130,7 +130,6 @@ export default class RTEngineServer {
 
 		// register events
 		if (typeof this.events === "object") {
-			console.log("registering events", this.events)
 			for (const [key, handler] of this.events.entries()) {
 				socket.on(key, (...args) => {
 					this.eventHandler(handler, socket, ...args)
