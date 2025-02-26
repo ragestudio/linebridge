@@ -1,6 +1,6 @@
 {
 	"name": "linebridge",
-	"version": "0.22.2",
+	"version": "0.22.6",
 	"description": "Multiproposal framework to build fast, scalable, and secure servers.",
 	"author": "RageStudio <support@ragestudio.net>",
 	"bugs": {
@@ -36,7 +36,7 @@
 		"axios-retry": "3.4.0",
 		"cors": "2.8.5",
 		"dotenv": "^16.4.4",
-		"hyper-express": "^6.17.2",
+		"hyper-express": "^6.17.3",
 		"ioredis": "^5.3.2",
 		"md5": "^2.3.0",
 		"module-alias": "2.2.2",
