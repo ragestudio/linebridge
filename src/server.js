@@ -196,7 +196,7 @@ class Server {
 					...endpoint,
 					route: route,
 					handlers: {
-						[endpoint.method]: endpoint.fn,
+						[endpoint.method.toLowerCase()]: endpoint.fn,
 					},
 				})
 			}
