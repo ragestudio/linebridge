@@ -133,18 +133,6 @@ class Server {
 			}
 		}
 
-		const engineParams = {
-			...this.params,
-			handleWsUpgrade: this.handleWsUpgrade,
-			handleWsConnection: this.handleWsConnection,
-			handleWsDisconnect: this.handleWsDisconnect,
-			handleWsAuth: this.handleWsAuth,
-			handleAuth: this.handleHttpAuth,
-			requireAuth: this.constructor.requireHttpAuth,
-			refName: this.constructor.refName ?? this.params.refName,
-			ssl: this.ssl,
-		}
-
 		// initialize engine
 		this.engine = Engines[this.params.useEngine]
 
@@ -152,10 +140,10 @@ class Server {
 			throw new Error(`Engine ${this.params.useEngine} not found`)
 		}
 
-		this.engine = new this.engine(engineParams, this)
+		this.engine = new this.engine(this)
 
 		if (typeof this.engine.initialize === "function") {
-			await this.engine.initialize(engineParams)
+			await this.engine.initialize()
 		}
 
 		// check if ws events are defined
@@ -229,14 +217,14 @@ class Server {
 		}
 
 		// listen
-		await this.engine.listen(engineParams)
+		await this.engine.listen()
 
 		// calculate elapsed time on ms, to fixed 2
 		const elapsedHrTime = process.hrtime(startHrTime)
 		const elapsedTimeInMs = elapsedHrTime[0] * 1e3 + elapsedHrTime[1] / 1e6
 
 		console.info(
-			`🛰  Server ready!\n\t - ${this.params.http_protocol}://${this.params.listen_ip}:${this.params.listen_port}  \n\t - Tooks ${elapsedTimeInMs.toFixed(2)}ms`,
+			`🛰  Server ready!\n\t - ${this.params.http_protocol}://${this.params.listen_ip}:${this.params.listen_port}  \n\t - Tooks ${elapsedTimeInMs.toFixed(2)}ms \n\t - Websocket: ${this.engine.ws ? "Enabled" : "Disabled"}`,
 		)
 	}
 
