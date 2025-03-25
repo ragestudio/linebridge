@@ -1,5 +1,8 @@
 import HyperExpress from "hyper-express"
 
+import Client from "./client"
+import BuiltInEvents from "./events"
+
 class RTEngineNG {
 	constructor(config = {}) {
 		this.events = new Map()
@@ -10,85 +13,84 @@ class RTEngineNG {
 			}
 		}
 
+		for (const [event, handler] of Object.entries(BuiltInEvents)) {
+			this.events.set(event, handler)
+		}
+
 		this.onUpgrade = config.onUpgrade || null
 		this.onConnection = config.onConnection || null
-		this.onDisconnection = config.onDisconnection || null
+		this.onDisconnect = config.onDisconnect || null
 	}
 
-	clients = new Set()
+	clients = new Map()
 
 	router = new HyperExpress.Router()
 
 	senders = {
 		broadcast: async (event, data) => {
-			for (const client of this.clients) {
-				this.sendMessage(client, event, data)
+			for (const [socketId, client] of this.clients) {
+				client.emit(event, data)
 			}
+		},
+		toTopic: async (topic, event, data) => {
+			if (!this.engine) {
+				throw new Error("Engine not initialized")
+			}
+
+			return this.engine.app.publish(
+				topic,
+				JSON.stringify({
+					topic: topic,
+					event: event,
+					data: data,
+				}),
+			)
 		},
 	}
 
-	sendMessage = (socket, event, data) => {
-		const payload = JSON.stringify({ event, data })
+	find = {
+		clientsByUserId: (userId) => {
+			const clients = []
 
-		socket.send(payload)
-	}
+			for (const [socketId, client] of this.clients) {
+				if (client.userId === userId) {
+					clients.push(client)
+				}
+			}
 
-	sendToTopic = (socket, topic, event, data, self = false) => {
-		const payload = JSON.stringify({
-			topic,
-			event,
-			data,
-		})
-
-		socket.publish(topic, payload)
-
-		if (self === true) {
-			this.sendMessage(socket, event, data)
-		}
-	}
-
-	sendError = (socket, error) => {
-		if (error instanceof Error) {
-			error = error.toString()
-		}
-
-		this.sendMessage(socket, "error", error)
+			return clients
+		},
 	}
 
 	handleMessage = async (socket, payload) => {
+		const client = this.clients.get(socket.context.id)
+
+		if (!client) {
+			return socket.send(
+				JSON.stringify({ event: "error", data: "Client not found" }),
+			)
+		}
+
 		let message = null
 
 		try {
 			message = JSON.parse(payload)
 
 			if (typeof message.event !== "string") {
-				return this.sendError(socket, "Invalid event type")
+				return client.error("Invalid event type")
 			}
 
 			const handler = this.events.get(message.event)
 
 			if (typeof handler === "function") {
-				const handlerSenders = {
-					...this.senders,
-					toTopic: (room, event, data, self) => {
-						this.sendToTopic(socket, room, event, data, self)
-					},
-					send: (event, data) => {
-						this.sendMessage(socket, event, data)
-					},
-					error: (error) => {
-						this.sendError(socket, error)
-					},
-				}
-
-				await handler(socket, message.data, handlerSenders)
+				await handler(client, message.data)
 			} else {
 				console.log(`[ws] 404 /${message.event}`)
-				this.sendError(socket, "Event handler not found")
+				client.error("Event handler not found")
 			}
 		} catch (error) {
 			console.log(`[ws] 500 /${message?.event ?? "unknown"} >`, error)
-			this.sendError(socket, error)
+			client.error(error)
 		}
 	}
 
@@ -98,17 +100,19 @@ class RTEngineNG {
 		}
 
 		socket.on("message", (payload) => this.handleMessage(socket, payload))
-		socket.on("close", () => this.handleDisconnection(socket))
+		socket.on("close", () => this.handleDisconnect(socket))
 
-		this.clients.add(socket)
+		const client = new Client(socket)
+
+		this.clients.set(socket.context.id, client)
 	}
 
-	handleDisconnection = async (socket) => {
-		if (this.onDisconnection) {
-			await this.onDisconnection(socket)
+	handleDisconnect = async (socket) => {
+		if (typeof this.onDisconnect === "function") {
+			await this.onDisconnect(socket)
 		}
 
-		this.clients.delete(socket)
+		this.clients.delete(socket.context.id)
 	}
 
 	handleUpgrade = async (req, res) => {
