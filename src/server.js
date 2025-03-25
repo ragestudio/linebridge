@@ -13,17 +13,7 @@ import registerBaseEndpoints from "./initializators/registerBaseEndpoints"
 import registerWebsocketsEvents from "./initializators/registerWebsocketsEvents"
 import registerHttpRoutes from "./initializators/registerHttpRoutes"
 
-async function loadEngine(engine) {
-	const enginesPath = path.resolve(__dirname, "engines")
-
-	const selectedEnginePath = path.resolve(enginesPath, engine)
-
-	if (!fs.existsSync(selectedEnginePath)) {
-		throw new Error(`Engine ${engine} not found!`)
-	}
-
-	return require(selectedEnginePath).default
-}
+import Engines from "./engines"
 
 class Server {
 	constructor(params = {}, controllers = {}, middlewares = {}, headers = {}) {
@@ -145,6 +135,9 @@ class Server {
 
 		const engineParams = {
 			...this.params,
+			handleWsUpgrade: this.handleWsUpgrade,
+			handleWsConnection: this.handleWsConnection,
+			handleWsDisconnect: this.handleWsDisconnect,
 			handleWsAuth: this.handleWsAuth,
 			handleAuth: this.handleHttpAuth,
 			requireAuth: this.constructor.requireHttpAuth,
@@ -153,7 +146,11 @@ class Server {
 		}
 
 		// initialize engine
-		this.engine = await loadEngine(this.params.useEngine)
+		this.engine = Engines[this.params.useEngine]
+
+		if (!this.engine) {
+			throw new Error(`Engine ${this.params.useEngine} not found`)
+		}
 
 		this.engine = new this.engine(engineParams, this)
 

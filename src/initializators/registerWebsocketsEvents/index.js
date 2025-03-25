@@ -1,36 +1,28 @@
 import fs from "node:fs"
 
-import RecursiveRegister from "../../lib/recursiveRegister"
+import getRouteredFunctions from "../../utils/getRouteredFunctions"
+import flatRouteredFunctions from "../../utils/flatRouteredFunctions"
 
 export default async (startDir, engine) => {
-    if (!engine.ws) {
-        return engine
-    }
+	if (!engine.ws || !fs.existsSync(startDir)) {
+		return engine
+	}
 
-    if (!fs.existsSync(startDir)) {
-        return engine
-    }
+	let events = await getRouteredFunctions(startDir)
 
-    await RecursiveRegister({
-        start: startDir,
-        match: async (filePath) => {
-            return filePath.endsWith(".js") || filePath.endsWith(".ts")
-        },
-        onMatch: async ({ absolutePath, relativePath }) => {
-            let eventName = relativePath.split("/").join(":")
+	events = flatRouteredFunctions(events)
 
-            eventName = eventName.replace(".js", "")
-            eventName = eventName.replace(".ts", "")
+	if (typeof events !== "object") {
+		return engine
+	}
 
-            let fn = require(absolutePath)
+	if (typeof engine.ws.registerEvents === "function") {
+		await engine.ws.registerEvents(events)
+	} else {
+		for (const eventKey of Object.keys(events)) {
+			engine.ws.events.set(eventKey, events[eventKey])
+		}
+	}
 
-            fn = fn.default ?? fn
-
-            console.log(`[WEBSOCKET] register event : ${eventName} >`, fn)
-
-            engine.ws.events.set(eventName, fn)
-        }
-    })
-
-    return engine
+	return engine
 }
