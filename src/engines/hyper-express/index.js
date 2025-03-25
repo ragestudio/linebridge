@@ -100,10 +100,8 @@ export default class Engine {
 					index: process.env.lb_service.index,
 					data: {
 						namespace: params.refName,
-						listen: {
-							ip: this.params.listen_ip,
-							port: this.params.listen_port,
-						},
+						listen_port: this.params.listen_port,
+						ws_path: this.params.ws_path ?? params.refName,
 					},
 				})
 			}
