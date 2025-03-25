@@ -2,8 +2,7 @@ import he from "hyper-express"
 import rtengine from "../../classes/rtengine"
 
 export default class Engine {
-	constructor(params, ctx) {
-		this.params = params
+	constructor(ctx) {
 		this.ctx = ctx
 	}
 
@@ -11,14 +10,14 @@ export default class Engine {
 	router = null
 	ws = null
 
-	initialize = async (params) => {
+	initialize = async () => {
 		const serverParams = {
 			max_body_length: 50 * 1024 * 1024, //50MB in bytes,
 		}
 
-		if (params.ssl) {
-			serverParams.key_file_name = params.ssl?.key ?? null
-			serverParams.cert_file_name = params.ssl?.cert ?? null
+		if (this.ctx.ssl) {
+			serverParams.key_file_name = this.ctx.ssl?.key ?? null
+			serverParams.cert_file_name = this.ctx.ssl?.cert ?? null
 		}
 
 		this.app = new he.Server(serverParams)
@@ -40,7 +39,7 @@ export default class Engine {
 		await this.app.use(async (req, res, next) => {
 			if (req.method === "OPTIONS") {
 				// handle cors
-				if (params.ignoreCors) {
+				if (this.ctx.constructor.ignoreCors) {
 					res.setHeader("Access-Control-Allow-Methods", "*")
 					res.setHeader("Access-Control-Allow-Origin", "*")
 					res.setHeader("Access-Control-Allow-Headers", "*")
@@ -62,11 +61,11 @@ export default class Engine {
 			}
 		})
 
-		if (params.enableWebsockets) {
+		if (this.ctx.constructor.enableWebsockets) {
 			this.ws = global.websocket = new rtengine({
-				...params,
-				handleAuth: params.handleWsAuth,
-				root: `/${params.refName}`,
+				requireAuth: this.ctx.constructor.requiredWsAuth,
+				handleAuth: this.ctx.handleWsAuth,
+				root: `/${this.ctx.constructor.refName}`,
 			})
 
 			this.ws.initialize()
@@ -75,7 +74,7 @@ export default class Engine {
 		}
 	}
 
-	listen = async (params) => {
+	listen = async () => {
 		if (process.env.lb_service) {
 			let pathOverrides = Object.keys(this.router.map).map((key) => {
 				return key.split("/")[1]
@@ -93,15 +92,17 @@ export default class Engine {
 				return true
 			})
 
-			if (params.enableWebsockets) {
+			if (this.ctx.constructor.enableWebsockets) {
 				process.send({
 					type: "router:ws:register",
 					id: process.env.lb_service.id,
 					index: process.env.lb_service.index,
 					data: {
-						namespace: params.refName,
-						listen_port: this.params.listen_port,
-						ws_path: this.params.ws_path ?? params.refName,
+						namespace: this.ctx.constructor.refName,
+						listen_port: this.ctx.constructor.listen_port,
+						ws_path:
+							this.ctx.constructor.wsPath ??
+							this.ctx.constructor.refName,
 					},
 				})
 			}
@@ -116,15 +117,15 @@ export default class Engine {
 						router_map: this.router.map,
 						path_overrides: pathOverrides,
 						listen: {
-							ip: this.params.listen_ip,
-							port: this.params.listen_port,
+							ip: this.ctx.constructor.listen_ip,
+							port: this.ctx.constructor.listen_port,
 						},
 					},
 				})
 			}
 		}
 
-		await this.app.listen(this.params.listen_port)
+		await this.app.listen(this.ctx.constructor.listen_port)
 	}
 
 	// close should be synchronous

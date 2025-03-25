@@ -1,12 +1,8 @@
 import he from "hyper-express"
 import rtengineng from "../../classes/rtengineng"
 
-import getRouteredFunctions from "../../utils/getRouteredFunctions"
-import flatRouteredFunctions from "../../utils/flatRouteredFunctions"
-
 export default class HyperExpressEngineNG {
-	constructor(params, ctx) {
-		this.params = params
+	constructor(ctx) {
 		this.ctx = ctx
 	}
 
@@ -14,21 +10,21 @@ export default class HyperExpressEngineNG {
 	ws = null
 	router = null
 
-	initialize = async (params) => {
+	initialize = async () => {
 		console.warn(
 			`hyper-express-ng is a experimental engine, some features may not be available or work properly!`,
 		)
 
-		const serverParams = {
+		const appParams = {
 			max_body_length: 50 * 1024 * 1024, //50MB in bytes,
 		}
 
-		if (params.ssl) {
-			serverParams.key_file_name = params.ssl?.key ?? null
-			serverParams.cert_file_name = params.ssl?.cert ?? null
+		if (this.ctx.ssl) {
+			appParams.key_file_name = this.ctx.ssl?.key ?? null
+			appParams.cert_file_name = this.ctx.ssl?.cert ?? null
 		}
 
-		this.app = new he.Server(serverParams)
+		this.app = new he.Server(appParams)
 
 		this.router = new he.Router()
 
@@ -47,7 +43,7 @@ export default class HyperExpressEngineNG {
 		await this.app.use(async (req, res, next) => {
 			if (req.method === "OPTIONS") {
 				// handle cors
-				if (params.ignoreCors) {
+				if (this.ctx.constructor.ignoreCors) {
 					res.setHeader("Access-Control-Allow-Methods", "*")
 					res.setHeader("Access-Control-Allow-Origin", "*")
 					res.setHeader("Access-Control-Allow-Headers", "*")
@@ -69,18 +65,18 @@ export default class HyperExpressEngineNG {
 			}
 		})
 
-		if (params.enableWebsockets) {
+		if (this.ctx.constructor.enableWebsockets === true) {
 			this.ws = global.websocket = new rtengineng({
-				onUpgrade: params.handleWsUpgrade,
-				onConnection: params.handleWsConnection,
-				onDisconnect: params.handleWsDisconnect,
+				onUpgrade: this.ctx.handleWsUpgrade,
+				onConnection: this.ctx.handleWsConnection,
+				onDisconnect: this.ctx.handleWsDisconnect,
 			})
 
 			await this.ws.attach(this)
 		}
 	}
 
-	listen = async (params) => {
+	listen = async () => {
 		if (process.env.lb_service) {
 			let pathOverrides = Object.keys(this.router.map).map((key) => {
 				return key.split("/")[1]
@@ -98,15 +94,15 @@ export default class HyperExpressEngineNG {
 				return true
 			})
 
-			if (params.enableWebsockets) {
+			if (this.ctx.constructor.enableWebsockets === true) {
 				process.send({
 					type: "router:ws:register",
 					id: process.env.lb_service.id,
 					index: process.env.lb_service.index,
 					data: {
-						namespace: params.refName,
-						listen_port: this.params.listen_port,
-						ws_path: params.wsPath ?? "/",
+						namespace: this.ctx.constructor.refName,
+						ws_path: this.ctx.constructor.wsPath ?? "/",
+						listen_port: this.ctx.constructor.listen_port,
 					},
 				})
 			}
@@ -121,15 +117,15 @@ export default class HyperExpressEngineNG {
 						router_map: this.router.map,
 						path_overrides: pathOverrides,
 						listen: {
-							ip: this.params.listen_ip,
-							port: this.params.listen_port,
+							ip: this.ctx.constructor.listen_ip,
+							port: this.ctx.constructor.listen_port,
 						},
 					},
 				})
 			}
 		}
 
-		await this.app.listen(this.params.listen_port)
+		await this.app.listen(this.ctx.constructor.listen_port)
 	}
 
 	// close must be synchronous
