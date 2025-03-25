@@ -70,7 +70,7 @@ export default class HyperExpressEngineNG {
 		})
 
 		if (params.enableWebsockets) {
-			this.ws = new rtengineng({
+			this.ws = global.websocket = new rtengineng({
 				onUpgrade: params.handleWsUpgrade,
 				onConnection: params.handleWsConnection,
 				onDisconnect: params.handleWsDisconnect,
