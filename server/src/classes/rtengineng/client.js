@@ -4,7 +4,7 @@ class Client {
 		this.id = socket.context.id
 
 		this.userId = socket.context.user?._id || null
-		this.authed = !!socket.context.session
+		this.autheticated = !!socket.context.session
 	}
 
 	emit(event, data) {
@@ -36,10 +36,12 @@ class Client {
 	}
 
 	subscribe(topic) {
+		this.emit("topic:subscribed", topic)
 		return this.socket.subscribe(topic)
 	}
 
 	unsubscribe(topic) {
+		this.emit("topic:unsubscribed", topic)
 		return this.socket.unsubscribe(topic)
 	}
 }

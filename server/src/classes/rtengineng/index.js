@@ -104,6 +104,11 @@ class RTEngineNG {
 
 		const client = new Client(socket)
 
+		await client.emit("connected", {
+			id: client.id,
+			autheticated: client.autheticated,
+		})
+
 		this.clients.set(socket.context.id, client)
 	}
 

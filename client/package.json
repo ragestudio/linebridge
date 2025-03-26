@@ -1,0 +1,21 @@
+{
+	"name": "linebridge-client",
+	"version": "0.2.0",
+	"main": "./dist/index.js",
+	"author": "RageStudio <support@ragestudio.net>",
+	"license": "MIT",
+	"files": [
+		"src/**/**",
+		"dist/**/**",
+		"./package.json"
+	],
+	"publishConfig": {
+		"access": "public"
+	},
+	"scripts": {
+		"build": "hermes build --parallel --clean"
+	},
+	"devDependencies": {
+		"@ragestudio/hermes": "^1.0.0"
+	}
+}
