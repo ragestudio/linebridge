@@ -1,6 +1,6 @@
-<img 
-    src="https://raw.githubusercontent.com/ragestudio/linebridge/refs/heads/master/resources/linebridge-color-b.svg" 
-    width="100%" 
+<img
+    src="https://raw.githubusercontent.com/ragestudio/linebridge/refs/heads/master/resources/linebridge-color-b.svg"
+    width="100%"
     height="150px"
 />
 # Linebridge
@@ -133,7 +133,3 @@ Run the server
 ```bash
 linebridge-boot index.js
 ```
-
-## Documentation
-> The official documentation is on its way. Stay tuned for detailed guides and API references to help you unlock the full potential of Linebridge.
-<!-- For more information, please visit the [documentation](https://docs.linebridge.com). -->
