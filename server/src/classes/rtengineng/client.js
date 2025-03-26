@@ -4,7 +4,7 @@ class Client {
 		this.id = socket.context.id
 
 		this.userId = socket.context.user?._id || null
-		this.autheticated = !!socket.context.session
+		this.authenticated = !!socket.context.session
 	}
 
 	emit(event, data) {

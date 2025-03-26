@@ -106,7 +106,7 @@ class RTEngineNG {
 
 		await client.emit("connected", {
 			id: client.id,
-			autheticated: client.autheticated,
+			authenticated: client.authenticated,
 		})
 
 		this.clients.set(socket.context.id, client)
