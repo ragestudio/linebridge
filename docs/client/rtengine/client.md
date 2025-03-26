@@ -1,12 +1,9 @@
-# Client
- - [RTEngineClient](#rteenginclient)
-
-## RTEngineClient
-### Overview
+# RTEngineClient
+## Overview
 `RTEngineClient` is a WebSocket client for real-time communication with backend services. It provides connection management, automatic reconnection, heartbeat monitoring, event handling, and topic-based subscriptions.
 
-### API Reference
-#### Constructor
+## API Reference
+### Constructor
 ```javascript
 const client = new RTEngineClient({
   refName: "main",
@@ -25,14 +22,14 @@ const client = new RTEngineClient({
 | params.maxConnectRetries | number | Infinity | Maximum number of reconnection attempts |
 | params.heartbeat | boolean | true | Whether to use heartbeat to monitor connection health |
 
-#### Static Properties
+### Static Properties
 | Property | Type | Description |
 |----------|------|-------------|
 | version | string | Client library version |
 | heartbeatTimeout | number | Timeout for heartbeat checks (10000ms) |
 | reconnectTimeout | number | Delay between reconnection attempts (5000ms) |
 
-#### State Object
+### State Object
 The client state can be accessed via `client.state`:
 
 | Property | Type | Description |
@@ -46,9 +43,9 @@ The client state can be accessed via `client.state`:
 | reconnecting | boolean | Whether the client is attempting to reconnect |
 | connectionRetryCount | number | Number of reconnection attempts made |
 
-#### Methods
+### Methods
 
-##### connect()
+#### connect()
 
 Establishes a connection to the WebSocket server.
 
@@ -60,7 +57,7 @@ await client.connect();
 |---------|-------------|
 | Promise<void> | Resolves when the connection is established |
 
-##### disconnect()
+#### disconnect()
 
 Closes the current WebSocket connection.
 
@@ -72,7 +69,7 @@ await client.disconnect();
 |---------|-------------|
 | Promise<boolean> | Resolves to false if no connection exists, true otherwise |
 
-##### on(event, handler)
+#### on(event, handler)
 
 Registers an event handler.
 
@@ -87,7 +84,7 @@ client.on('message', (data) => {
 | event | string | Event name to listen for |
 | handler | Function | Function to call when the event is received |
 
-##### off(event, handler)
+#### off(event, handler)
 
 Removes an event handler.
 
@@ -100,7 +97,7 @@ client.off('message', messageHandler);
 | event | string | Event name to stop listening for |
 | handler | Function | Handler function to remove |
 
-##### once(event, handler)
+#### once(event, handler)
 
 Registers a one-time event handler.
 
@@ -115,7 +112,7 @@ client.once('connected', () => {
 | event | string | Event name to listen for |
 | handler | Function | Function to call once when the event is received |
 
-##### emit(event, data)
+#### emit(event, data)
 
 Sends an event to the WebSocket server.
 
@@ -129,7 +126,7 @@ await client.emit('chat:message', { text: 'Hello!' });
 | data | any | Data to send with the event |
 | Returns | Promise<null\|void> | Promise that resolves when the event is sent, or null if not connected |
 
-### Topic Management
+## Topic Management
 
 The client includes a `TopicsController` instance accessible via `client.topics`.
 
@@ -176,106 +173,4 @@ await client.emit('user:status', { status: 'online' });
 
 // Disconnect when done
 await client.disconnect();
-```
-
-## TopicsController
-### Overview
-`TopicsController` is a utility class for managing topic-based subscriptions in real-time applications. It handles subscribing to topics, listening for specific events, and managing subscription lifecycles.
-
-### API Reference
-#### Constructor
-```javascript
-const topicsController = new TopicsController(client);
-```
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| client | Object | RTEngine client |
-
-#### Properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| subscribed | Set | Stores currently subscribed topics |
-
-#### Methods
-
-##### on(topic, event, callback)
-
-Registers a callback for a specific event on a given topic.
-
-```javascript
-topicsController.on('chat/room1', 'message', (data, payload) => {
-  console.log('Message received:', data);
-});
-```
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| topic | string | Topic to associate the event with |
-| event | string | Name of the event to listen for |
-| callback | Function | Function to execute when the event occurs on the topic |
-
-##### subscribe(topic)
-
-Subscribes to a specific topic.
-
-```javascript
-await topicsController.subscribe('chat/room1');
-```
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| topic | string | Topic to subscribe to |
-| Returns | Promise<boolean> | Resolves to true when subscription is complete |
-
-##### unsubscribe(topic)
-
-Unsubscribes from a specific topic.
-
-```javascript
-await topicsController.unsubscribe('chat/room1');
-```
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| topic | string | Topic to unsubscribe from |
-| Returns | Promise<boolean> | Resolves to true when unsubscription is complete |
-
-##### unsubscribeAll()
-
-Unsubscribes from all currently subscribed topics.
-
-```javascript
-await topicsController.unsubscribeAll();
-```
-
-| Returns | Promise<boolean> | Resolves to true when all unsubscriptions are complete |
-
-##### regenerate()
-
-Refreshes all current subscriptions by unsubscribing and resubscribing.
-
-```javascript
-await topicsController.regenerate();
-```
-
-| Returns | Promise<boolean> | Resolves to true when regeneration is complete |
-
-### Basic Usage Example
-
-```javascript
-// Initialize
-const topicsController = new TopicsController(realTimeClient);
-
-// Subscribe to a topic
-await topicsController.subscribe('notifications');
-
-// Listen for events on that topic
-topicsController.on('notifications', 'new', handleNewNotification);
-
-// Clean up when done
-await topicsController.unsubscribe('notifications');
-// Or unsubscribe from everything
-await topicsController.unsubscribeAll();
 ```
