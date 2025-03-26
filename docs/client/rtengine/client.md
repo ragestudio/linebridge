@@ -10,7 +10,7 @@ const client = new RTEngineClient({
   url: "wss://example.com/socket",
   token: "auth-token-here",
   autoReconnect: true
-});
+})
 ```
 
 | Parameter | Type | Default | Description |
@@ -50,7 +50,7 @@ The client state can be accessed via `client.state`:
 Establishes a connection to the WebSocket server.
 
 ```javascript
-await client.connect();
+await client.connect()
 ```
 
 | Returns | Description |
@@ -62,7 +62,7 @@ await client.connect();
 Closes the current WebSocket connection.
 
 ```javascript
-await client.disconnect();
+await client.disconnect()
 ```
 
 | Returns | Description |
@@ -74,9 +74,9 @@ await client.disconnect();
 Registers an event handler.
 
 ```javascript
-client.on('message', (data) => {
-  console.log('Message received:', data);
-});
+client.on("message", (data) => {
+  console.log("Message received:", data)
+})
 ```
 
 | Parameter | Type | Description |
@@ -89,7 +89,7 @@ client.on('message', (data) => {
 Removes an event handler.
 
 ```javascript
-client.off('message', messageHandler);
+client.off("message", messageHandler)
 ```
 
 | Parameter | Type | Description |
@@ -102,9 +102,9 @@ client.off('message', messageHandler);
 Registers a one-time event handler.
 
 ```javascript
-client.once('connected', () => {
-  console.log('Connected!');
-});
+client.once("connected", () => {
+  console.log("Connected!")
+})
 ```
 
 | Parameter | Type | Description |
@@ -117,7 +117,7 @@ client.once('connected', () => {
 Sends an event to the WebSocket server.
 
 ```javascript
-await client.emit('chat:message', { text: 'Hello!' });
+await client.emit("chat:message", { text: "Hello!" })
 ```
 
 | Parameter | Type | Description |
@@ -132,45 +132,45 @@ The client includes a `TopicsController` instance accessible via `client.topics`
 
 ```javascript
 // Subscribe to a topic
-await client.topics.subscribe('chat/room1');
+await client.topics.subscribe("chat/room1")
 
 // Listen for events on a specific topic
-client.topics.on('chat/room1', 'message', handleMessage);
+client.topics.on("chat/room1", "message", handleMessage)
 
 // Unsubscribe from a topic
-await client.topics.unsubscribe('chat/room1');
+await client.topics.unsubscribe("chat/room1")
 ```
 
 ### Basic Usage Example
 
 ```javascript
-import RTEngineClient from './RTEngineClient';
+import RTEngineClient from "./RTEngineClient"
 
 // Initialize the client
 const client = new RTEngineClient({
-  url: 'wss://api.example.com/socket',
-  token: 'user-auth-token'
-});
+  url: "wss://api.example.com/socket",
+  token: "user-auth-token" // optional if server not requires authentication
+})
 
 // Connect to the server
-await client.connect();
+await client.connect()
 
 // Subscribe to a topic
-await client.topics.subscribe('updates');
+await client.topics.subscribe("updates")
 
 // Listen for specific events
-client.on('notification', (data) => {
-  console.log('New notification:', data);
-});
+client.on("notification", (data) => {
+  console.log("New notification:", data)
+})
 
 // Listen for events on a specific topic
-client.topics.on('updates', 'new_version', (data) => {
-  console.log('New version available:', data.version);
-});
+client.topics.on("updates", "new_version", (data) => {
+  console.log("New version available:", data.version)
+})
 
 // Send an event
-await client.emit('user:status', { status: 'online' });
+await client.emit("user:status", { status: "online" })
 
 // Disconnect when done
-await client.disconnect();
+await client.disconnect()
 ```

@@ -5,7 +5,7 @@
 ## API Reference
 ### Constructor
 ```javascript
-const topicsController = new TopicsController(client);
+const topicsController = new TopicsController(client)
 ```
 
 | Parameter | Type | Description |
@@ -25,9 +25,9 @@ const topicsController = new TopicsController(client);
 Registers a callback for a specific event on a given topic.
 
 ```javascript
-topicsController.on('chat/room1', 'message', (data, payload) => {
-  console.log('Message received:', data);
-});
+topicsController.on("chat/room1", "message", (data, payload) => {
+  console.log("Message received:", data)
+})
 ```
 
 | Parameter | Type | Description |
@@ -41,7 +41,7 @@ topicsController.on('chat/room1', 'message', (data, payload) => {
 Subscribes to a specific topic.
 
 ```javascript
-await topicsController.subscribe('chat/room1');
+await topicsController.subscribe("chat/room1")
 ```
 
 | Parameter | Type | Description |
@@ -54,7 +54,7 @@ await topicsController.subscribe('chat/room1');
 Unsubscribes from a specific topic.
 
 ```javascript
-await topicsController.unsubscribe('chat/room1');
+await topicsController.unsubscribe("chat/room1")
 ```
 
 | Parameter | Type | Description |
@@ -67,7 +67,7 @@ await topicsController.unsubscribe('chat/room1');
 Unsubscribes from all currently subscribed topics.
 
 ```javascript
-await topicsController.unsubscribeAll();
+await topicsController.unsubscribeAll()
 ```
 
 | Returns | Promise<boolean> | Resolves to true when all unsubscriptions are complete |
@@ -77,7 +77,7 @@ await topicsController.unsubscribeAll();
 Refreshes all current subscriptions by unsubscribing and resubscribing.
 
 ```javascript
-await topicsController.regenerate();
+await topicsController.regenerate()
 ```
 
 | Returns | Promise<boolean> | Resolves to true when regeneration is complete |
@@ -86,16 +86,16 @@ await topicsController.regenerate();
 
 ```javascript
 // Initialize
-const topicsController = new TopicsController(realTimeClient);
+const topicsController = new TopicsController(realTimeClient)
 
 // Subscribe to a topic
-await topicsController.subscribe('notifications');
+await topicsController.subscribe("notifications")
 
 // Listen for events on that topic
-topicsController.on('notifications', 'new', handleNewNotification);
+topicsController.on("notifications", "new", handleNewNotification)
 
 // Clean up when done
-await topicsController.unsubscribe('notifications');
+await topicsController.unsubscribe("notifications")
 // Or unsubscribe from everything
-await topicsController.unsubscribeAll();
+await topicsController.unsubscribeAll()
 ```
