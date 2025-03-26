@@ -1,15 +1,8 @@
 import { performance } from "node:perf_hooks"
 
 export default {
-	"server:ping": async (client, data) => {
-		const pongTime = performance.now()
-
-		return {
-			ping: data.ping ?? 0,
-			pong: pongTime,
-			latency: Number(pongTime - data.ping),
-			latencyMs: Number(pongTime - data.ping).toFixed(2),
-		}
+	ping: async (client, data) => {
+		client.emit("pong")
 	},
 	"topic:subscribe": async (client, topic) => {
 		client.subscribe(topic)
