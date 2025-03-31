@@ -366,7 +366,10 @@ class Server {
 				},
 				websocket: {
 					enabled: this.constructor.enableWebsockets,
-					path: this.constructor.wsPath ?? "/",
+					path:
+						this.constructor.wsPath ??
+						this.constructor.refName ??
+						"/",
 				},
 				listen: {
 					ip: this.params.listen_ip,
