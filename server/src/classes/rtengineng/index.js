@@ -5,6 +5,7 @@ import BuiltInEvents from "./events"
 
 class RTEngineNG {
 	constructor(config = {}) {
+		this.config = config
 		this.events = new Map()
 
 		if (typeof config.events === "object") {
@@ -23,8 +24,6 @@ class RTEngineNG {
 	}
 
 	clients = new Map()
-
-	router = new HyperExpress.Router()
 
 	senders = {
 		broadcast: async (event, data) => {
@@ -153,10 +152,8 @@ class RTEngineNG {
 	attach = async (engine) => {
 		this.engine = engine
 
-		this.router.ws("/", this.handleConnection)
-		this.router.upgrade("/", this.handleUpgrade)
-
-		this.engine.app.use("/", this.router)
+		this.engine.app.ws(this.config.path ?? `/`, this.handleConnection)
+		this.engine.app.upgrade(this.config.path ?? `/`, this.handleUpgrade)
 	}
 
 	close = () => {

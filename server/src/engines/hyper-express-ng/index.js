@@ -67,6 +67,7 @@ export default class HyperExpressEngineNG {
 
 		if (this.ctx.constructor.enableWebsockets === true) {
 			this.ws = global.websocket = new rtengineng({
+				path: this.ctx.constructor.wsPath,
 				onUpgrade: this.ctx.handleWsUpgrade,
 				onConnection: this.ctx.handleWsConnection,
 				onDisconnect: this.ctx.handleWsDisconnect,
