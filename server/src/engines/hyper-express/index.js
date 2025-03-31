@@ -75,56 +75,6 @@ export default class Engine {
 	}
 
 	listen = async () => {
-		if (process.env.lb_service) {
-			let pathOverrides = Object.keys(this.router.map).map((key) => {
-				return key.split("/")[1]
-			})
-
-			// remove duplicates
-			pathOverrides = [...new Set(pathOverrides)]
-
-			// remove "" and _map
-			pathOverrides = pathOverrides.filter((key) => {
-				if (key === "" || key === "_map") {
-					return false
-				}
-
-				return true
-			})
-
-			if (this.ctx.constructor.enableWebsockets) {
-				process.send({
-					type: "router:ws:register",
-					id: process.env.lb_service.id,
-					index: process.env.lb_service.index,
-					data: {
-						namespace: this.ctx.constructor.refName,
-						listen_port: this.ctx.constructor.listen_port,
-						ws_path:
-							this.ctx.constructor.wsPath ??
-							this.ctx.constructor.refName,
-					},
-				})
-			}
-
-			if (process.send) {
-				// try to send router map to host
-				process.send({
-					type: "router:register",
-					id: process.env.lb_service.id,
-					index: process.env.lb_service.index,
-					data: {
-						router_map: this.router.map,
-						path_overrides: pathOverrides,
-						listen: {
-							ip: this.ctx.constructor.listen_ip,
-							port: this.ctx.constructor.listen_port,
-						},
-					},
-				})
-			}
-		}
-
 		await this.app.listen(this.ctx.constructor.listen_port)
 	}
 

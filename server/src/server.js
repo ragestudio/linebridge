@@ -209,6 +209,7 @@ class Server {
 		// if is a linebridge service then initialize IPC Channels
 		if (process.env.lb_service) {
 			await this.initializeIpc()
+			await this.registerServiceToIPC()
 		}
 
 		// try to execute beforeInitialize hook.
@@ -325,6 +326,54 @@ class Server {
 		})
 
 		return execs
+	}
+
+	registerServiceToIPC = () => {
+		if (!process.env.lb_service || !process.send) {
+			console.error("IPC not available")
+			return null
+		}
+
+		// get only the root paths
+		let paths = Object.keys(this.engine.router.map).map((key) => {
+			const root = key.split("/")[1]
+
+			return "/" + root
+		})
+
+		// remove duplicates
+		paths = [...new Set(paths)]
+
+		// remove "" and _map
+		paths = paths.filter((key) => {
+			if (key === "/" || key === "/_map") {
+				return false
+			}
+
+			return true
+		})
+
+		process.send({
+			type: "service:register",
+			id: process.env.lb_service.id,
+			index: process.env.lb_service.index,
+			register: {
+				namespace: this.constructor.refName,
+				http: {
+					enabled: true,
+					paths: paths,
+					proto: this.ssl?.key && this.ssl?.cert ? "https" : "http",
+				},
+				websocket: {
+					enabled: this.constructor.enableWebsockets,
+					path: this.constructor.wsPath ?? "/",
+				},
+				listen: {
+					ip: this.params.listen_ip,
+					port: this.params.listen_port,
+				},
+			},
+		})
 	}
 }
 
