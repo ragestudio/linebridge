@@ -44,6 +44,12 @@ class Client {
 		this.emit("topic:unsubscribed", topic)
 		return this.socket.unsubscribe(topic)
 	}
+
+	unsubscribeAll() {
+		for (const topic of this.socket.topics) {
+			this.unsubscribe(topic)
+		}
+	}
 }
 
 export default Client
