@@ -1,5 +1,3 @@
-import { performance } from "node:perf_hooks"
-
 export default {
 	ping: async (client, data) => {
 		client.emit("pong")
