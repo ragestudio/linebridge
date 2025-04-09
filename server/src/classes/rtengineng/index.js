@@ -1,5 +1,3 @@
-import HyperExpress from "hyper-express"
-
 import Client from "./client"
 import BuiltInEvents from "./events"
 
@@ -82,7 +80,11 @@ class RTEngineNG {
 			const handler = this.events.get(message.event)
 
 			if (typeof handler === "function") {
-				await handler(client, message.data)
+				const result = await handler(client, message.data)
+
+				if (message.ack === true) {
+					client.emit(`ack_${message.event}`, result)
+				}
 			} else {
 				console.log(`[ws] 404 /${message.event}`)
 				client.error("Event handler not found")
@@ -112,8 +114,24 @@ class RTEngineNG {
 	}
 
 	handleDisconnect = async (socket) => {
-		if (typeof this.onDisconnect === "function") {
-			await this.onDisconnect(socket)
+		const client = this.clients.get(socket.context.id)
+
+		// fire onDisconnect function handler
+		try {
+			if (typeof this.onDisconnect === "function") {
+				await this.onDisconnect(socket, client)
+			}
+		} catch (error) {
+			console.error("Error handling disconnect >", error)
+		}
+
+		// delete from all unsubscribed channels
+		try {
+			if (client) {
+				await client.unsubscribeAll()
+			}
+		} catch (error) {
+			console.error("Error unsubscribing client topics >", error)
 		}
 
 		this.clients.delete(socket.context.id)
