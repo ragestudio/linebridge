@@ -1,6 +1,5 @@
 import TopicsController from "./topics"
 import { version } from "../../package.json"
-import path from "node:path"
 
 /**
  * WebSocket client for real-time communication with a backend service.
