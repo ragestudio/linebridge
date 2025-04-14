@@ -1,136 +1,126 @@
 import("./patches")
 
-import fs from "node:fs"
-import path from "node:path"
 import { EventEmitter } from "@foxify/events"
 
-import defaults from "./defaults"
-
 import IPCClient from "./classes/IPCClient"
-import Endpoint from "./classes/endpoint"
+import Route from "./classes/Route"
 
-import registerBaseEndpoints from "./initializators/registerBaseEndpoints"
-import registerWebsocketsEvents from "./initializators/registerWebsocketsEvents"
-import registerHttpRoutes from "./initializators/registerHttpRoutes"
+import registerBaseRoutes from "./registers/baseRoutes"
+import registerBaseMiddlewares from "./registers/baseMiddlewares"
+import registerBaseHeaders from "./registers/baseHeaders"
+import registerWebsocketsFileEvents from "./registers/websocketFileEvents"
+import registerHttpFileRoutes from "./registers/httpFileRoutes"
+import registerServiceToIPC from "./registers/ipcService"
+import bypassCorsHeaders from "./registers/bypassCorsHeaders"
 
+import isExperimental from "./utils/isExperimental"
+import getHostAddress from "./utils/getHostAddress"
+import composeMiddlewares from "./utils/composeMiddlewares"
+
+import Vars from "./vars"
 import Engines from "./engines"
 
 class Server {
-	constructor(params = {}, controllers = {}, middlewares = {}, headers = {}) {
-		this.isExperimental = defaults.isExperimental ?? false
-
+	constructor(params = {}) {
 		if (this.isExperimental) {
 			console.warn("\n🚧 This version of Linebridge is experimental! 🚧")
-			console.warn(`Version: ${defaults.version}\n`)
+			console.warn(`Version: ${Vars.libPkg.version}\n`)
 		}
 
 		this.params = {
-			...defaults.params,
-			...(params.default ?? params),
+			...Vars.defaultParams,
+			...params,
 		}
 
-		this.controllers = {
-			...(controllers.default ?? controllers),
+		// overrides some params with constructor values
+		if (typeof this.constructor.refName === "string") {
+			this.params.refName = this.constructor.refName
 		}
 
-		this.middlewares = {
-			...(middlewares.default ?? middlewares),
+		if (typeof this.constructor.useEngine === "string") {
+			this.params.useEngine = this.constructor.useEngine
 		}
 
-		this.headers = {
-			...defaults.headers,
-			...(headers.default ?? headers),
+		if (typeof this.constructor.listenIp === "string") {
+			this.params.listenIp = this.constructor.listenIp
 		}
 
-		// fix and fulfill params
-		this.params.useMiddlewares = this.params.useMiddlewares ?? []
+		if (
+			typeof this.constructor.listenPort === "string" ||
+			typeof this.constructor.listenPort === "number"
+		) {
+			this.params.listenPort = this.constructor.listenPort
+		}
 
-		this.params.name = this.constructor.refName ?? this.params.refName
+		if (typeof this.constructor.websockets === "boolean") {
+			this.params.websockets = this.constructor.websockets
+		}
 
-		this.params.useEngine =
-			this.constructor.useEngine ??
-			this.params.useEngine ??
-			"hyper-express"
+		if (typeof this.constructor.bypassCors === "boolean") {
+			this.params.bypassCors = this.constructor.bypassCors
+		}
 
-		this.params.listen_ip =
-			this.constructor.listenIp ??
-			this.constructor.listen_ip ??
-			this.params.listen_ip ??
-			"0.0.0.0"
+		if (typeof this.constructor.baseRoutes === "boolean") {
+			this.params.baseRoutes = this.constructor.baseRoutes
+		}
 
-		this.params.listen_port =
-			this.constructor.listenPort ??
-			this.constructor.listen_port ??
-			this.params.listen_port ??
-			3000
+		if (typeof this.constructor.routesPath === "string") {
+			this.params.routesPath = this.constructor.routesPath
+		}
 
-		this.params.http_protocol = this.params.http_protocol ?? "http"
+		if (typeof this.constructor.wsRoutesPath === "string") {
+			this.params.wsRoutesPath = this.constructor.wsRoutesPath
+		}
 
-		this.params.http_address = `${this.params.http_protocol}://${defaults.localhost_address}:${this.params.listen_port}`
+		if (typeof this.constructor.useMiddlewares !== "undefined") {
+			if (!Array.isArray(this.constructor.useMiddlewares)) {
+				this.constructor.useMiddlewares = [
+					this.constructor.useMiddlewares,
+				]
+			}
 
-		this.params.enableWebsockets =
-			this.constructor.enableWebsockets ??
-			this.params.enableWebsockets ??
-			false
+			this.params.useMiddlewares = this.constructor.useMiddlewares
+		}
 
-		this.params.ignoreCors =
-			this.constructor.ignoreCors ?? this.params.ignoreCors ?? true
-
-		this.params.disableBaseEndpoints =
-			this.constructor.disableBaseEndpoints ??
-			this.params.disableBaseEndpoints ??
-			false
-
-		this.params.routesPath =
-			this.constructor.routesPath ??
-			this.params.routesPath ??
-			path.resolve(process.cwd(), "routes")
-
-		this.params.wsRoutesPath =
-			this.constructor.wsRoutesPath ??
-			this.params.wsRoutesPath ??
-			path.resolve(process.cwd(), "routes_ws")
-
-		globalThis._linebridge = {
-			name: this.params.name,
-			useEngine: this.params.useEngine,
-			listenIp: this.params.listen_ip,
-			listenPort: this.params.listen_port,
-			httpProtocol: this.params.http_protocol,
-			httpAddress: this.params.http_address,
-			enableWebsockets: this.params.enableWebsockets,
-			ignoreCors: this.params.ignoreCors,
-			routesPath: this.params.routesPath,
-			validHttpMethods: defaults.valid_http_methods,
+		global._linebridge = {
+			vars: Vars,
+			params: this.params,
 		}
 
 		return this
 	}
 
+	eventBus = new EventEmitter()
+	middlewares = {}
+	headers = {}
+	events = {}
+	contexts = {}
+
 	engine = null
 
-	events = null
+	get hasSSL() {
+		if (!this.ssl) {
+			return false
+		}
 
-	ipc = null
+		return this.ssl.key && this.ssl.cert
+	}
 
-	ipcEvents = null
-
-	eventBus = new EventEmitter()
+	get isExperimental() {
+		return isExperimental()
+	}
 
 	initialize = async () => {
 		const startHrTime = process.hrtime()
 
-		// register events
-		if (this.events) {
-			if (this.events.default) {
-				this.events = this.events.default
-			}
+		// resolve current local private address of the host
+		this.localAddress = getHostAddress()
 
-			for (const [eventName, eventHandler] of Object.entries(
-				this.events,
-			)) {
-				this.eventBus.on(eventName, eventHandler)
-			}
+		this.contexts["server"] = this
+
+		// register declared events to eventBus
+		for (const [eventName, eventHandler] of Object.entries(this.events)) {
+			this.eventBus.on(eventName, eventHandler)
 		}
 
 		// initialize engine
@@ -140,28 +130,19 @@ class Server {
 			throw new Error(`Engine ${this.params.useEngine} not found`)
 		}
 
+		// construct engine instance
+		// important, pass this instance to the engine constructor
 		this.engine = new this.engine(this)
 
+		// fire engine initialization
 		if (typeof this.engine.initialize === "function") {
 			await this.engine.initialize()
 		}
 
-		// check if ws events are defined
-		if (typeof this.wsEvents !== "undefined") {
-			if (!this.engine.ws) {
-				console.warn(
-					"`wsEvents` detected, but Websockets are not enabled! Ignoring...",
-				)
-			} else {
-				for (const [eventName, eventHandler] of Object.entries(
-					this.wsEvents,
-				)) {
-					this.engine.ws.events.set(eventName, eventHandler)
-				}
-			}
-		}
+		// at this point, we wanna to pass to onInitialize hook,
+		// a simple base context, without any registers extra
 
-		// try to execute onInitialize hook
+		// fire onInitialize hook
 		if (typeof this.onInitialize === "function") {
 			try {
 				await this.onInitialize()
@@ -171,211 +152,123 @@ class Server {
 			}
 		}
 
-		// set defaults
-		this.useDefaultHeaders()
-		this.useDefaultMiddlewares()
+		// Now gonna initialize the final steps & registers
 
-		if (this.routes) {
+		// bypassCors if needed
+		if (this.params.bypassCors) {
+			bypassCorsHeaders(this)
+		}
+
+		// register base headers & middlewares
+		registerBaseHeaders(this)
+		registerBaseMiddlewares(this)
+
+		// if websocket enabled, lets do some work
+		if (typeof this.engine.ws === "object") {
+			// register declared ws events
+			if (typeof this.wsEvents === "object") {
+				for (const [eventName, eventHandler] of Object.entries(
+					this.wsEvents,
+				)) {
+					this.engine.ws.events.set(eventName, eventHandler)
+				}
+			}
+		}
+
+		// now, initialize declared routes with Endpoint class
+		if (typeof this.routes === "object") {
 			for (const [route, endpoint] of Object.entries(this.routes)) {
-				this.engine.router.map[route] = new Endpoint(this, {
+				new Route(this, {
 					...endpoint,
 					route: route,
 					handlers: {
 						[endpoint.method.toLowerCase()]: endpoint.fn,
 					},
-				})
+				}).register()
 			}
 		}
 
-		// register http & ws routes
-		this.engine = await registerHttpRoutes(
-			this.params.routesPath,
-			this.engine,
-			this,
-		)
-		this.engine = await registerWebsocketsEvents(
-			this.params.wsRoutesPath,
-			this.engine,
-		)
+		// register http file routes
+		await registerHttpFileRoutes(this.params.routesPath, this)
 
-		// register base endpoints if enabled
-		if (!this.params.disableBaseEndpoints) {
-			await registerBaseEndpoints(this)
+		// register ws file routes
+		await registerWebsocketsFileEvents(this.params.wsRoutesPath, this)
+
+		// register base routes if enabled
+		if (this.params.baseRoutes == true) {
+			await registerBaseRoutes(this)
 		}
 
-		// use main router
-		await this.engine.app.use(this.engine.router)
-
-		// if is a linebridge service then initialize IPC Channels
+		// if is a linebridge service, then initialize IPC Channels
 		if (process.env.lb_service) {
-			await this.initializeIpc()
-			await this.registerServiceToIPC()
-		}
+			console.info("🚄 Starting IPC client")
+			this.ipc = global.ipc = new IPCClient(this, process)
 
-		// try to execute beforeInitialize hook.
-		if (typeof this.afterInitialize === "function") {
-			await this.afterInitialize()
+			await registerServiceToIPC(this)
 		}
 
 		// listen
 		await this.engine.listen()
+
+		// execute afterInitialize hook.
+		if (typeof this.afterInitialize === "function") {
+			await this.afterInitialize()
+		}
 
 		// calculate elapsed time on ms, to fixed 2
 		const elapsedHrTime = process.hrtime(startHrTime)
 		const elapsedTimeInMs = elapsedHrTime[0] * 1e3 + elapsedHrTime[1] / 1e6
 
 		console.info(
-			`🛰  Server ready!\n\t - ${this.params.http_protocol}://${this.params.listen_ip}:${this.params.listen_port}  \n\t - Tooks ${elapsedTimeInMs.toFixed(2)}ms \n\t - Websocket: ${this.engine.ws ? "Enabled" : "Disabled"}`,
+			`🛰  Server ready!\n\t - ${this.hasSSL ? "https" : "http"}://${this.params.listenIp}:${this.params.listenPort}  \n\t - Websocket: ${this.engine.ws ? "Enabled" : "Disabled"} \n\t - Routes: ${this.engine.map.size} \n\t - Tooks: ${elapsedTimeInMs.toFixed(2)}ms \n\t `,
 		)
 	}
 
-	initializeIpc = async () => {
-		console.info("🚄 Starting IPC client")
-
-		this.ipc = global.ipc = new IPCClient(this, process)
-	}
-
-	useDefaultHeaders = () => {
-		this.engine.app.use((req, res, next) => {
-			Object.keys(this.headers).forEach((key) => {
-				res.setHeader(key, this.headers[key])
-			})
-
-			next()
-		})
-	}
-
-	useDefaultMiddlewares = async () => {
-		const middlewares = await this.resolveMiddlewares([
-			...this.params.useMiddlewares,
-			...(this.useMiddlewares ?? []),
-			...defaults.useMiddlewares,
-		])
-
-		middlewares.forEach((middleware) => {
-			this.engine.app.use(middleware)
-		})
-	}
-
 	register = {
-		http: (endpoint, ..._middlewares) => {
+		http: (obj) => {
 			// check and fix method
-			endpoint.method = endpoint.method?.toLowerCase() ?? "get"
+			obj.method = obj.method?.toLowerCase() ?? "get"
 
-			if (defaults.fixed_http_methods[endpoint.method]) {
-				endpoint.method = defaults.fixed_http_methods[endpoint.method]
+			if (Vars.fixedHttpMethods[obj.method]) {
+				obj.method = Vars.fixedHttpMethods[obj.method]
 			}
 
 			// check if method is supported
-			if (typeof this.engine.router[endpoint.method] !== "function") {
-				throw new Error(`Method [${endpoint.method}] is not supported!`)
+			if (typeof this.engine.router[obj.method] !== "function") {
+				throw new Error(`Method [${obj.method}] is not supported!`)
 			}
 
-			// grab the middlewares
-			let middlewares = [..._middlewares]
+			// compose the middlewares
+			obj.middlewares = composeMiddlewares(
+				{ ...this.middlewares, ...Vars.baseMiddlewares },
+				obj.middlewares,
+				`[${obj.method.toUpperCase()}] ${obj.route}`,
+			)
 
-			if (endpoint.middlewares) {
-				if (!Array.isArray(endpoint.middlewares)) {
-					endpoint.middlewares = [endpoint.middlewares]
-				}
-
-				middlewares = [
-					...middlewares,
-					...this.resolveMiddlewares(endpoint.middlewares),
-				]
-			}
-
-			this.engine.router.map[endpoint.route] = {
-				method: endpoint.method,
-				path: endpoint.route,
-			}
+			// set to the endpoints map, used by _map
+			this.engine.map.set(obj.route, {
+				method: obj.method,
+				path: obj.route,
+			})
 
 			// register endpoint to http interface router
-			this.engine.router[endpoint.method](
-				endpoint.route,
-				...middlewares,
-				endpoint.fn,
+			this.engine.router[obj.method](
+				obj.route,
+				...obj.middlewares,
+				obj.fn,
 			)
 		},
+		ws: (wsEndpointObj) => {},
 	}
 
-	resolveMiddlewares = (requestedMiddlewares) => {
-		const middlewares = {
-			...this.middlewares,
-			...defaults.middlewares,
+	_fireClose = () => {
+		if (typeof this.onClose === "function") {
+			this.onClose()
 		}
 
-		if (typeof requestedMiddlewares === "string") {
-			requestedMiddlewares = [requestedMiddlewares]
+		if (typeof this.engine.close === "function") {
+			this.engine.close()
 		}
-
-		const execs = []
-
-		requestedMiddlewares.forEach((middlewareKey) => {
-			if (typeof middlewareKey === "string") {
-				if (typeof middlewares[middlewareKey] !== "function") {
-					throw new Error(`Middleware ${middlewareKey} not found!`)
-				}
-
-				execs.push(middlewares[middlewareKey])
-			}
-
-			if (typeof middlewareKey === "function") {
-				execs.push(middlewareKey)
-			}
-		})
-
-		return execs
-	}
-
-	registerServiceToIPC = () => {
-		if (!process.env.lb_service || !process.send) {
-			console.error("IPC not available")
-			return null
-		}
-
-		// get only the root paths
-		let paths = Object.keys(this.engine.router.map).map((key) => {
-			const root = key.split("/")[1]
-
-			return "/" + root
-		})
-
-		// remove duplicates
-		paths = [...new Set(paths)]
-
-		// remove "" and _map
-		paths = paths.filter((key) => {
-			if (key === "/" || key === "/_map") {
-				return false
-			}
-
-			return true
-		})
-
-		process.send({
-			type: "service:register",
-			id: process.env.lb_service.id,
-			index: process.env.lb_service.index,
-			register: {
-				namespace: this.constructor.refName,
-				http: {
-					enabled: true,
-					paths: paths,
-					proto: this.ssl?.key && this.ssl?.cert ? "https" : "http",
-				},
-				websocket: {
-					enabled: this.constructor.enableWebsockets,
-					path:
-						this.constructor.wsPath ??
-						`/${this.constructor.refName}`,
-				},
-				listen: {
-					ip: this.params.listen_ip,
-					port: this.params.listen_port,
-				},
-			},
-		})
 	}
 }
 

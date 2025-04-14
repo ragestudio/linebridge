@@ -1,6 +1,6 @@
 module.exports = {
-    Server: require("./server.js"),
-    Endpoint: require("./classes/endpoint"),
-    registerBaseAliases: require("./registerAliases"),
-    version: require("../package.json").version,
+	Server: require("./server"),
+	Route: require("./classes/Route"),
+	registerBaseAliases: require("./registerAliases"),
+	version: require("../package.json").version,
 }

@@ -1,159 +1,162 @@
 import { EventEmitter } from "@foxify/events"
 
 export default class IPCClient {
-    constructor(self, _process) {
-        this.self = self
-        this.process = _process
+	constructor(self, _process) {
+		this.self = self
+		this.process = _process
 
-        this.process.on("message", (msg) => {
-            if (typeof msg !== "object") {
-                // not an IPC message, ignore
-                return false
-            }
+		this.process.on("message", (msg) => {
+			if (typeof msg !== "object") {
+				// not an IPC message, ignore
+				return false
+			}
 
-            const { event, payload } = msg
+			const { event, payload } = msg
 
-            if (!event || !event.startsWith("ipc:")) {
-                return false
-            }
+			if (!event || !event.startsWith("ipc:")) {
+				return false
+			}
 
-            //console.log(`[IPC:CLIENT] Received event [${event}] from [${payload.from}]`)
+			//console.log(`[IPC:CLIENT] Received event [${event}] from [${payload.from}]`)
 
-            if (event.startsWith("ipc:exec")) {
-                return this.handleExecution(payload)
-            }
+			if (event.startsWith("ipc:exec")) {
+				return this.handleExecution(payload)
+			}
 
-            if (event.startsWith("ipc:akn")) {
-                return this.handleAcknowledgement(payload)
-            }
-        })
-    }
+			if (event.startsWith("ipc:akn")) {
+				return this.handleAcknowledgement(payload)
+			}
+		})
+	}
 
-    eventBus = new EventEmitter()
+	eventBus = new EventEmitter()
 
-    handleExecution = async (payload) => {
-        let { id, command, args, from } = payload
+	handleExecution = async (payload) => {
+		if (typeof this.self.ipcEvents !== "object") {
+			return null
+		}
 
-        let fn = this.self.ipcEvents[command]
+		let { id, command, args, from } = payload
 
-        if (!fn) {
-            this.process.send({
-                event: `ipc:akn:${id}`,
-                payload: {
-                    target: from,
-                    from: this.self.constructor.refName,
+		let fn = this.self.ipcEvents[command]
 
-                    id: id,
-                    error: `IPC: Command [${command}] not found`,
-                }
-            })
+		if (typeof fn !== "function") {
+			this.process.send({
+				event: `ipc:akn:${id}`,
+				payload: {
+					target: from,
+					from: this.self.params.refName,
 
-            return false
-        }
+					id: id,
+					error: `IPC: Command [${command}] not found`,
+				},
+			})
 
-        try {
-            let result = await fn(this.self.contexts, ...args)
+			return false
+		}
 
-            this.process.send({
-                event: `ipc:akn:${id}`,
-                payload: {
-                    target: from,
-                    from: this.self.constructor.refName,
+		try {
+			let result = await fn(this.self.contexts, ...args)
 
-                    id: id,
-                    result: result,
-                }
-            })
-        } catch (error) {
-            this.process.send({
-                event: `ipc:akn:${id}`,
-                payload: {
-                    target: from,
-                    from: this.self.constructor.refName,
+			this.process.send({
+				event: `ipc:akn:${id}`,
+				payload: {
+					target: from,
+					from: this.self.params.refName,
 
-                    id: id,
-                    error: error.message,
-                }
-            })
-        }
-    }
+					id: id,
+					result: result,
+				},
+			})
+		} catch (error) {
+			this.process.send({
+				event: `ipc:akn:${id}`,
+				payload: {
+					target: from,
+					from: this.self.params.refName,
 
-    handleAcknowledgement = async (payload) => {
-        let { id, result, error } = payload
+					id: id,
+					error: error.message,
+				},
+			})
+		}
+	}
 
-        this.eventBus.emit(`ipc:akn:${id}`, {
-            id: id,
-            result: result,
-            error: error,
-        })
-    }
+	handleAcknowledgement = async (payload) => {
+		let { id, result, error } = payload
 
-    // call a command on a remote service, and waits to get a response from akn (async)
-    call = async (to_service_id, command, ...args) => {
-        const remote_call_id = Date.now()
+		this.eventBus.emit(`ipc:akn:${id}`, {
+			id: id,
+			result: result,
+			error: error,
+		})
+	}
 
-        //console.debug(`[IPC:CLIENT] Invoking command [${command}] on service [${to_service_id}]`)
+	// call a command on a remote service, and waits to get a response from akn (async)
+	call = async (to_service_id, command, ...args) => {
+		const remote_call_id = Date.now()
 
-        const response = await new Promise((resolve, reject) => {
-            try {
+		//console.debug(`[IPC:CLIENT] Invoking command [${command}] on service [${to_service_id}]`)
 
-                this.process.send({
-                    event: "ipc:exec",
-                    payload: {
-                        target: to_service_id,
-                        from: this.self.constructor.refName,
+		const response = await new Promise((resolve, reject) => {
+			try {
+				this.process.send({
+					event: "ipc:exec",
+					payload: {
+						target: to_service_id,
+						from: this.self.params.refName,
 
-                        id: remote_call_id,
-                        command,
-                        args,
-                    }
-                })
+						id: remote_call_id,
+						command,
+						args,
+					},
+				})
 
-                this.eventBus.once(`ipc:akn:${remote_call_id}`, resolve)
-            } catch (error) {
-                console.error(error)
+				this.eventBus.once(`ipc:akn:${remote_call_id}`, resolve)
+			} catch (error) {
+				console.error(error)
 
-                reject(error)
-            }
-        }).catch((error) => {
-            return {
-                error: error
-            }
-        })
+				reject(error)
+			}
+		}).catch((error) => {
+			return {
+				error: error,
+			}
+		})
 
-        if (response.error) {
-            throw new OperationError(500, response.error)
-        }
+		if (response.error) {
+			throw new OperationError(500, response.error)
+		}
 
-        return response.result
-    }
+		return response.result
+	}
 
-    // call a command on a remote service, but return it immediately
-    invoke = async (to_service_id, command, ...args) => {
-        const remote_call_id = Date.now()
+	// call a command on a remote service, but return it immediately
+	invoke = async (to_service_id, command, ...args) => {
+		const remote_call_id = Date.now()
 
-        try {
-            this.process.send({
-                event: "ipc:exec",
-                payload: {
-                    target: to_service_id,
-                    from: this.self.constructor.refName,
+		try {
+			this.process.send({
+				event: "ipc:exec",
+				payload: {
+					target: to_service_id,
+					from: this.self.params.refName,
 
-                    id: remote_call_id,
-                    command,
-                    args,
-                }
-            })
+					id: remote_call_id,
+					command,
+					args,
+				},
+			})
 
-            return {
-                id: remote_call_id
-            }
-        } catch (error) {
-            console.error(error)
+			return {
+				id: remote_call_id,
+			}
+		} catch (error) {
+			console.error(error)
 
-            return {
-                error: error
-            }
-        }
-    }
+			return {
+				error: error,
+			}
+		}
+	}
 }

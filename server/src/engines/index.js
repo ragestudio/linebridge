@@ -1,9 +1,9 @@
-import HyperExpress from "./hyper-express"
-import HyperExpressNG from "./hyper-express-ng"
+import HeLegacy from "./he-legacy"
+import He from "./he"
 import Worker from "./worker"
 
 export default {
-	"hyper-express": HyperExpress,
-	"hyper-express-ng": HyperExpressNG,
+	"he-legacy": HeLegacy,
+	he: He,
 	worker: Worker,
 }

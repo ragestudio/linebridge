@@ -1,126 +1,118 @@
 import { EventEmitter } from "@foxify/events"
 
 class WorkerEngineRouter {
-    routes = []
+	routes = []
 
-    get = (path, ...execs) => {
+	get = (path, ...execs) => {}
 
-    }
+	post = (path, ...execs) => {}
 
-    post = (path, ...execs) => {
+	delete = (path, ...execs) => {}
 
-    }
+	put = (path, ...execs) => {}
 
-    delete = (path, ...execs) => {
+	patch = (path, ...execs) => {}
 
-    }
+	head = (path, ...execs) => {}
 
-    put = (path, ...execs) => {
+	options = (path, ...execs) => {}
 
-    }
+	any = (path, ...execs) => {}
 
-    patch = (path, ...execs) => {
-
-    }
-
-    head = (path, ...execs) => {
-
-    }
-
-    options = (path, ...execs) => {
-
-    }
-
-    any = (path, ...execs) => {
-
-    }
-
-    use = (path, ...execs) => {
-
-    }
+	use = (path, ...execs) => {}
 }
 
 class WorkerEngine {
-    static ipcPrefix = "rail:"
+	static ipcPrefix = "rail:"
 
-    selfId = process.env.lb_service.id
+	selfId = process.env.lb_service.id
 
-    router = new WorkerEngineRouter()
+	router = new WorkerEngineRouter()
 
-    eventBus = new EventEmitter()
+	eventBus = new EventEmitter()
 
-    perExecTail = []
+	perExecTail = []
 
-    initialize = async () => {
-        console.error(`[WorkerEngine] Worker engine its not implemented yet...`)
+	initialize = async () => {
+		console.error(`[WorkerEngine] Worker engine its not implemented yet...`)
 
-        process.on("message", this.handleIPCMessage)
-    }
+		process.on("message", this.handleIPCMessage)
+	}
 
-    listen = async () => {
-        console.log(`Sending Rail Register`)
+	listen = async () => {
+		console.log(`Sending Rail Register`)
 
-        process.send({
-            type: "rail:register",
-            data: {
-                id: process.env.lb_service.id,
-                pid: process.pid,
-                routes: this.router.routes,
-            }
-        })
-    }
+		process.send({
+			type: "rail:register",
+			data: {
+				id: process.env.lb_service.id,
+				pid: process.pid,
+				routes: this.router.routes,
+			},
+		})
+	}
 
-    handleIPCMessage = async (msg) => {
-        if (typeof msg !== "object") {
-            // ignore, its not for us
-            return false
-        }
+	handleIPCMessage = async (msg) => {
+		if (typeof msg !== "object") {
+			// ignore, its not for us
+			return false
+		}
 
-        if (!msg.event || !msg.event.startsWith(WorkerEngine.ipcPrefix)) {
-            return false
-        }
+		if (!msg.event || !msg.event.startsWith(WorkerEngine.ipcPrefix)) {
+			return false
+		}
 
-        const { event, payload } = msg
+		const { event, payload } = msg
 
-        switch (event) {
-            case "rail:request": {
-                const { req } = payload
+		switch (event) {
+			case "rail:request": {
+				const { req } = payload
 
-                break
-            }
-            case "rail:response": {
+				break
+			}
+			case "rail:response": {
+			}
+		}
+	}
 
-            }
-        }
-    }
+	use = (fn) => {
+		if (fn instanceof WorkerEngineRouter) {
+			this.router = fn
+			return
+		}
 
-    use = (fn) => {
-        if (fn instanceof WorkerEngineRouter) {
-            this.router = fn
-            return
-        }
-
-        if (fn instanceof Function) {
-            this.perExecTail.push(fn)
-            return
-        }
-    }
+		if (fn instanceof Function) {
+			this.perExecTail.push(fn)
+			return
+		}
+	}
 }
 
 export default class Engine {
-    constructor(params) {
-        this.params = params
-    }
+	constructor(params) {
+		this.params = params
+	}
 
-    app = new WorkerEngine()
+	app = null
+	router = new WorkerEngineRouter()
+	map = new Map()
 
-    router = new WorkerEngineRouter()
+	initialize = async () => {
+		if (
+			!process.env.lb_service ||
+			process.env.lb_service?.type !== "worker"
+		) {
+			throw new Error(
+				"No worker environment detected!\nThis engine is only meant to be used in a worker environment\n",
+			)
+		}
 
-    init = async () => {
-        await this.app.initialize()
-    }
+		this.app = new WorkerEngine()
 
-    listen = async () => {
-        await this.app.listen()
-    }
+		await this.app.initialize()
+	}
+
+	listen = async () => {
+		await this.app.listen()
+	}
 }
