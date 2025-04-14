@@ -1,18 +1,21 @@
 ### Example
-Create a http server
+Create a basic http server, using linebridge bootloader.
+
 ```js
 // index.js
 import { Server } from "linebridge"
 
 class MyAPI extends Server {
-    // set a id for the server
+    // set a id for the server (by default, it will fetch from package.json name)
     static refName = "my-api"
-    // define a file based router
+
+    // define a file based router (by default, it will look for routes in the "/routes" folder)
     static routesPath = `${__dirname}/routes`
-    // define custom listen port
+
+    // define custom listen port (by default, it will listen on port 3000)
     static listenPort = 3000
 
-    // set manual routes
+    // define manual routes
     routes = {
         // basic route
         "/hi": {
@@ -26,7 +29,7 @@ class MyAPI extends Server {
         // use custom middleware
         "/middleware-custom": {
             method: "get",
-            middlewares: [
+            useMiddlewares: [
                 "custom-middleware"
             ],
             fn: async (req, res) => {
@@ -91,14 +94,18 @@ class MyAPI extends Server {
         console.log("Server initialized")
     }
 
-    async onClose() {
+    // called when the server is closed
+    // MUST be synchronous, otherwise, may not work as expected. Thats a NodeJS limitation.
+    onClose() {
         console.log("Server closed")
     }
 }
 
+// Call the built-in bootloader
 Boot(MyAPI)
+
 ```
-Run the server
+Run the server (using linebridge bootloader)
 ```bash
 linebridge-boot index.js
 ```

@@ -1,11 +1,8 @@
 # Available Engines
 
-- `hyper-express` (default)
-  - Complete HTTP Server stack, including HTTP/2, SocketIO and Redis.
-  - Uses [HyperExpress](https://github.com/kartikk221/hyper-express) framework
-
-- `hyper-express-ng`
-  - Uses [HyperExpress](https://github.com/kartikk221/hyper-express) as base, implements experimental features & stacks.
+- `he` (default)
+  - Complete HTTP Server stack, including HTTP/2 and RTEngine(websockets).
+  - Uses [HyperExpress](https://github.com/kartikk221/hyper-express) framework as a base.
 
 - `worker`
-  - Enables a worker thread to handle requests on ICP
+  - Enables a worker thread to handle requests on ICP.
