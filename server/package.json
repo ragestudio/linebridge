@@ -1,6 +1,6 @@
 {
 	"name": "linebridge",
-	"version": "1.0.0-a1",
+	"version": "1.0.0-a3",
 	"description": "Multiproposal framework to build fast, scalable, and secure servers.",
 	"author": "RageStudio <support@ragestudio.net>",
 	"bugs": {
@@ -15,6 +15,7 @@
 		"access": "public"
 	},
 	"files": [
+		"bootloader/**/**",
 		"src/**/**",
 		"dist/**/**",
 		"./package.json"
@@ -26,10 +27,6 @@
 	"dependencies": {
 		"@foxify/events": "^2.1.0",
 		"@infisical/sdk": "^2.1.8",
-		"@socket.io/cluster-adapter": "^0.2.2",
-		"@socket.io/redis-adapter": "^8.2.1",
-		"@socket.io/redis-emitter": "^5.1.0",
-		"@socket.io/sticky": "^1.0.4",
 		"axios": "^1.8.4",
 		"chokidar": "^4.0.3",
 		"dotenv": "^16.5.0",
@@ -37,8 +34,6 @@
 		"ioredis": "^5.6.1",
 		"minimatch": "^10.0.1",
 		"module-alias": "^2.2.2",
-		"signal-exit": "^4.1.0",
-		"socket.io": "^4.8.1",
 		"sucrase": "^3.35.0"
 	},
 	"devDependencies": {

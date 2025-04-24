@@ -9,7 +9,7 @@ A multiproposal framework to build fast, scalable, and secure servers.
 Currently used on RageStudio's services backends, like [Comty](https://github.com/ragestudio/comty)
 
 ## Suported Engines
-- [hyper-express](https://github.com/kartikk221/hyper-express) (default) | High Performance Node.js Webserver.
+- [he](https://github.com/kartikk221/hyper-express) (default) | High Performance Node.js Webserver.
 - worker | IPC Worker for sharding and efficient multi-threading.
 
 ## Features

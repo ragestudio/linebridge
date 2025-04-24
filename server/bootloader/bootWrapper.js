@@ -1,4 +1,3 @@
-const { onExit } = require("signal-exit")
 const injectEnvFromInfisical = require("./injectEnvFromInfisical")
 
 module.exports = async function Boot(main) {
