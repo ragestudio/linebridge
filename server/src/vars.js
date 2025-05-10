@@ -1,14 +1,13 @@
 import path from "node:path"
 
 const rootLibPath = path.resolve(__dirname, "../")
-const packageJSON = require(rootLibPath, "../package.json")
+const libPkg = require(path.resolve(rootLibPath, "package.json"))
 const projectPkg = require(path.resolve(process.cwd(), "package.json"))
 
 export default {
-	libPath: __dirname,
 	rootLibPath: rootLibPath,
-	libPkg: packageJSON,
-	projectCwd: process.cwd(),
+	libPath: __dirname,
+	libPkg: libPkg,
 	projectPkg: projectPkg,
 	defaultParams: {
 		refName: "linebridge",
@@ -37,7 +36,7 @@ export default {
 	},
 	baseHeaders: {
 		server: "linebridge",
-		"lb-version": packageJSON.version,
+		"lb-version": libPkg.version,
 	},
 	baseMiddlewares: {
 		logs: require("./middlewares/logger").default,
