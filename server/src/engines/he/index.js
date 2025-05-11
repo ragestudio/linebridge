@@ -26,19 +26,21 @@ export default class Engine {
 		this.app.use(this.mainMiddleware)
 		this.app.use(this.router)
 
-		if (this.server.params.websockets === true) {
-			this.ws = new RtEngine({
-				path:
-					this.server.params.wsPath ??
-					`/${this.server.params.refName}`,
-				onUpgrade: this.server.handleWsUpgrade,
-				onConnection: this.server.handleWsConnection,
-				onDisconnect: this.server.handleWsDisconnect,
-			})
+		if (typeof this.server.params.websockets === "object") {
+			const { path, enabled } = this.server.params.websockets
 
-			global.websockets = this.ws
+			if (enabled === true) {
+				this.ws = new RtEngine({
+					path: path ?? `/${this.server.params.refName}`,
+					onUpgrade: this.server.handleWsUpgrade,
+					onConnection: this.server.handleWsConnection,
+					onDisconnect: this.server.handleWsDisconnect,
+				})
 
-			this.ws.attach(this)
+				global.websockets = this.ws
+
+				this.ws.attach(this)
+			}
 		}
 	}
 

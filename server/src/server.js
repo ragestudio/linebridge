@@ -72,6 +72,10 @@ class Server {
 			this.params.wsRoutesPath = this.constructor.wsRoutesPath
 		}
 
+		if (typeof this.constructor.websockets === "object") {
+			this.params.websockets = this.constructor.websockets
+		}
+
 		if (typeof this.constructor.useMiddlewares !== "undefined") {
 			if (!Array.isArray(this.constructor.useMiddlewares)) {
 				this.constructor.useMiddlewares = [
@@ -219,9 +223,14 @@ class Server {
 		const elapsedHrTime = process.hrtime(startHrTime)
 		const elapsedTimeInMs = elapsedHrTime[0] * 1e3 + elapsedHrTime[1] / 1e6
 
-		console.info(
-			`🛰  Server ready!\n\t - ${this.hasSSL ? "https" : "http"}://${this.params.listenIp}:${this.params.listenPort}  \n\t - Websocket: ${this.engine.ws ? "Enabled" : "Disabled"} \n\t - Routes: ${this.engine.map.size} \n\t - Tooks: ${elapsedTimeInMs.toFixed(2)}ms \n\t `,
-		)
+		const lines = [
+			`- Url: ${this.hasSSL ? "https" : "http"}://${this.params.listenIp}:${this.params.listenPort}`,
+			`- Websocket: ${this.engine.ws ? this.engine.ws?.config?.path : "Disabled"}`,
+			`- Routes: ${this.engine.map.size}`,
+			`- Tooks: ${elapsedTimeInMs.toFixed(2)}ms`,
+		]
+
+		console.info(`🛰  Server ready!\n \t${lines.join("\n\t")} \n`)
 	}
 
 	register = {
