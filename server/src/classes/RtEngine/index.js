@@ -90,7 +90,10 @@ class RTEngineNG {
 				client.error("Event handler not found")
 			}
 		} catch (error) {
-			console.log(`[ws] 500 /${message?.event ?? "unknown"} >`, error)
+			if (!(error instanceof OperationError)) {
+				console.log(`[ws] 500 /${message?.event ?? "unknown"} >`, error)
+			}
+
 			client.error(error)
 		}
 	}
