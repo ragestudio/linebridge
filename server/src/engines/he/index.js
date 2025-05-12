@@ -45,8 +45,15 @@ export default class Engine {
 	}
 
 	mainMiddleware = async (req, res, next) => {
-		if (req.method === "OPTIONS") {
-			return res.status(204).end()
+		if (this.server.params.bypassCors === true) {
+			if (req.method === "OPTIONS") {
+				res.setHeader("Access-Control-Allow-Origin", "*")
+				res.setHeader("Access-Control-Allow-Methods", "*")
+				res.setHeader("Access-Control-Allow-Headers", "*")
+				res.setHeader("Access-Control-Allow-Credentials", "true")
+
+				return res.status(204).end()
+			}
 		}
 
 		// register body parser
