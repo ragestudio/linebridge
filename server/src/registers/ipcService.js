@@ -5,8 +5,8 @@ export default async (server) => {
 	}
 
 	// get only the root paths
-	let paths = Array.from(server.engine.map.keys()).map((key) => {
-		const root = key.split("/")[1]
+	let paths = Array.from(server.engine.registers.values()).map((key) => {
+		const root = key.route.split("/")[1]
 
 		return "/" + root
 	})

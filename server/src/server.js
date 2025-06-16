@@ -99,7 +99,6 @@ class Server {
 	headers = {}
 	events = {}
 	contexts = {}
-
 	engine = null
 
 	get hasSSL() {
@@ -211,6 +210,11 @@ class Server {
 			await registerServiceToIPC(this)
 		}
 
+		for (const Plugin of this.plugins) {
+			const pluginInstance = new Plugin(this)
+			await pluginInstance.initialize()
+		}
+
 		// listen
 		await this.engine.listen()
 
@@ -226,7 +230,6 @@ class Server {
 		const lines = [
 			`- Url: ${this.hasSSL ? "https" : "http"}://${this.params.listenIp}:${this.params.listenPort}`,
 			`- Websocket: ${this.engine.ws ? this.engine.ws?.config?.path : "Disabled"}`,
-			`- Routes: ${this.engine.map.size}`,
 			`- Tooks: ${elapsedTimeInMs.toFixed(2)}ms`,
 		]
 
@@ -254,18 +257,7 @@ class Server {
 				`[${obj.method.toUpperCase()}] ${obj.route}`,
 			)
 
-			// set to the endpoints map, used by _map
-			this.engine.map.set(obj.route, {
-				method: obj.method,
-				path: obj.route,
-			})
-
-			// register endpoint to http interface router
-			this.engine.router[obj.method](
-				obj.route,
-				...obj.middlewares,
-				obj.fn,
-			)
+			return this.engine.register(obj)
 		},
 		ws: (wsEndpointObj) => {},
 	}

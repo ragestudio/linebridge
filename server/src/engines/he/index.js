@@ -13,7 +13,7 @@ export default class Engine {
 	app = null
 	ws = null
 	router = new he.Router()
-	map = new Map()
+	registers = new Set()
 
 	initialize = async () => {
 		this.app = new he.Server({
@@ -71,6 +71,14 @@ export default class Engine {
 		return res.status(404).json({
 			error: "Not found",
 		})
+	}
+
+	register = (obj) => {
+		// set to the endpoints map, used by _map
+		this.registers.add(obj)
+
+		// register endpoint to http interface router
+		this.router[obj.method](obj.route, ...obj.middlewares, obj.fn)
 	}
 
 	listen = async () => {

@@ -50,6 +50,7 @@ export default class Route {
 			this.server.register.http({
 				method: method,
 				route: this.params.route,
+				filePath: this.params.filePath,
 				middlewares: this.params.useMiddlewares,
 				fn: this[method].handler,
 			})

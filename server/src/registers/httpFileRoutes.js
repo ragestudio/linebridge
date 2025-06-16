@@ -13,7 +13,10 @@ export default async (startDir, server) => {
 	await RecursiveRegister({
 		start: startDir,
 		match: async (filePath) => {
-			return filePath.endsWith(".js") || filePath.endsWith(".ts")
+			// Only match files named as HTTP methods (get.js, post.ts, etc.)
+			const httpMethodRegex =
+				/\/(get|post|put|delete|patch|options|head)\.(js|ts)$/i
+			return httpMethodRegex.test(filePath)
 		},
 		onMatch: async ({ absolutePath, relativePath }) => {
 			const paths = relativePath.split("/")
@@ -51,14 +54,17 @@ export default async (startDir, server) => {
 				}
 			}
 
-			new Route(server, {
+			const routeParams = {
 				route: route,
+				filePath: absolutePath,
 				useMiddlewares: fileObj.useMiddlewares,
 				useContexts: fileObj.useContexts,
 				handlers: {
 					[method]: fileObj.fn ?? fileObj,
 				},
-			}).register()
+			}
+
+			new Route(server, routeParams).register()
 		},
 	})
 }

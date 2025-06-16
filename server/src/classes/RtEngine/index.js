@@ -80,7 +80,10 @@ class RTEngineNG {
 			const handler = this.events.get(message.event)
 
 			if (typeof handler === "function") {
-				const result = await handler(client, message.data)
+				const result = await handler(client, message.data, {
+					senders: this.senders,
+					find: this.find,
+				})
 
 				if (message.ack === true) {
 					client.emit(`ack_${message.event}`, result)
