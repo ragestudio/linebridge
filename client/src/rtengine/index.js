@@ -219,8 +219,12 @@ export class RTEngineClient {
 	 */
 	call = (event, data) => {
 		return new Promise((resolve, reject) => {
-			this.once(`ack_${event}`, (...args) => {
-				resolve(...args)
+			this.once(`ack_${event}`, (data, payload) => {
+				if (payload.error) {
+					return reject(payload.error)
+				}
+
+				return resolve(data)
 			})
 
 			this.socket.send(this.#_encode({ event, data, ack: true }))
@@ -323,11 +327,7 @@ export class RTEngineClient {
 
 			this.#dispatchToHandlers("message", payload.data, payload)
 
-			return this.#dispatchToHandlers(
-				payload.event,
-				payload.data,
-				payload,
-			)
+			return this.#dispatchToHandlers(payload.event, payload.data, payload)
 		} catch (error) {
 			console.error(
 				`[rt/${this.params.refName}] Error handling message:`,
