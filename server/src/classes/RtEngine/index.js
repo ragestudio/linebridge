@@ -97,7 +97,16 @@ class RTEngineNG {
 				console.log(`[ws] 500 /${message?.event ?? "unknown"} >`, error)
 			}
 
-			client.error(error)
+			if (message?.ack === true && message?.event) {
+				client.socket.send(
+					JSON.stringify({
+						event: `ack_${message.event}`,
+						error: error.message,
+					}),
+				)
+			} else {
+				client.error(error)
+			}
 		}
 	}
 
