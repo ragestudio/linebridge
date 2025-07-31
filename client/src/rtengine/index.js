@@ -91,7 +91,7 @@ export class RTEngineClient {
 		}
 
 		if (this.socket) {
-			await this.disconnect()
+			this.close()
 		}
 
 		let url = `${this.params.url}`
@@ -101,6 +101,8 @@ export class RTEngineClient {
 		}
 
 		this.socket = new WebSocket(url)
+
+		this.abortController = new AbortController()
 
 		this.socket.onopen = (e) => this.#handleOpen(e)
 		this.socket.onclose = (e) => this.#handleClose(e)
@@ -113,11 +115,14 @@ export class RTEngineClient {
 	}
 
 	/**
-	 * Closes the current WebSocket connection.
+	 * Permanently close the client connection,
+	 * cancels any pending reconnection attempts, and prevents further reconnection.
 	 *
-	 * @returns {Promise<boolean>} Promise resolving to false if no connection exists, true otherwise.
+	 * @returns {boolean} True if the connection was closed, false otherwise.
 	 */
-	async disconnect() {
+	close() {
+		console.log(`[rt] Closing connection`)
+
 		if (!this.socket) {
 			return false
 		}
@@ -129,29 +134,18 @@ export class RTEngineClient {
 		this.socket.close()
 		this.socket = null
 
-		return true
-	}
-
-	/**
-	 * Permanently destroys the client connection, closes the socket,
-	 * cancels any pending reconnection attempts, and prevents further reconnection.
-	 *
-	 * @returns {Promise<void>} A promise that resolves when the connection is destroyed.
-	 */
-	async destroy() {
-		console.log(`[rt] Destroying connection`)
-
-		if (this.socket) {
-			this.socket.close()
-			this.socket = null
-		}
-
 		// cancel reconnecttions if any
 		this.state.reconnecting = false
 		this.state.reconnectAttempts = 0
 
 		this.abortController.abort()
+
+		return true
 	}
+
+	// Aliases to close socket
+	destroy = this.close
+	disconnect = this.close
 
 	/**
 	 * Registers an event handler.
@@ -201,13 +195,13 @@ export class RTEngineClient {
 	 * @param {*} data - Data to send with the event.
 	 * @returns {Promise<null|void>} Promise that resolves when the event is sent, or null if not connected.
 	 */
-	emit = async (event, data) => {
+	emit = (event, data) => {
 		// TODO: implement a msg queue
 		if (!this.socket || !this.state.connected) {
 			return null
 		}
 
-		return await this.socket.send(this.#_encode({ event, data }))
+		return this.socket.send(this.#_encode({ event, data }))
 	}
 
 	/**
@@ -327,7 +321,11 @@ export class RTEngineClient {
 
 			this.#dispatchToHandlers("message", payload.data, payload)
 
-			return this.#dispatchToHandlers(payload.event, payload.data, payload)
+			return this.#dispatchToHandlers(
+				payload.event,
+				payload.data,
+				payload,
+			)
 		} catch (error) {
 			console.error(
 				`[rt/${this.params.refName}] Error handling message:`,
@@ -384,7 +382,8 @@ export class RTEngineClient {
 	 *
 	 * @private
 	 * @returns {null|void} Null if not connected, void otherwise.
-	 */ #startHeartbeat() {
+	 */
+	#startHeartbeat() {
 		if (!this.state.connected) {
 			return null
 		}
