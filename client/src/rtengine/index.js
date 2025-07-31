@@ -391,7 +391,7 @@ export class RTEngineClient {
 		this.state.lastPong = null
 		this.state.lastPing = performance.now()
 
-		this.emit("ping").catch(() => null)
+		this.emit("ping")
 
 		setTimeout(() => {
 			// if no last pong is received, it means the connection is lost or the latency is too high
