@@ -375,6 +375,17 @@ export class RTEngineClient {
 		pong: (data) => {
 			this.state.lastPong = performance.now()
 		},
+		"topic:subscribed": (topic) => {
+			console.log(`[rt/${this.params.refName}] topic subscribed:`, topic)
+			this.topics.subscribed.add(topic)
+		},
+		"topic:unsubscribed": (topic) => {
+			console.log(
+				`[rt/${this.params.refName}] topic unsubscribed:`,
+				topic,
+			)
+			this.topics.subscribed.delete(topic)
+		},
 	}
 
 	/**

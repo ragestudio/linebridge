@@ -41,19 +41,13 @@ class TopicsController {
 	 * @param {string} topic - The topic to subscribe to.
 	 * @returns {Promise<boolean>} - Promise that resolves to true when the subscription is complete.
 	 */
-	subscribe = async (topic) => {
+	subscribe = async (subscriberEventName, topic) => {
 		console.log(
 			`[rt/${this.client.params.refName}] Subscribing to topic:`,
 			topic,
 		)
 
-		await this.client.emit("topic:subscribe", topic)
-
-		if (!this.subscribed.has(topic)) {
-			this.subscribed.add(topic)
-		}
-
-		return true
+		return await this.client.emit(subscriberEventName, topic)
 	}
 
 	/**
@@ -68,11 +62,7 @@ class TopicsController {
 			topic,
 		)
 
-		await this.client.emit("topic:unsubscribe", topic)
-
-		this.subscribed.delete(topic)
-
-		return true
+		return await this.client.emit("topic:unsubscribe", topic)
 	}
 
 	/**
