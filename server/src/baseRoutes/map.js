@@ -4,24 +4,31 @@ export default class MapRoute extends Route {
 	static route = "/_map"
 
 	get = async (req, res) => {
-		const httpMap = Array.from(this.server.engine.map.entries()).reduce(
-			(acc, [route, { method, path }]) => {
-				if (!acc[method]) {
-					acc[method] = []
-				}
+		const httpMap = {}
+		const wsMap = []
 
-				acc[method].push({
-					route: path,
-				})
+		for (const { method, route } of this.server.engine.registers) {
+			if (!httpMap[method]) {
+				httpMap[method] = []
+			}
 
-				return acc
-			},
-			{},
-		)
+			httpMap[method].push({
+				route: route,
+			})
+		}
+
+		if (this.server.engine.ws) {
+			for (const [
+				event,
+				handler,
+			] of this.server.engine.ws.events.entries()) {
+				wsMap.push(event)
+			}
+		}
 
 		return res.json({
 			http: httpMap,
-			websocket: [],
+			websocket: wsMap,
 		})
 	}
 }
