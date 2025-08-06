@@ -30,7 +30,7 @@ export default class Engine {
 			const { path, enabled } = this.server.params.websockets
 
 			if (enabled === true) {
-				this.ws = new RtEngine({
+				this.ws = new RtEngine(this.server, {
 					path: path ?? `/${this.server.params.refName}`,
 					onUpgrade: this.server.handleWsUpgrade,
 					onConnection: this.server.handleWsConnection,
