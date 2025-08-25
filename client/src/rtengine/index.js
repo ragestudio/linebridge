@@ -453,6 +453,8 @@ export class RTEngineClient {
 			`[rt/${this.params.refName}] Connection timeout, retrying connection in ${this.constructor.reconnectTimeout}ms [${this.state.connectionRetryCount - 1}/${this.params.maxConnectRetries}]`,
 		)
 
+		this.#dispatchToHandlers("reconnecting")
+
 		setTimeout(() => {
 			this.connect()
 		}, this.constructor.reconnectTimeout)
