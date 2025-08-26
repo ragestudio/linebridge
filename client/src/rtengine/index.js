@@ -167,10 +167,15 @@ export class RTEngineClient {
 	 * @param {Function} handler - Handler function to remove.
 	 */
 	off = (event, handler) => {
-		this.handlers.delete({
-			event,
-			handler,
-		})
+		for (const ev of this.handlers) {
+			if (
+				ev.event === event &&
+				ev.handler.toString() === handler.toString()
+			) {
+				this.handlers.delete(ev)
+				break
+			}
+		}
 	}
 
 	/**
