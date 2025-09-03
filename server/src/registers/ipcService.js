@@ -8,8 +8,9 @@ export default async (server) => {
 
 	let { http, websocket } = getRoutes(server.engine)
 
-	let httpPaths = []
+	let httpPaths = new Set()
 
+	// get all the http routes
 	for (let routes of Object.values(http)) {
 		routes = routes.map((key) => {
 			return key.route
@@ -23,11 +24,27 @@ export default async (server) => {
 			return true
 		})
 
-		httpPaths = [...httpPaths, ...routes]
+		routes.forEach((key) => {
+			httpPaths.add(key)
+		})
 	}
 
-	http = httpPaths
+	http = Array.from(httpPaths)
 
+	// filter out the ping and topic events
+	websocket = websocket.filter((key) => {
+		if (
+			key === "ping" ||
+			key === "topic:subscribe" ||
+			key === "topic:unsubscribe"
+		) {
+			return false
+		}
+
+		return true
+	})
+
+	// send the service info to the main process
 	process.send({
 		type: "service:register",
 		data: {
