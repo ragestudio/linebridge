@@ -1,40 +1,48 @@
+import getRoutes from "../utils/getRoutes"
+
 export default async (server) => {
 	if (!process.env.lb_service || !process.send) {
 		console.error("IPC not available")
 		return null
 	}
 
-	// get only the root paths
-	let paths = Array.from(server.engine.registers.values()).map((key) => {
-		const root = key.route.split("/")[1]
+	let { http, websocket } = getRoutes(server.engine)
 
-		return "/" + root
-	})
+	let httpPaths = []
 
-	// remove duplicates
-	paths = [...new Set(paths)]
+	for (let routes of Object.values(http)) {
+		routes = routes.map((key) => {
+			return key.route
+		})
 
-	// remove "" and _map
-	paths = paths.filter((key) => {
-		if (key === "/" || key === "/_map") {
-			return false
-		}
+		routes = routes.filter((key) => {
+			if (key === "/" || key === "/_map") {
+				return false
+			}
 
-		return true
-	})
+			return true
+		})
+
+		httpPaths = [...httpPaths, ...routes]
+	}
+
+	http = httpPaths
 
 	process.send({
 		type: "service:register",
 		data: {
 			namespace: server.params.refName,
+			secure: server.hasSSL,
 			http: {
 				enabled: true,
-				paths: paths,
 				proto: server.hasSSL ? "https" : "http",
+				paths: http,
 			},
 			websocket: {
 				enabled: server.params.websockets?.enabled ?? false,
+				proto: server.hasSSL ? "wss" : "ws",
 				path: server.params.refName ?? `/${server.params.refName}`,
+				events: websocket,
 			},
 			listen: {
 				ip: server.params.listenIp,
