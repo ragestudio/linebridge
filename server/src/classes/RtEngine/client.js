@@ -92,11 +92,13 @@ class Client {
 	 * @returns {any} result from socket subscription
 	 */
 	subscribe(topic) {
+		// subscribe the underlying socket to the topic
+		this.socket.subscribe(topic)
+
 		// notify client that subscription was successful
 		this.emit("topic:subscribed", topic)
 
-		// subscribe the underlying socket to the topic
-		return this.socket.subscribe(topic)
+		return null
 	}
 
 	/**
@@ -106,11 +108,13 @@ class Client {
 	 * @returns {any} result from socket unsubscription
 	 */
 	unsubscribe(topic) {
+		// unsubscribe the underlying socket from the topic
+		this.socket.unsubscribe(topic)
+
 		// notify client that unsubscription was successful
 		this.emit("topic:unsubscribed", topic)
 
-		// unsubscribe the underlying socket from the topic
-		return this.socket.unsubscribe(topic)
+		return null
 	}
 
 	/**

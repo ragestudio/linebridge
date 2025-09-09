@@ -56,13 +56,13 @@ class TopicsController {
 	 * @param {string} topic - The topic to unsubscribe from.
 	 * @returns {Promise<boolean>} - Promise that resolves to true when the unsubscription is complete.
 	 */
-	unsubscribe = async (topic) => {
+	unsubscribe = async (unsubscribeEventName, topic) => {
 		console.log(
 			`[rt/${this.client.params.refName}] Unsubscribing from topic:`,
 			topic,
 		)
 
-		return await this.client.emit("topic:unsubscribe", topic)
+		return await this.client.emit(unsubscribeEventName, topic)
 	}
 
 	/**
@@ -91,7 +91,6 @@ class TopicsController {
 		)
 
 		for (const topic of this.subscribed.values()) {
-			await this.client.emit("topic:unsubscribe", topic)
 			await this.client.emit("topic:subscribe", topic)
 		}
 
