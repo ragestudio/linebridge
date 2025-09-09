@@ -12,6 +12,7 @@ import registerWebsocketsFileEvents from "./registers/websocketFileEvents"
 import registerHttpFileRoutes from "./registers/httpFileRoutes"
 import registerServiceToIPC from "./registers/ipcService"
 import bypassCorsHeaders from "./registers/bypassCorsHeaders"
+import registerPlugins from "./registers/plugins"
 
 import isExperimental from "./utils/isExperimental"
 import getHostAddress from "./utils/getHostAddress"
@@ -78,7 +79,9 @@ class Server {
 
 		if (typeof this.constructor.useMiddlewares !== "undefined") {
 			if (!Array.isArray(this.constructor.useMiddlewares)) {
-				this.constructor.useMiddlewares = [this.constructor.useMiddlewares]
+				this.constructor.useMiddlewares = [
+					this.constructor.useMiddlewares,
+				]
 			}
 
 			this.params.useMiddlewares = this.constructor.useMiddlewares
@@ -98,7 +101,7 @@ class Server {
 	events = {}
 	contexts = {}
 	engine = null
-	plugins = []
+	plugins = new Map()
 
 	get hasSSL() {
 		if (!this.ssl) {
@@ -169,7 +172,9 @@ class Server {
 		if (typeof this.engine.ws === "object") {
 			// register declared ws events
 			if (typeof this.wsEvents === "object") {
-				for (const [eventName, eventHandler] of Object.entries(this.wsEvents)) {
+				for (const [eventName, eventHandler] of Object.entries(
+					this.wsEvents,
+				)) {
 					this.engine.ws.events.set(eventName, eventHandler)
 				}
 			}
@@ -207,10 +212,8 @@ class Server {
 			await registerServiceToIPC(this)
 		}
 
-		for (const Plugin of this.plugins) {
-			const pluginInstance = new Plugin(this)
-			await pluginInstance.initialize()
-		}
+		// initialize plugins
+		await registerPlugins(this)
 
 		// listen
 		await this.engine.listen()
