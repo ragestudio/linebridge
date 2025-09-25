@@ -42,6 +42,6 @@ export default class WebsocketRequestHandler {
 		}
 
 		// return the result
-		return result
+		return [result, error]
 	}
 }
