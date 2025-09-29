@@ -1,4 +1,8 @@
 export default (req, res, next) => {
+	if (process.env.NODE_ENV === "production") {
+		return next()
+	}
+
 	const startHrTime = process.hrtime()
 
 	res.on("finish", () => {
