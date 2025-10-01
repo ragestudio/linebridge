@@ -20,7 +20,7 @@ export default (client, adapter) => {
 	}
 
 	return new NatsClient({
-		nats: adapter,
+		nats: adapter.nats,
 		engine: adapter.engine,
 		codec: adapter.codec,
 		headers: clientHeaders,
