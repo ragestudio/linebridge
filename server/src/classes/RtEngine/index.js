@@ -1,6 +1,15 @@
-import Client from "./client"
+import Clients from "./classes/clients"
+import NatsAdapter from "../Nats/adapter"
+
 import BuiltInEvents from "./events"
 import { WebsocketRequestHandler } from "../Handler"
+
+import findClientsByUserId from "./handlers/findClientsByUserId"
+import sendToTopic from "./handlers/sendToTopic"
+import handleMessage from "./handlers/message"
+import handleConnection from "./handlers/connection"
+import handleDisconnect from "./handlers/disconnect"
+import handleUpgrade from "./handlers/upgrade"
 
 /**
  * real-time websocket engine for handling client connections, events, and messaging
@@ -53,26 +62,29 @@ class RTEngine {
 		this.onUpgrade = config.onUpgrade || null
 		this.onConnection = config.onConnection || null
 		this.onDisconnect = config.onDisconnect || null
+
+		// initialize nats adapter support if needed
+		if (typeof config.nats === "object") {
+			if (config.nats.enabled === true) {
+				console.warn(
+					"[RTE] NATS adapter is not fully implemented, not recommended for production use",
+				)
+
+				this.nats = new NatsAdapter(this, {
+					address: config.nats.address ?? "127.0.0.1",
+					port: config.nats.port ?? 4222,
+				})
+
+				this.nats.initialize()
+			}
+		}
 	}
 
 	// map of connected clients indexed by socket id
-	clients = new Map()
+	clients = new Clients(this)
 
 	// utility methods for sending messages to clients
 	senders = {
-		/**
-		 * sends an event to all connected clients
-		 * @param {string} event - the event name to broadcast
-		 * @param {any} data - the data payload to send
-		 * @returns {Promise<void>}
-		 */
-		broadcast: async (event, data) => {
-			// iterate through all connected clients
-			for (const [socketId, client] of this.clients) {
-				// send the event to each client
-				client.emit(event, data)
-			}
-		},
 		/**
 		 * publishes an event to a specific topic/channel
 		 * @param {string} topic - the topic/channel name
@@ -81,22 +93,7 @@ class RTEngine {
 		 * @returns {Promise<any>} the publish result
 		 * @throws {Error} when engine is not initialized
 		 */
-		toTopic: async (topic, event, data) => {
-			// ensure engine is properly initialized
-			if (!this.engine) {
-				throw new Error("Engine not initialized")
-			}
-
-			// publish message to topic with structured payload
-			return this.engine.app.publish(
-				topic,
-				this.encode({
-					topic: topic,
-					event: event,
-					data: data,
-				}),
-			)
-		},
+		toTopic: sendToTopic.bind(this),
 	}
 
 	// utility methods for finding clients
@@ -106,20 +103,7 @@ class RTEngine {
 		 * @param {string} userId - the user id to search for
 		 * @returns {Array<Client>} array of client instances for the user
 		 */
-		clientsByUserId: (userId) => {
-			// initialize array to store matching clients
-			const clients = []
-
-			// search through all connected clients
-			for (const [socketId, client] of this.clients) {
-				// check if client belongs to the requested user
-				if (client.userId === userId) {
-					clients.push(client)
-				}
-			}
-
-			return clients
-		},
+		clientsByUserId: findClientsByUserId.bind(this),
 	}
 
 	/**
@@ -129,58 +113,7 @@ class RTEngine {
 	 * @param {string} payload - raw message payload
 	 * @returns {Promise<void>}
 	 */
-	handleMessage = async (socket, payload) => {
-		// retrieve client instance from socket context
-		const client = this.clients.get(socket.context.id)
-
-		// ensure client exists in our registry
-		if (!client) {
-			return socket.send(
-				this.encode({ event: "error", data: "Client not found" }),
-			)
-		}
-
-		try {
-			// parse incoming json payload
-			payload = this.decode(payload)
-
-			// validate event field is a string
-			if (typeof payload.event !== "string") {
-				return client.error("Invalid event type")
-			}
-
-			// lookup event handler in registry
-			const handler = this.events.get(payload.event)
-
-			if (!(handler instanceof WebsocketRequestHandler)) {
-				throw new OperationError(
-					500,
-					"Cannot find the handler for this event",
-				)
-			}
-
-			// execute event handler
-			return await handler.execute(client, payload)
-		} catch (error) {
-			// log unexpected errors (skip operation errors)
-			if (!(error instanceof OperationError)) {
-				console.log(`[ws] 500 /${payload?.event ?? "unknown"} >`, error)
-			}
-
-			// send error acknowledgment if requested
-			// else send generic global error to client
-			if (payload?.ack === true && payload?.event) {
-				client.socket.send(
-					this.encode({
-						event: `ack_${payload.event}`,
-						error: error.message,
-					}),
-				)
-			} else {
-				client.error(error)
-			}
-		}
-	}
+	handleMessage = handleMessage.bind(this)
 
 	/**
 	 * handles new websocket connections
@@ -188,28 +121,7 @@ class RTEngine {
 	 * @param {Object} socket - the new websocket connection
 	 * @returns {Promise<void>}
 	 */
-	handleConnection = async (socket) => {
-		// run custom connection callback if provided
-		if (this.onConnection) {
-			await this.onConnection(socket)
-		}
-
-		// setup socket event listeners
-		socket.on("message", (payload) => this.handleMessage(socket, payload))
-		socket.on("close", () => this.handleDisconnect(socket))
-
-		// create new client instance for this connection
-		const client = new Client(this, socket)
-
-		// notify client of successful connection
-		await client.emit("connected", {
-			id: client.id,
-			authenticated: client.authenticated,
-		})
-
-		// register client in our clients map
-		this.clients.set(socket.context.id, client)
-	}
+	handleConnection = handleConnection.bind(this)
 
 	/**
 	 * handles client disconnections
@@ -217,31 +129,7 @@ class RTEngine {
 	 * @param {Object} socket - the disconnecting websocket
 	 * @returns {Promise<void>}
 	 */
-	handleDisconnect = async (socket) => {
-		// retrieve client instance before cleanup
-		const client = this.clients.get(socket.context.id)
-
-		// execute custom disconnect callback if provided
-		try {
-			if (typeof this.onDisconnect === "function") {
-				await this.onDisconnect(socket, client)
-			}
-		} catch (error) {
-			console.error("Error handling disconnect >", error)
-		}
-
-		// cleanup client subscriptions to prevent memory leaks
-		try {
-			if (client) {
-				await client.unsubscribeAll()
-			}
-		} catch (error) {
-			console.error("Error unsubscribing client topics >", error)
-		}
-
-		// remove client from active connections registry
-		this.clients.delete(socket.context.id)
-	}
+	handleDisconnect = handleDisconnect.bind(this)
 
 	/**
 	 * handles websocket upgrade requests
@@ -250,28 +138,7 @@ class RTEngine {
 	 * @param {Object} res - the http response object
 	 * @returns {Promise<void>}
 	 */
-	handleUpgrade = async (req, res) => {
-		try {
-			// create connection context with unique id and request data
-			const context = {
-				id: nanoid(),
-				token: req.query.token,
-				user: null,
-				httpHeaders: req.headers,
-			}
-
-			// run custom upgrade handler if provided, otherwise upgrade directly
-			if (typeof this.onUpgrade === "function") {
-				await this.onUpgrade(context, req.query.token, res)
-			} else {
-				res.upgrade(context)
-			}
-		} catch (error) {
-			// log upgrade errors and reject connection
-			console.error("Error upgrading connection:", error)
-			res.status(401).end()
-		}
-	}
+	handleUpgrade = handleUpgrade.bind(this)
 
 	/**
 	 * registers a new event handler
@@ -322,8 +189,8 @@ class RTEngine {
 	/**
 	 * attaches the rtengine to a server instance
 	 * sets up websocket routes and upgrade handlers
-	 * @param {Object} engine - the server engine instance to attach to
-	 * @param {Object} engine.app - the application instance with ws and upgrade methods
+	 * @param {Object} server - the server engine instance to attach to
+	 * @param {Object} server.app - the application instance with ws and upgrade methods
 	 * @returns {void}
 	 */
 	attach = (engine) => {

@@ -30,8 +30,8 @@ export default class WebsocketRequestHandler {
 			error = err
 		}
 
-		// handle ack mode
-		if (payload.ack === true) {
+		// handle ack mode (only if no nats mode enabled)
+		if (payload.ack === true && !this.engine.nats) {
 			client.socket.send(
 				this.engine.encode({
 					event: `ack_${this.params.event}`,
@@ -42,6 +42,6 @@ export default class WebsocketRequestHandler {
 		}
 
 		// return the result
-		return result
+		return [result, error]
 	}
 }

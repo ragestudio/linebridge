@@ -35,6 +35,7 @@ export default class Engine {
 					onUpgrade: this.server.handleWsUpgrade,
 					onConnection: this.server.handleWsConnection,
 					onDisconnect: this.server.handleWsDisconnect,
+					nats: this.server.params.websockets.nats,
 				})
 
 				global.websockets = this.ws
