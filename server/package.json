@@ -1,6 +1,6 @@
 {
 	"name": "linebridge",
-	"version": "1.3.1",
+	"version": "1.3.2",
 	"description": "Multiproposal framework to build fast, scalable, and secure servers.",
 	"author": "RageStudio <support@ragestudio.net>",
 	"bugs": {
