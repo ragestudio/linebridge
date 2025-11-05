@@ -43,10 +43,9 @@ export default class IPCClient {
 		if (typeof fn !== "function") {
 			this.process.send({
 				event: `ipc:akn:${id}`,
+				target: from,
+				from: this.self.params.refName,
 				payload: {
-					target: from,
-					from: this.self.params.refName,
-
 					id: id,
 					error: `IPC: Command [${command}] not found`,
 				},
@@ -60,10 +59,9 @@ export default class IPCClient {
 
 			this.process.send({
 				event: `ipc:akn:${id}`,
+				target: from,
+				from: this.self.params.refName,
 				payload: {
-					target: from,
-					from: this.self.params.refName,
-
 					id: id,
 					result: result,
 				},
@@ -71,10 +69,9 @@ export default class IPCClient {
 		} catch (error) {
 			this.process.send({
 				event: `ipc:akn:${id}`,
+				target: from,
+				from: this.self.params.refName,
 				payload: {
-					target: from,
-					from: this.self.params.refName,
-
 					id: id,
 					error: error.message,
 				},
@@ -102,10 +99,9 @@ export default class IPCClient {
 			try {
 				this.process.send({
 					event: "ipc:exec",
+					target: to_service_id,
+					from: this.self.params.refName,
 					payload: {
-						target: to_service_id,
-						from: this.self.params.refName,
-
 						id: remote_call_id,
 						command,
 						args,
@@ -138,10 +134,9 @@ export default class IPCClient {
 		try {
 			this.process.send({
 				event: "ipc:exec",
+				target: to_service_id,
+				from: this.self.params.refName,
 				payload: {
-					target: to_service_id,
-					from: this.self.params.refName,
-
 					id: remote_call_id,
 					command,
 					args,

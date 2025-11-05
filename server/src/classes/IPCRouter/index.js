@@ -1,56 +1,63 @@
 export default class IPCRouter {
-    processes = []
+	processes = new Map()
 
-    register = (service) => {
-        service.instance.on("message", (msg) => {
-            if (typeof msg !== "object") {
-                // not an IPC message, ignore
-                return false
-            }
+	register = (service) => {
+		// allocate the service by id
+		this.processes.set(service.id, service)
 
-            const { event, payload } = msg
+		// listen for messages
+		service.instance.on("message", this.messageHandler)
+	}
 
-            if (!event || !event.startsWith("ipc:")) {
-                // not an IPC message, ignore
-                return false
-            }
+	unregister = (id) => {
+		this.processes.delete(id)
+	}
 
-            const { target } = payload
+	messageHandler = (msg) => {
+		if (typeof msg !== "object") {
+			return false
+		}
 
-            if (!target) {
-                return false
-            }
+		const { event, target, payload } = msg
 
-            if (event.startsWith("ipc:")) {
-                return this.route(event, payload)
-            }
-        })
+		if (!event || !event.startsWith("ipc:") || !target) {
+			// not an IPC message, ignore
+			return false
+		}
 
-        this.processes.push(service)
-    }
+		if (event.startsWith("ipc:")) {
+			return this.route(target, event, payload)
+		}
+	}
 
-    unregister = (service) => {
-        this.processes = this.processes.filter((_process) => _process.id !== service.id)
-    }
+	route = (target, event, payload) => {
+		try {
+			// first search service
+			let targetService = this.processes.get(target)
 
-    route = (event, payload) => {
-        const { target, from } = payload
+			if (!targetService) {
+				console.error(
+					`[IPC:ROUTER] Service [${target.toString()}] not found`,
+				)
 
-        // first search service
-        let targetService = this.processes.find((_process) => _process.id === target)
+				return false
+			}
 
-        if (!targetService) {
-            // TODO: respond with error
-            console.error(`[IPC:ROUTER] Service [${destinationId}] not found`)
+			if (!targetService.instance) {
+				console.error(
+					`[IPC:ROUTER] Service [${target.toString()}] not ready`,
+				)
 
-            return false
-        }
+				return false
+			}
 
-        //console.log(`[IPC:ROUTER] Routing event [${event}] to service [${target}] from [${from}]`)
-
-        targetService.instance.send({
-            event: event,
-            payload: payload
-        })
-    }
+			// send message to service
+			targetService.instance.send({
+				event: event,
+				payload: payload,
+			})
+		} catch (e) {
+			console.error(e)
+		}
+	}
 }
