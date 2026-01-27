@@ -91,13 +91,19 @@ export class RTEngineClient {
 		}
 
 		if (this.socket) {
-			this.close()
+			this.socket.close()
+			this.socket = null
 		}
 
 		let url = `${this.params.url}`
+		let token = this.params.token
 
-		if (this.params.token) {
-			url += `?token=${this.params.token}`
+		if (typeof this.params.token === "function") {
+			token = await this.params.token()
+		}
+
+		if (token) {
+			url += `?token=${token}`
 		}
 
 		this.socket = new WebSocket(url)
@@ -118,34 +124,41 @@ export class RTEngineClient {
 	 * Permanently close the client connection,
 	 * cancels any pending reconnection attempts, and prevents further reconnection.
 	 *
-	 * @returns {boolean} True if the connection was closed, false otherwise.
 	 */
-	close() {
-		console.log(`[rt] Closing connection`)
-
+	destroy() {
 		if (!this.socket) {
-			return false
+			console.warn(`[rt] Destroy called on non-existent connection`)
+			return null
 		}
 
+		console.log(`[rt] Destroying connection`)
+
+		// if is not reconnecting, unsubscribe from all topics
 		if (!this.state.reconnecting) {
 			this.topics.unsubscribeAll()
 		}
 
+		// abort
+		this.abortController.abort()
+
+		// close & reset
 		this.socket.close()
 		this.socket = null
 
-		// cancel reconnecttions if any
+		// reset reconection state
 		this.state.reconnecting = false
 		this.state.reconnectAttempts = 0
-
-		this.abortController.abort()
-
-		return true
 	}
 
-	// Aliases to close socket
-	destroy = this.close
-	disconnect = this.close
+	authenticate = async (token) => {
+		this.params.token = token
+
+		if (typeof token === "function") {
+			token = await token()
+		}
+
+		this.emit("authenticate", token)
+	}
 
 	/**
 	 * Registers an event handler.
@@ -281,7 +294,7 @@ export class RTEngineClient {
 
 		// if heartbeat is enabled, start the heartbeat check
 		if (this.params.heartbeat === true) {
-			this.#startHeartbeat()
+			this.#heartbeat()
 		}
 	}
 
@@ -293,11 +306,8 @@ export class RTEngineClient {
 	 */
 	#handleClose(e) {
 		this.state.connected = false
-		this.#dispatchToHandlers("close")
 
-		if (this.params.autoReconnect === true) {
-			return this.#tryReconnect()
-		}
+		this.#dispatchToHandlers("close")
 	}
 
 	/**
@@ -369,8 +379,11 @@ export class RTEngineClient {
 		 *
 		 * @param {Error} error - Error object.
 		 */
-		error: (error) => {
-			console.error(`[rt/${this.params.refName}] error:`, error)
+		error: (data, payload) => {
+			console.error(
+				`[rt/${this.params.refName}] error:`,
+				data ?? payload.error,
+			)
 		},
 		/**
 		 * Handles pong responses for heartbeat.
@@ -394,37 +407,44 @@ export class RTEngineClient {
 	}
 
 	/**
-	 * Starts the heartbeat process to monitor connection health.
+	 * Heartbeat the connection to check if it's still alive.
 	 *
 	 * @private
 	 * @returns {null|void} Null if not connected, void otherwise.
 	 */
-	#startHeartbeat() {
-		if (!this.state.connected) {
+	#heartbeat() {
+		if (!this.state.connected || this.abortController.signal.aborted) {
 			return null
 		}
 
+		// reset last pong and last ping
 		this.state.lastPong = null
 		this.state.lastPing = performance.now()
 
+		// send the ping
 		this.emit("ping")
 
+		// wait to time out
 		setTimeout(() => {
+			if (this.abortController.signal.aborted) {
+				return null
+			}
+
 			// if no last pong is received, it means the connection is lost or the latency is too high
 			if (this.state.lastPong === null) {
-				this.state.connected = false
-
-				// if max connect retries is more than 0, retry connections
+				// if auto reconnect is enabled, try to reconnect
 				if (this.params.autoReconnect === true) {
 					return this.#tryReconnect()
 				}
 			}
 
+			// calculate latency
 			this.state.latency = Number(
 				this.state.lastPong - this.state.lastPing,
 			).toFixed(2)
 
-			this.#startHeartbeat()
+			// send the heartbeat again
+			this.#heartbeat()
 		}, this.constructor.heartbeatTimeout)
 	}
 
@@ -459,6 +479,9 @@ export class RTEngineClient {
 		)
 
 		this.#dispatchToHandlers("reconnecting")
+
+		this.socket.close()
+		this.socket = null
 
 		setTimeout(() => {
 			this.connect()

@@ -1,3 +1,5 @@
+import * as Serializers from "./serializers"
+
 export default class NatsClient {
 	constructor({ engine, nats, headers, codec }) {
 		this.engine = engine
@@ -45,61 +47,30 @@ export default class NatsClient {
 
 	emit = async (event, data, error) => {
 		return await this.nats.publish(
-			`downstream`,
-			this.codec.encode({
-				event: event,
-				data: data,
-				error: error,
-			}),
-			{
-				headers: this.headers,
-			},
-		)
-	}
-
-	error = async (error) => {
-		return await this.nats.publish(
-			`downstream`,
-			this.codec.encode({
-				event: "error",
-				data: null,
-				error: error,
-			}),
-			{
-				headers: this.headers,
-			},
-		)
-	}
-
-	toTopic = async (topic, event, data, self = false) => {
-		const response = await this.nats.request(
-			`operations`,
-			this.codec.encode({
-				type: "sendToTopic",
-				data: {
-					topic: topic,
+			`ipc`,
+			Buffer.from(
+				Serializers.EventData({
 					event: event,
 					data: data,
-				},
-			}),
+					error: error,
+				}),
+			),
 			{
 				headers: this.headers,
 			},
 		)
-
-		if (!response.ok) {
-			return await this.error(response.error)
-		}
-
-		if (self === true) {
-			await this.emit(event, data)
-		}
 	}
+
+	error = async (error) => this.emit("error", null, error)
 
 	subscribe = async (topic) => {
 		const response = await this.operation("subscribeToTopic", {
 			topic: topic,
 		})
+
+		if (!response) {
+			return null
+		}
 
 		if (!response.ok) {
 			return await this.error(response.error)
@@ -113,6 +84,10 @@ export default class NatsClient {
 			topic: topic,
 		})
 
+		if (!response) {
+			return null
+		}
+
 		if (!response.ok) {
 			return await this.error(response.error)
 		}
@@ -120,20 +95,51 @@ export default class NatsClient {
 		return await this.emit("topic:unsubscribed", topic)
 	}
 
+	toTopic = async (topic, event, data, self = false) => {
+		const response = await this.operation("sendToTopic", {
+			topic: topic,
+			event: event,
+			data: data,
+		})
+
+		if (!response) {
+			return null
+		}
+
+		if (!response.ok) {
+			return await this.error(response.error)
+		}
+
+		if (self === true) {
+			await this.emit(event, data)
+		}
+	}
+
 	operation = async (type, data) => {
-		let response = await this.nats.request(
-			`operations`,
-			this.codec.encode({
-				type: type,
-				data: data,
-			}),
-			{
-				headers: this.headers,
-			},
-		)
+		try {
+			let response = await this.nats.request(
+				`operations`,
+				Buffer.from(
+					Serializers.Operation({
+						type: type,
+						data: data,
+					}),
+				),
+				{
+					headers: this.headers,
+				},
+			)
 
-		response = await this.codec.decode(response.data)
+			response = await this.codec.decode(response.data)
 
-		return response
+			if (!response.ok) {
+				return await this.error(response.error)
+			}
+
+			return response
+		} catch (error) {
+			console.error(error)
+			return null
+		}
 	}
 }

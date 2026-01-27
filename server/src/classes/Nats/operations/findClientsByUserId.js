@@ -1,11 +1,15 @@
 import synthesizeClient from "../synthesizeClient"
 
 export default async function (user_id) {
-	const socketIds = await this.dispatchOperation("findClientsByUserId", {
+	const sockets = await this.dispatchOperation("findClientsByUserId", {
 		user_id: user_id,
 	})
 
-	return socketIds.map((client) => {
+	if (!Array.isArray(sockets)) {
+		throw new Error("Invalid response from operation. Expected an array.")
+	}
+
+	return sockets.map((client) => {
 		return synthesizeClient(client, this)
 	})
 }

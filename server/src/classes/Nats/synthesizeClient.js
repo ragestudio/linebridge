@@ -2,6 +2,10 @@ import { headers } from "nats"
 import NatsClient from "./client"
 
 export default (client, adapter) => {
+	if (!client.socket_id) {
+		throw new Error("Socket ID is required")
+	}
+
 	const clientHeaders = headers()
 
 	clientHeaders.append("socket_id", client.socket_id)

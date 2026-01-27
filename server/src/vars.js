@@ -13,7 +13,7 @@ export default {
 		refName: "linebridge",
 		listenIp: "0.0.0.0",
 		listenPort: 3000,
-		useEngine: "he",
+		useEngine: "heng",
 		websockets: false,
 		bypassCors: false,
 		baseRoutes: true,
