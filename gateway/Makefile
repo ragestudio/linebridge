@@ -1,4 +1,4 @@
-BUILD_DIR=build
+BUILD_DIR=dist
 BINARY_NAME=ultragateway
 MAIN_FILE=main.go
 PGO_FILE=default.pgo
@@ -14,6 +14,8 @@ LDFLAGS=-ldflags \
 "-X ultragateway/app.Version=$(VERSION) \
 -X ultragateway/app.BuildTime=$(BUILD_DATE) \
 -s -w -extldflags '-static'"
+
+.PHONY: all clean
 
 all: build
 
