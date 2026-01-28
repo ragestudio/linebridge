@@ -7,6 +7,8 @@ import dispatchOperation from "./handlers/dispatchOperation"
 
 import findClientsByUserId from "./operations/findClientsByUserId"
 import sendToTopic from "./operations/sendToTopic"
+import sendToClientID from "./operations/sendToClientID"
+import sendToUserId from "./operations/sendToUserId"
 
 export default class NatsAdapter {
 	constructor(engine, params = {}) {
@@ -55,5 +57,7 @@ export default class NatsAdapter {
 	operations = {
 		findClientsByUserId: findClientsByUserId.bind(this),
 		sendToTopic: sendToTopic.bind(this),
+		sendToClientID: sendToClientID.bind(this),
+		sendToUserId: sendToUserId.bind(this),
 	}
 }

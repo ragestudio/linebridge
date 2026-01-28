@@ -35,7 +35,16 @@ func (instance *Requests) ProxyHandler(mctx context.Context, ctx *app.RequestCon
 
 	requestNamespace := GetNamespaceFromPath(ctx.Path())
 
-	service, ok := instance.Services[requestNamespace]
+	serviceRef, ok := instance.HttpPathsRefs.Load(requestNamespace)
+
+	if !ok {
+		ctx.JSON(consts.StatusBadGateway, map[string]string{
+			"message": "No service available for this namespace",
+		})
+		return
+	}
+
+	service, ok := instance.Services[serviceRef.(string)]
 
 	if !ok {
 		ctx.JSON(consts.StatusBadGateway, map[string]string{

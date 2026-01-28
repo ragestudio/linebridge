@@ -20,20 +20,19 @@ func (context *Instance) TopicUnsubscribe(conn *gws.Conn, connCtx *structs.WSCon
 
 	if err != nil || op.Data.Topic == "" {
 		return &structs.OperationResult{
-			Ok:   false,
-			Data: []byte(`{ "error": "Invalid payload or missing topic" }`),
+			Ok:    false,
+			Error: "Invalid payload or missing topic",
 		}
 	}
-
-	log.Printf("Unsubcribing from topic %v", op.Data.Topic)
 
 	subscriber := NewSubscriber(conn)
 	context.PubSub.UnSubscribe(subscriber, op.Data.Topic)
 
-	log.Printf("Unsubcribed from topic %v", op.Data.Topic)
+	if IsDebug {
+		log.Printf("User [%s] unsubscribed of topic [%s]", connCtx.Username, op.Data.Topic)
+	}
 
 	return &structs.OperationResult{
-		Ok:   true,
-		Data: []byte(`{ "topic": "` + op.Data.Topic + `" }`),
+		Ok: true,
 	}
 }

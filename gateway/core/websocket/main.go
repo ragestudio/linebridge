@@ -37,6 +37,8 @@ func NewManager(options *NewManagerOptions) *Instance {
 		"subscribeToTopic":    operations.TopicSubscribe,
 		"unsubscribeToTopic":  operations.TopicUnsubscribe,
 		"findClientsByUserId": operations.FindClientsByUserId,
+		"sendToUserId":        operations.SendToUserId,
+		"sendToTopic":         operations.SendToTopic,
 	}
 
 	instance.Upgrader = gws.NewUpgrader(instance, &gws.ServerOption{

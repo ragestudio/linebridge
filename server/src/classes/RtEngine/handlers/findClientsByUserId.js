@@ -7,7 +7,7 @@ export default async function (user_id) {
 	const clients = []
 
 	// search through all connected clients
-	for (const [socketId, client] of this.clients) {
+	for (const [_, client] of this.clients) {
 		// check if client belongs to the requested user
 		if (client.userId === user_id) {
 			clients.push(client)

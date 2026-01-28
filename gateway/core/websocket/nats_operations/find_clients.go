@@ -21,7 +21,10 @@ func (context *Instance) FindClientsByUserId(conn *gws.Conn, ctx *structs.WSConn
 	requestedUserID := op.Data.UserID
 
 	if requestedUserID == "" {
-		return &structs.OperationResult{Ok: false, Error: "Missing user_id"}
+		return &structs.OperationResult{
+			Ok:    false,
+			Error: "Missing user_id",
+		}
 	}
 
 	// lookup for user connections

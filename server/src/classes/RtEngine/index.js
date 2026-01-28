@@ -5,11 +5,14 @@ import BuiltInEvents from "./events"
 import { WebsocketRequestHandler } from "../Handler"
 
 import findClientsByUserId from "./handlers/findClientsByUserId"
-import sendToTopic from "./handlers/sendToTopic"
 import handleMessage from "./handlers/message"
 import handleConnection from "./handlers/connection"
 import handleDisconnect from "./handlers/disconnect"
 import handleUpgrade from "./handlers/upgrade"
+
+import sendToTopic from "./handlers/sendToTopic"
+import sendToClientId from "./handlers/sendToClientId"
+import sendToUserId from "./handlers/sendToUserId"
 
 /**
  * real-time websocket engine for handling client connections, events, and messaging
@@ -94,6 +97,8 @@ class RTEngine {
 		 * @throws {Error} when engine is not initialized
 		 */
 		toTopic: sendToTopic.bind(this),
+		toClientId: sendToClientId.bind(this),
+		toUserId: sendToUserId.bind(this),
 	}
 
 	// utility methods for finding clients

@@ -3,7 +3,10 @@ package app
 import (
 	"encoding/json"
 	"log"
+	"strings"
 	"ultragateway/structs"
+
+	"github.com/bytedance/sonic"
 )
 
 type IpcEvents struct {
@@ -34,40 +37,42 @@ type ServiceRegisterEvent struct {
 	} `json:"listen"`
 }
 
-func (ctx *IpcEvents) OnRegisterServiceEvent(payload structs.EventData) {
-	data := payload.Data.(map[string]interface{})
-
-	var register = ServiceRegisterEvent{}
-
-	// marshal the map back to json bytes for unmarshaling
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		log.Printf("Failed to marshal service registration data: %v", err)
-		return
+func (ctx *IpcEvents) OnRegisterServiceEvent(payload *structs.EventData, rawMessage *json.RawMessage) {
+	var register struct {
+		Data ServiceRegisterEvent `json:"data"`
 	}
 
-	err = json.Unmarshal(jsonData, &register)
-	if err != nil {
+	if err := sonic.Unmarshal(*rawMessage, &register); err != nil {
 		log.Printf("Failed to unmarshal service registration data: %v", err)
 		return
 	}
 
 	// lookup for service
-	service := ctx.AppData.Services[register.Namespace]
+	service := ctx.AppData.Services[register.Data.Namespace]
 
 	if service == nil {
-		log.Printf("Service not found: %v", register.Namespace)
+		log.Printf("Cannot register [%v] service, cause is not found on services pool", register.Data.Namespace)
 		return
 	}
 
-	log.Printf("Registering [%v] service", register.Namespace)
-
-	if register.Listen.Socket != "" {
-		// set the listen socket of the service
-		service.SetListenSocket(register.Listen.Socket)
-
-		for _, event := range register.Ws.Events {
-			ctx.AppData.Nats.RegisterServiceEvent(register.Namespace, event)
+	// TODO: maybe something nicer than iterating over & over for all paths
+	if register.Data.Http.Enabled {
+		if len(register.Data.Http.Paths) > 0 {
+			for _, path := range register.Data.Http.Paths {
+				namespacePath := strings.Split(path, "/")[1]
+				ctx.AppData.HttpPathsRefs.Store(namespacePath, register.Data.Namespace)
+			}
 		}
 	}
+
+	if register.Data.Listen.Socket != "" {
+		// set the listen socket of the service
+		service.SetListenSocket(register.Data.Listen.Socket)
+
+		for _, event := range register.Data.Ws.Events {
+			ctx.AppData.Nats.RegisterServiceEvent(register.Data.Namespace, event)
+		}
+	}
+
+	log.Printf("[%v] Service registered via IPC", register.Data.Namespace)
 }

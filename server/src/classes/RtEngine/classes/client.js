@@ -18,8 +18,8 @@ class Client {
 		this.engine = engine
 		this.socket = socket
 
-		// extract unique connection id from socket context
 		this.id = socket.context.id
+		this.context = socket.context
 
 		// extract user id if user is authenticated, null otherwise
 		this.userId = socket.context.user?._id || null
@@ -33,14 +33,20 @@ class Client {
 	 * serializes the event and data into json and sends via websocket
 	 * @param {string} event - the event name to emit
 	 * @param {any} data - the data payload to send
+	 * @param {any} error - the error payload to send
+	 * @param {boolean} ack - whether to expect an acknowledgment
 	 * @returns {any} result from socket.send operation
 	 */
-	emit(event, data) {
-		// serialize event and data into structured json payload
-		const payload = this.engine.encode({ event, data })
-
+	emit(event, data, error, ack) {
 		// send the payload through the websocket connection
-		return this.socket.send(payload)
+		return this.socket.send(
+			this.engine.encode({
+				event: event,
+				data: data,
+				error: error,
+				ack: ack,
+			}),
+		)
 	}
 
 	/**
@@ -82,7 +88,22 @@ class Client {
 		}
 
 		// emit the error as a standard error event
-		return this.emit("error", error)
+		return this.emit("error", null, error)
+	}
+
+	/**
+	 * sends an acknowledgement message to the client
+	 * @param {string} eventKey - the event key to acknowledge
+	 * @param {any} data - the data payload to send
+	 * @param {Error|string} error - the error to send to client
+	 * @returns {any} result from emit operation
+	 */
+	ack(eventKey, data, error) {
+		if (typeof eventKey !== "string") {
+			throw new TypeError("eventKey must be a string")
+		}
+
+		this.emit(eventKey, data, error, true)
 	}
 
 	/**

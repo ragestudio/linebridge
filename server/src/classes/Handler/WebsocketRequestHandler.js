@@ -3,42 +3,47 @@ export default class WebsocketRequestHandler {
 		this.engine = engine
 		this.params = params
 
+		this.ctx = null
+		this.ackEvent = `ack_${this.params.event}`
+
 		// apply contexts
-		if (Array.isArray(this.params.useContexts)) {
+		if (
+			Array.isArray(this.params.useContexts) &&
+			this.params.useContexts.length > 0
+		) {
+			this.ctx = {}
+
 			for (const key of this.params.useContexts) {
 				this.ctx[key] = this.engine.server.contexts[key]
 			}
 		}
 	}
 
-	ctx = {}
-
-	execute = async (client, payload) => {
+	async execute(client, payload) {
 		let result = null
 		let error = null
 
+		let contextToPass = null
+
+		if (this.ctx) {
+			if (payload && typeof payload === "object") {
+				Object.assign(payload, this.ctx)
+				contextToPass = payload
+			} else {
+				contextToPass = { ...this.ctx, ...payload }
+			}
+		} else {
+			contextToPass = payload
+		}
+
 		try {
-			result = await this.params.fn(client, payload.data, {
-				...this.ctx,
-				...payload,
-			})
+			result = await this.params.fn(client, payload.data, contextToPass)
 		} catch (err) {
 			if (!(err instanceof OperationError)) {
-				console.log(`[ws] 500 ${this.params.event} >`, err)
+				console.debug(`[ws] 500 ${this.params.event} >`, err)
 			}
 
 			error = err
-		}
-
-		// handle ack mode (only if no nats mode enabled)
-		if (payload.ack === true && !this.engine.nats) {
-			client.socket.send(
-				this.engine.encode({
-					event: `ack_${this.params.event}`,
-					error: error?.message ?? null,
-					data: result,
-				}),
-			)
 		}
 
 		// return the result

@@ -11,6 +11,8 @@ export default async function (socket, payload) {
 		)
 	}
 
+	let handler = null
+
 	try {
 		// parse incoming json payload
 		payload = this.decode(payload)
@@ -21,7 +23,7 @@ export default async function (socket, payload) {
 		}
 
 		// lookup event handler in registry
-		const handler = this.events.get(payload.event)
+		handler = this.events.get(payload.event)
 
 		if (!(handler instanceof WebsocketRequestHandler)) {
 			throw new OperationError(
@@ -30,25 +32,20 @@ export default async function (socket, payload) {
 			)
 		}
 
-		// execute event handler
-		return await handler.execute(client, payload)
+		const [result, error] = await handler.execute(client, payload)
+
+		if (payload.ack === true) {
+			client.ack(payload.event, result, error?.message)
+		}
 	} catch (error) {
 		// log unexpected errors (skip operation errors)
 		if (!(error instanceof OperationError)) {
-			console.log(`[ws] 500 /${payload?.event ?? "unknown"} >`, error)
+			console.debug(`[ws] 500 /${payload?.event ?? "unknown"} >`, error)
 		}
 
-		// send error acknowledgment if requested
-		// else send generic global error to client
-		if (payload?.ack === true && payload?.event) {
-			client.socket.send(
-				this.encode({
-					event: `ack_${payload.event}`,
-					error: error.message,
-				}),
-			)
-		} else {
-			client.error(error)
+		// send error acknowledgment
+		if (payload?.event) {
+			client.ack(payload.event, null, error.message)
 		}
 	}
 }

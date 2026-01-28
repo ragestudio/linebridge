@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"log"
+	"maps"
 	"os"
 	"runtime"
 	"strings"
@@ -41,6 +42,7 @@ type AppData struct {
 	SocketListener   *ipc.Instance
 	Nats             *unats.Instance
 	WebsocketManager *websocket.Instance
+	HttpPathsRefs    *sync.Map
 }
 
 func Start() {
@@ -84,7 +86,8 @@ func Start() {
 			"go_version": runtime.Version(),
 			"cpu_cores":  runtime.NumCPU(),
 		},
-		Services: make(map[string]*services.Service),
+		Services:      make(map[string]*services.Service),
+		HttpPathsRefs: &sync.Map{},
 	}
 
 	// if INFISICAL env injection in available, go ahead
@@ -124,6 +127,23 @@ func Start() {
 		appData.SocketListener = socketListener
 	}
 
+	// create a env for services
+	servicesEnv := map[string]string{}
+
+	// parse & copy the current environ
+	for _, env := range os.Environ() {
+		parts := strings.Split(env, "=")
+
+		if len(parts) == 2 {
+			servicesEnv[parts[0]] = parts[1]
+		}
+	}
+
+	// if infiscal env is available, copy them
+	if appData.InfisicalEnv != nil {
+		maps.Copy(servicesEnv, appData.InfisicalEnv)
+	}
+
 	// initialize all base microservices
 	for _, service := range scannedServices {
 		serviceInst := services.NewService(
@@ -131,7 +151,7 @@ func Start() {
 				Id:                service["id"],
 				MainPath:          service["path"],
 				Cwd:               service["cwd"],
-				Env:               appData.InfisicalEnv,
+				Env:               servicesEnv,
 				EnableWatcher:     appCfg.Mode == "dev",
 				BootloaderPath:    appCfg.Services.Bootloader,
 				GatewaySocketPath: appCfg.IPC.Path,
@@ -151,6 +171,7 @@ func Start() {
 		Config:           appCfg,
 		WebsocketManager: appData.WebsocketManager,
 		Services:         appData.Services,
+		HttpPathsRefs:    appData.HttpPathsRefs,
 	}
 	serversWaitGroup := &sync.WaitGroup{}
 
