@@ -1,5 +1,5 @@
 export default async function (topic, event, data) {
-	if (this.nats) {
+	if (this.nats && typeof this.nats.operations?.sendToTopic === "function") {
 		return await this.nats.operations.sendToTopic(topic, event, data)
 	}
 
