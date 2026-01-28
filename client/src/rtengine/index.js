@@ -36,6 +36,8 @@ export class RTEngineClient {
 	static heartbeatTimeout = 10000
 	/** @type {number} Delay between reconnection attempts in milliseconds */
 	static reconnectTimeout = 5000
+	/** @type {number} Default timeout for RPC calls in milliseconds */
+	static callTimeout = 10000
 
 	/**
 	 * Gets the current library version.
@@ -73,11 +75,20 @@ export class RTEngineClient {
 	/** @type {WebSocket|null} Active WebSocket connection */
 	socket = null
 
-	/** @type {Set} Collection of event handlers */
-	handlers = new Set()
+	/**
+	 * Collection of event handlers.
+	 * @type {Map<string, Set<Object>>}
+	 */
+	handlers = new Map()
 
 	/** @type {TopicsController} Controller for topic-based subscriptions */
 	topics = new TopicsController(this)
+
+	/** @type {number|null} Internal timer reference for heartbeat */
+	#heartbeatTimer = null
+
+	/** @type {number|null} Internal timer reference for reconnection */
+	#reconnectTimer = null
 
 	/**
 	 * Establishes a connection to the WebSocket server.
@@ -87,19 +98,26 @@ export class RTEngineClient {
 	 */
 	async connect() {
 		if (this.abortController.signal.aborted) {
-			return null
+			this.abortController = new AbortController()
 		}
 
 		if (this.socket) {
-			this.socket.close()
-			this.socket = null
+			this.#cleanupSocket()
 		}
 
 		let url = `${this.params.url}`
 		let token = this.params.token
 
 		if (typeof this.params.token === "function") {
-			token = await this.params.token()
+			try {
+				token = await this.params.token()
+			} catch (err) {
+				console.error(
+					`[rt/${this.params.refName}] Token generation error:`,
+					err,
+				)
+				return
+			}
 		}
 
 		if (token) {
@@ -107,8 +125,6 @@ export class RTEngineClient {
 		}
 
 		this.socket = new WebSocket(url)
-
-		this.abortController = new AbortController()
 
 		this.socket.onopen = (e) => this.#handleOpen(e)
 		this.socket.onclose = (e) => this.#handleClose(e)
@@ -122,12 +138,10 @@ export class RTEngineClient {
 
 	/**
 	 * Permanently close the client connection,
-	 * cancels any pending reconnection attempts, and prevents further reconnection.
-	 *
+	 * cancels any pending reconnection attempts, clears timers and prevents further reconnection.
 	 */
 	destroy() {
-		if (!this.socket) {
-			console.warn(`[rt] Destroy called on non-existent connection`)
+		if (!this.socket && !this.state.reconnecting) {
 			return null
 		}
 
@@ -138,16 +152,20 @@ export class RTEngineClient {
 			this.topics.unsubscribeAll()
 		}
 
+		// clear active timers
+		clearTimeout(this.#heartbeatTimer)
+		clearTimeout(this.#reconnectTimer)
+
 		// abort
 		this.abortController.abort()
 
 		// close & reset
-		this.socket.close()
-		this.socket = null
+		this.#cleanupSocket()
 
 		// reset reconection state
 		this.state.reconnecting = false
-		this.state.reconnectAttempts = 0
+		this.state.connectionRetryCount = 0
+		this.handlers.clear()
 	}
 
 	authenticate = async (token) => {
@@ -167,9 +185,14 @@ export class RTEngineClient {
 	 * @param {Function} handler - Function to call when the event is received.
 	 */
 	on = (event, handler) => {
-		this.handlers.add({
+		if (!this.handlers.has(event)) {
+			this.handlers.set(event, new Set())
+		}
+
+		this.handlers.get(event).add({
 			event,
 			handler,
+			once: false,
 		})
 	}
 
@@ -180,14 +203,18 @@ export class RTEngineClient {
 	 * @param {Function} handler - Handler function to remove.
 	 */
 	off = (event, handler) => {
-		for (const ev of this.handlers) {
-			if (
-				ev.event === event &&
-				ev.handler.toString() === handler.toString()
-			) {
-				this.handlers.delete(ev)
+		const eventHandlers = this.handlers.get(event)
+		if (!eventHandlers) return
+
+		for (const item of eventHandlers) {
+			if (item.handler === handler) {
+				eventHandlers.delete(item)
 				break
 			}
+		}
+
+		if (eventHandlers.size === 0) {
+			this.handlers.delete(event)
 		}
 	}
 
@@ -199,7 +226,11 @@ export class RTEngineClient {
 	 * @param {Function} handler - Function to call when the event is received.
 	 */
 	once = (event, handler) => {
-		this.handlers.add({
+		if (!this.handlers.has(event)) {
+			this.handlers.set(event, new Set())
+		}
+
+		this.handlers.get(event).add({
 			event,
 			handler,
 			once: true,
@@ -214,8 +245,7 @@ export class RTEngineClient {
 	 * @returns {Promise<null|void>} Promise that resolves when the event is sent, or null if not connected.
 	 */
 	emit = (event, data) => {
-		// TODO: implement a msg queue
-		if (!this.socket || !this.state.connected) {
+		if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
 			return null
 		}
 
@@ -227,17 +257,52 @@ export class RTEngineClient {
 	 *
 	 * @param {string} event - Event name to emit.
 	 * @param {*} data - Data to send with the event.
+	 * @param {number} [timeout=10000] - Time in ms to wait for response before rejecting.
 	 * @returns {Promise<object|string>} Promise that resolves with the message from the server.
 	 */
-	call = (event, data) => {
+	call = (event, data, timeout = RTEngineClient.callTimeout) => {
 		return new Promise((resolve, reject) => {
-			this.once(`ack_${event}`, (data, payload) => {
-				if (payload.error) {
-					return reject(payload.error)
-				}
+			if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+				return reject(new Error("Socket not connected"))
+			}
 
-				return resolve(data)
-			})
+			// Reference to remove the handler later
+			const handlerObj = {
+				event: event,
+				handler: (data, payload) => {
+					clearTimeout(timerId)
+
+					if (payload.error) {
+						return reject(payload.error)
+					}
+
+					if (payload.ack) {
+						return resolve(data)
+					}
+				},
+				once: true,
+				ack: true,
+			}
+
+			// Timeout safety net
+			const timerId = setTimeout(() => {
+				const eventHandlers = this.handlers.get(event)
+
+				if (eventHandlers) {
+					eventHandlers.delete(handlerObj)
+
+					if (eventHandlers.size === 0) {
+						this.handlers.delete(event)
+					}
+				}
+				reject(new Error(`Call timeout for event: ${event}`))
+			}, timeout)
+
+			if (!this.handlers.has(event)) {
+				this.handlers.set(event, new Set())
+			}
+
+			this.handlers.get(event).add(handlerObj)
 
 			this.socket.send(this.#_encode({ event, data, ack: true }))
 		})
@@ -270,6 +335,22 @@ export class RTEngineClient {
 	 */
 	#_decode(payload) {
 		return JSON.parse(payload)
+	}
+
+	/**
+	 * Cleans up socket event listeners and closes the connection.
+	 *
+	 * @private
+	 */
+	#cleanupSocket() {
+		if (this.socket) {
+			this.socket.onopen = null
+			this.socket.onclose = null
+			this.socket.onerror = null
+			this.socket.onmessage = null
+			this.socket.close()
+			this.socket = null
+		}
 	}
 
 	/**
@@ -306,8 +387,17 @@ export class RTEngineClient {
 	 */
 	#handleClose(e) {
 		this.state.connected = false
+		clearTimeout(this.#heartbeatTimer)
 
 		this.#dispatchToHandlers("close")
+
+		// if auto reconnect is enabled, try to reconnect
+		if (
+			this.params.autoReconnect === true &&
+			!this.abortController.signal.aborted
+		) {
+			this.#tryReconnect()
+		}
 	}
 
 	/**
@@ -331,7 +421,8 @@ export class RTEngineClient {
 			const payload = this.#_decode(event.data)
 
 			if (typeof payload.event !== "string") {
-				throw new Error("Invalid event or payload")
+				// Silently ignore or log warning for invalid format
+				return
 			}
 
 			this.#dispatchToHandlers("message", payload.data, payload)
@@ -361,7 +452,7 @@ export class RTEngineClient {
 		 * @param {Object} data - Connection data from server.
 		 */
 		connected: (data) => {
-			if (data.id) {
+			if (data && data.id) {
 				this.state.id = data.id
 				this.state.authenticated = data.authenticated
 			}
@@ -382,7 +473,7 @@ export class RTEngineClient {
 		error: (data, payload) => {
 			console.error(
 				`[rt/${this.params.refName}] error:`,
-				data ?? payload.error,
+				data ?? payload?.error,
 			)
 		},
 		/**
@@ -407,7 +498,7 @@ export class RTEngineClient {
 	}
 
 	/**
-	 * Heartbeat the connection to check if it's still alive.
+	 * Heartbeat the connection to check if its still alive.
 	 *
 	 * @private
 	 * @returns {null|void} Null if not connected, void otherwise.
@@ -425,17 +516,18 @@ export class RTEngineClient {
 		this.emit("ping")
 
 		// wait to time out
-		setTimeout(() => {
+		this.#heartbeatTimer = setTimeout(() => {
 			if (this.abortController.signal.aborted) {
 				return null
 			}
 
 			// if no last pong is received, it means the connection is lost or the latency is too high
 			if (this.state.lastPong === null) {
-				// if auto reconnect is enabled, try to reconnect
-				if (this.params.autoReconnect === true) {
-					return this.#tryReconnect()
+				// Force close, this will trigger onclose which triggers tryReconnect
+				if (this.socket) {
+					this.socket.close()
 				}
+				return
 			}
 
 			// calculate latency
@@ -459,10 +551,17 @@ export class RTEngineClient {
 			return null
 		}
 
+		if (
+			this.state.reconnecting &&
+			this.socket?.readyState === WebSocket.CONNECTING
+		) {
+			return null
+		}
+
 		// check if retries are left, if so, retry connection
 		if (
 			this.params.maxConnectRetries !== Infinity &&
-			this.state.connectionRetryCount > this.params.maxConnectRetries
+			this.state.connectionRetryCount >= this.params.maxConnectRetries
 		) {
 			console.error(
 				`[rt/${this.params.refName}] Reconnection failed: Maximum retries reached [${this.params.maxConnectRetries}]\nClosing socket permanently...`,
@@ -475,16 +574,17 @@ export class RTEngineClient {
 		this.state.reconnecting = true
 
 		console.log(
-			`[rt/${this.params.refName}] Connection timeout, retrying connection in ${this.constructor.reconnectTimeout}ms [${this.state.connectionRetryCount - 1}/${this.params.maxConnectRetries}]`,
+			`[rt/${this.params.refName}] Connection timeout, retrying connection in ${this.constructor.reconnectTimeout}ms [${this.state.connectionRetryCount}/${this.params.maxConnectRetries}]`,
 		)
 
 		this.#dispatchToHandlers("reconnecting")
 
-		this.socket.close()
-		this.socket = null
+		this.#cleanupSocket()
 
-		setTimeout(() => {
-			this.connect()
+		this.#reconnectTimer = setTimeout(() => {
+			this.connect().catch((err) =>
+				console.error("Reconnect failed", err),
+			)
 		}, this.constructor.reconnectTimeout)
 	}
 
@@ -497,19 +597,35 @@ export class RTEngineClient {
 	 * @param {Object} [payload] - Full event payload.
 	 * @returns {Promise<void>} Promise that resolves when all handlers have been called.
 	 */
-	async #dispatchToHandlers(event, ...args) {
+	async #dispatchToHandlers(event, data, payload = {}) {
 		if (this.baseHandlers[event]) {
-			await this.baseHandlers[event](...args)
+			await this.baseHandlers[event](data, payload)
 		}
 
-		for (const handler of this.handlers) {
-			if (handler.event === event) {
-				handler.handler(...args)
+		const eventHandlers = this.handlers.get(event)
 
-				if (handler.once === true) {
-					this.handlers.delete(handler)
-				}
+		if (!eventHandlers) {
+			return
+		}
+
+		for (const item of [...eventHandlers]) {
+			if (item.ack === true && !payload.ack) {
+				continue
 			}
+
+			try {
+				await item.handler(data, payload)
+			} catch (error) {
+				console.error(`[rt] Handler error for event '${event}':`, error)
+			}
+
+			if (item.once === true) {
+				eventHandlers.delete(item)
+			}
+		}
+
+		if (eventHandlers.size === 0) {
+			this.handlers.delete(event)
 		}
 	}
 }
