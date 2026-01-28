@@ -9,56 +9,51 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-func (context *Instance) SendToUserId(conn *gws.Conn, connCtx *structs.WSConnectionCtx, msg *nats.Msg) *structs.OperationResult {
-	var op structs.ByUserIdSendOperation
-
-	err := sonic.UnmarshalString(string(msg.Data), &op)
-
-	if err != nil || op.Data.UserID == "" {
-		if err != nil {
-			log.Printf("Failed to unmarshal payload: %v", err)
-		}
-
-		return &structs.OperationResult{
-			Ok:    false,
-			Error: `{ "error": "Invalid payload or missing target user_id" }`,
-		}
-	}
-
-	refs := context.Connections.GetUserIDConnections(op.Data.UserID)
-
-	connIds := refs.Keys()
-
-	dataAst, err := sonic.Get(msg.Data, "data")
+func (context *Instance) SendToUserId(_ *gws.Conn, _ *structs.WSConnectionCtx, msg *nats.Msg) *structs.OperationResult {
+	operationDataNode, err := sonic.Get(msg.Data, "data")
 
 	if err != nil {
-		log.Printf("Failed to get data from payload: %v", err)
+		log.Printf("SendToUserId > invalid json structure: %v", err)
 
 		return &structs.OperationResult{
 			Ok:    false,
-			Error: `{ "error": "Failed to get data from payload" }`,
+			Error: "Invalid payload format",
 		}
 	}
 
-	rawData, err := dataAst.Raw()
+	userID, _ := operationDataNode.Get("user_id").String()
+
+	if userID == "" {
+		return &structs.OperationResult{
+			Ok:    false,
+			Error: "Missing target user_id",
+		}
+	}
+
+	userRefs := context.Connections.GetUserIDConnections(userID)
+
+	if userRefs == nil {
+		return &structs.OperationResult{Ok: true}
+	}
+
+	payload, err := operationDataNode.Get("data").MarshalJSON()
 
 	if err != nil {
-		log.Printf("Failed to get raw data from payload: %v", err)
-
 		return &structs.OperationResult{
 			Ok:    false,
-			Error: `{ "error": "Failed to get raw data from payload" }`,
+			Error: "Failed to extract payload raw data",
 		}
 	}
 
-	for _, connId := range connIds {
-		conn, ok := context.Connections.GetConn(connId)
+	connIDs := userRefs.Keys()
 
-		if !ok {
-			continue
+	broadcaster := gws.NewBroadcaster(gws.OpcodeText, payload)
+	defer broadcaster.Close()
+
+	for _, connID := range connIDs {
+		if conn, ok := context.Connections.GetConn(connID); ok {
+			_ = broadcaster.Broadcast(conn)
 		}
-
-		conn.WriteString(rawData)
 	}
 
 	return &structs.OperationResult{
