@@ -1,7 +1,6 @@
 package websocket
 
 import (
-	"log"
 	"ultragateway/core/websocket/nats_operations"
 	"ultragateway/structs"
 
@@ -13,8 +12,6 @@ import (
 // Handles the operations actions requested by microservices
 // E.G. doThisOperation(microservice) -> gateway getClientByConnID() result -> microservice(sender of the operation)
 func (context *Instance) HandleOperation(msg *nats.Msg) {
-	log.Printf("WEBSOCKET NATS | Operation request [%s]: %s", msg.Subject, string(msg.Data))
-
 	var conn *gws.Conn
 	var connCtx *structs.WSConnectionCtx
 
