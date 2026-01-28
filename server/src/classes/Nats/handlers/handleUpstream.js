@@ -2,7 +2,6 @@ import NatsClient from "../client"
 
 export default async function (message) {
 	let event = null
-
 	let client = null
 	let handler = null
 
@@ -41,11 +40,7 @@ export default async function (message) {
 		handler = this.engine.events.get(event)
 
 		if (!handler) {
-			await client.emit(
-				`ack_${event}`,
-				null,
-				`No handler for event ${event}`,
-			)
+			await client.ack(event, null, `No handler for event [${event}]`)
 
 			return null
 		}
@@ -55,12 +50,10 @@ export default async function (message) {
 			this.codec.decode(message.data),
 		)
 
-		await client.emit(`ack_${event}`, result, error?.message)
+		await client.ack(event, result, error?.message)
 	} catch (error) {
 		if (client && event) {
-			await client
-				.emit(`${event}:ack`, null, error.message)
-				.catch(console.error)
+			await client.ack(event, null, error.message).catch(console.error)
 		}
 
 		console.error(`An error occured while handling NATS upstream`, error)

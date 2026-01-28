@@ -6,6 +6,7 @@ export const EventData = fastJSON({
 		event: { type: "string" },
 		data: {},
 		error: {},
+		ack: { type: "boolean" },
 	},
 	required: ["event"],
 })

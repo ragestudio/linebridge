@@ -45,7 +45,7 @@ export default class NatsClient {
 		return !!this.context.token && !!this.context.userId
 	}
 
-	emit = async (event, data, error) => {
+	async emit(event, data, error, ack) {
 		return await this.nats.publish(
 			`ipc`,
 			Buffer.from(
@@ -53,6 +53,7 @@ export default class NatsClient {
 					event: event,
 					data: data,
 					error: error,
+					ack: ack,
 				}),
 			),
 			{
@@ -61,9 +62,19 @@ export default class NatsClient {
 		)
 	}
 
-	error = async (error) => this.emit("error", null, error)
+	async error(error) {
+		this.emit("error", null, error, false)
+	}
 
-	subscribe = async (topic) => {
+	async ack(event, data, error) {
+		if (typeof event !== "string") {
+			throw new TypeError("event must be a string")
+		}
+
+		await this.emit(event, data, error, true)
+	}
+
+	async subscribe(topic) {
 		const response = await this.operation("subscribeToTopic", {
 			topic: topic,
 		})
@@ -79,7 +90,7 @@ export default class NatsClient {
 		return await this.emit("topic:subscribed", topic)
 	}
 
-	unsubscribe = async (topic) => {
+	async unsubscribe(topic) {
 		const response = await this.operation("unsubscribeToTopic", {
 			topic: topic,
 		})
@@ -95,7 +106,7 @@ export default class NatsClient {
 		return await this.emit("topic:unsubscribed", topic)
 	}
 
-	toTopic = async (topic, event, data, self = false) => {
+	async toTopic(topic, event, data, self = false) {
 		const response = await this.operation("sendToTopic", {
 			topic: topic,
 			event: event,
@@ -115,7 +126,7 @@ export default class NatsClient {
 		}
 	}
 
-	operation = async (type, data) => {
+	async operation(type, data) {
 		try {
 			let response = await this.nats.request(
 				`operations`,

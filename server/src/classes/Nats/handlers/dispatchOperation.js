@@ -1,6 +1,6 @@
 import * as Serializers from "../serializers"
 
-export default async function (operation, data, client) {
+export default async function (operation, data) {
 	let response = await this.nats.request(
 		`operations`,
 		Buffer.from(
