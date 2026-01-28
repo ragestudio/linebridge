@@ -1,1 +1,3 @@
-DEBUG=true go run main.go
+ORIGINAL_PWD="$(pwd)"
+
+cd $(dirname "$0") && DEBUG=true go run main.go $ORIGINAL_PWD && cd "$PWD"

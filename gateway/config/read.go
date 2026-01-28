@@ -10,15 +10,18 @@ type ConfigManager struct {
 	Config *structs.BaseConfig
 }
 
-var CWDOverride string = os.Getenv("CWD")
-
 func (manager *ConfigManager) ReadConfig() (*structs.BaseConfig, error) {
 	var obj structs.BaseConfig
 	var path string = "gateway.config.json"
+	var pathOverride string
 
-	if CWDOverride != "" {
+	if len(os.Args) > 1 {
+		pathOverride = os.Args[1]
+	}
+
+	if pathOverride != "" {
 		// resolve the path
-		path = CWDOverride + "/" + path
+		path = pathOverride + "/" + path
 	}
 
 	if err := utils.ReadJSON(path, &obj); err != nil {
@@ -31,10 +34,15 @@ func (manager *ConfigManager) ReadConfig() (*structs.BaseConfig, error) {
 func (manager *ConfigManager) ReadPackageJson() (*structs.PackageJSON, error) {
 	var obj structs.PackageJSON
 	var path string = "package.json"
+	var pathOverride string
 
-	if CWDOverride != "" {
+	if len(os.Args) > 1 {
+		pathOverride = os.Args[1]
+	}
+
+	if pathOverride != "" {
 		// resolve the path
-		path = CWDOverride + "/" + path
+		path = pathOverride + "/" + path
 	}
 
 	if err := utils.ReadJSON(path, &obj); err != nil {

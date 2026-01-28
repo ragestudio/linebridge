@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"log"
+	"maps"
 	"os"
 	"runtime"
 	"strings"
@@ -124,6 +125,23 @@ func Start() {
 		appData.SocketListener = socketListener
 	}
 
+	// create a env for services
+	servicesEnv := map[string]string{}
+
+	// parse & copy the current environ
+	for _, env := range os.Environ() {
+		parts := strings.Split(env, "=")
+
+		if len(parts) == 2 {
+			servicesEnv[parts[0]] = parts[1]
+		}
+	}
+
+	// if infiscal env is available, copy them
+	if appData.InfisicalEnv != nil {
+		maps.Copy(servicesEnv, appData.InfisicalEnv)
+	}
+
 	// initialize all base microservices
 	for _, service := range scannedServices {
 		serviceInst := services.NewService(
@@ -131,7 +149,7 @@ func Start() {
 				Id:                service["id"],
 				MainPath:          service["path"],
 				Cwd:               service["cwd"],
-				Env:               appData.InfisicalEnv,
+				Env:               servicesEnv,
 				EnableWatcher:     appCfg.Mode == "dev",
 				BootloaderPath:    appCfg.Services.Bootloader,
 				GatewaySocketPath: appCfg.IPC.Path,

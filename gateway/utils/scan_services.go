@@ -7,17 +7,20 @@ import (
 	"strings"
 )
 
-var CWDOverride string = os.Getenv("CWD")
-
 // scan all available microservices by search on the current cwd
 // searching for services/*.service.js
 func ScanServices() []map[string]string {
 	var services []map[string]string
 	var scanPath string = "services/**/*.service.js"
+	var pathOverride string
 
-	if CWDOverride != "" {
+	if len(os.Args) > 1 {
+		pathOverride = os.Args[1]
+	}
+
+	if pathOverride != "" {
 		// resolve the path
-		scanPath = CWDOverride + "/" + scanPath
+		scanPath = pathOverride + "/" + scanPath
 	}
 
 	files, err := filepath.Glob(scanPath)
