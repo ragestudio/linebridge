@@ -25,7 +25,7 @@ var IsDebug = os.Getenv("DEBUG") == "true"
 var (
 	ProductName   = "lb-ultrawg"
 	Version       = "exp"
-	BuildTime     = time.Now().Format(time.DateOnly)
+	BuildTime     = "unknown"
 	VersionString = fmt.Sprintf("%s-%s", Version, strings.Join(strings.Split(BuildTime, "-"), ""))
 )
 
@@ -44,6 +44,8 @@ type AppData struct {
 }
 
 func Start() {
+	log.Printf("[%s v%s]", ProductName, VersionString)
+
 	configMng := &config.ConfigManager{}
 
 	appCfg, err := configMng.ReadConfig()
@@ -61,8 +63,6 @@ func Start() {
 	if err != nil {
 		log.Printf(`Warning: Failed to load project package.json: %v`, err)
 	}
-
-	log.Printf("[%s v%s]", ProductName, VersionString)
 
 	// Scan services on CWD
 	scannedServices := utils.ScanServices()
