@@ -1,7 +1,7 @@
-import He from "./he"
+import Heng from "./heng"
 import Worker from "./worker"
 
 export default {
-	he: He,
+	heng: Heng,
 	worker: Worker,
 }

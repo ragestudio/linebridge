@@ -1,10 +1,14 @@
-export default async function (operation, data) {
+import * as Serializers from "../serializers"
+
+export default async function (operation, data, client) {
 	let response = await this.nats.request(
 		`operations`,
-		this.codec.encode({
-			type: operation,
-			data: data,
-		}),
+		Buffer.from(
+			Serializers.Operation({
+				type: operation,
+				data: data,
+			}),
+		),
 	)
 
 	response = this.codec.decode(response.data)

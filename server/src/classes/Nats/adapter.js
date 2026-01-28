@@ -1,5 +1,7 @@
 import { connect, JSONCodec, createInbox, consumerOpts } from "nats"
 
+import * as Serializers from "./serializers"
+
 import handleUpstream from "./handlers/handleUpstream"
 import dispatchOperation from "./handlers/dispatchOperation"
 
@@ -14,6 +16,7 @@ export default class NatsAdapter {
 		this.refName = this.engine.server.constructor.refName
 	}
 
+	serializers = Serializers
 	codec = JSONCodec()
 
 	initialize = async () => {
@@ -33,7 +36,7 @@ export default class NatsAdapter {
 		opts.deliverTo(createInbox())
 
 		this.subscription = await this.jetstream.subscribe(
-			`upstream.${this.refName}`,
+			`ipc.${this.refName}`,
 			opts,
 		)
 

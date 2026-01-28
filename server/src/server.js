@@ -11,6 +11,7 @@ import registerBaseHeaders from "./registers/baseHeaders"
 import registerWebsocketsFileEvents from "./registers/websocketFileEvents"
 import registerHttpFileRoutes from "./registers/httpFileRoutes"
 import registerServiceToIPC from "./registers/ipcService"
+import registerGateway from "./registers/gateway"
 import bypassCorsHeaders from "./registers/bypassCorsHeaders"
 import registerPlugins from "./registers/plugins"
 
@@ -212,6 +213,11 @@ class Server {
 			await registerServiceToIPC(this)
 		}
 
+		if (process.env.LB_GATEWAY_SOCKET) {
+			console.info("🚀 Registering to Gateway")
+			await registerGateway(this)
+		}
+
 		// initialize plugins
 		await registerPlugins(this)
 
@@ -228,10 +234,17 @@ class Server {
 		const elapsedTimeInMs = elapsedHrTime[0] * 1e3 + elapsedHrTime[1] / 1e6
 
 		const lines = [
-			`- Url: ${this.hasSSL ? "https" : "http"}://${this.params.listenIp}:${this.params.listenPort}`,
-			`- Websocket: ${this.engine.ws ? this.engine.ws?.config?.path : "Disabled"}`,
 			`- Tooks: ${elapsedTimeInMs.toFixed(2)}ms`,
+			`- Websocket: ${this.engine.ws ? this.engine.ws?.config?.path : "Disabled"}`,
 		]
+
+		if (this.engine.SOCKET_PATH) {
+			lines.push(`- Socket: ${this.engine.SOCKET_PATH}`)
+		} else {
+			lines.push(
+				`- Url: ${this.hasSSL ? "https" : "http"}://${this.params.listenIp}:${this.params.listenPort}`,
+			)
+		}
 
 		console.info(`🛰  Server ready!\n \t${lines.join("\n\t")} \n`)
 	}

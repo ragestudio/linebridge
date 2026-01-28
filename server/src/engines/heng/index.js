@@ -1,5 +1,9 @@
-import he from "hyper-express"
+import uWebsockets from "uWebSockets.js"
+import fs from "node:fs"
+
 import RtEngine from "../../classes/RtEngine"
+import Router from "./components/router/Router"
+import Server from "./components/Server"
 
 export default class Engine {
 	constructor(server) {
@@ -12,15 +16,31 @@ export default class Engine {
 
 	app = null
 	ws = null
-	router = new he.Router()
+	router = new Router()
 	registers = new Set()
 
 	initialize = async () => {
-		this.app = new he.Server({
+		if (!process.env["KEEP_UWS_HEADER"]) {
+			try {
+				uWebsockets._cfg("999999990007")
+			} catch (error) {
+				// dont care
+			}
+		}
+
+		this.app = new Server({
 			...Engine.heDefaultParams,
 			key_file_name: this.server.ssl?.key ?? undefined,
 			cert_file_name: this.server.ssl?.cert ?? undefined,
 		})
+
+		if (ToBoolean(process.env.LB_SOCKET_MODE)) {
+			this.SOCKET_PATH = `/tmp/lb_node_${this.server.params.refName}.sock`
+
+			if (fs.existsSync(this.SOCKET_PATH)) {
+				fs.unlinkSync(this.SOCKET_PATH)
+			}
+		}
 
 		this.router.any("*", this.defaultResponse)
 		this.app.use(this.mainMiddleware)
@@ -83,7 +103,11 @@ export default class Engine {
 	}
 
 	listen = async () => {
-		await this.app.listen(this.server.params.listenPort)
+		await this.app.listen(this.SOCKET_PATH ?? this.server.params.listenPort)
+
+		if (this.SOCKET_PATH) {
+			fs.chmodSync(this.SOCKET_PATH, 0o777)
+		}
 	}
 
 	// close must be synchronous
