@@ -14,7 +14,7 @@ import (
 )
 
 type IPCListenerInterface interface {
-	RegisterHandler(eventType string, handler func(structs.EventData))
+	RegisterHandler(eventType string, handler func(*structs.EventData, *json.RawMessage))
 	Start() error
 	Stop()
 	GetSocketPath() string
@@ -24,7 +24,7 @@ type IPCListenerInterface interface {
 type Instance struct {
 	SocketPath string
 	Listener   net.Listener
-	Handlers   map[string]func(structs.EventData)
+	Handlers   map[string]func(*structs.EventData, *json.RawMessage)
 	Mu         sync.RWMutex
 	Running    bool
 	Wg         sync.WaitGroup
@@ -32,7 +32,7 @@ type Instance struct {
 
 type NewListenerOptions struct {
 	Config            structs.BaseConfig
-	OnServiceRegister func(structs.EventData)
+	OnServiceRegister func(*structs.EventData, *json.RawMessage)
 }
 
 func New(options *NewListenerOptions) (*Instance, error) {
@@ -42,7 +42,7 @@ func New(options *NewListenerOptions) (*Instance, error) {
 
 	listener := &Instance{
 		SocketPath: options.Config.IPC.Path,
-		Handlers:   make(map[string]func(structs.EventData)),
+		Handlers:   make(map[string]func(*structs.EventData, *json.RawMessage)),
 	}
 
 	if options.OnServiceRegister != nil {
@@ -58,7 +58,7 @@ func New(options *NewListenerOptions) (*Instance, error) {
 	return listener, nil
 }
 
-func (instance *Instance) RegisterHandler(eventType string, handler func(structs.EventData)) {
+func (instance *Instance) RegisterHandler(eventType string, handler func(*structs.EventData, *json.RawMessage)) {
 	instance.Mu.Lock()
 	defer instance.Mu.Unlock()
 
@@ -161,21 +161,29 @@ func (instance *Instance) handleConnection(conn net.Conn) {
 	decoder := json.NewDecoder(conn)
 
 	for {
+		var rawMessage json.RawMessage
 		var event structs.EventData
 
-		if err := decoder.Decode(&event); err != nil {
+		// get the raw message bytes before decoding
+		if err := decoder.Decode(&rawMessage); err != nil {
 			if err.Error() != "EOF" {
 				log.Printf("Error decoding JSON: %v", err)
 			}
 			return
 		}
 
+		// decode the raw message into the event struct
+		if err := json.Unmarshal(rawMessage, &event); err != nil {
+			log.Printf("Error unmarshaling event data: %v", err)
+			return
+		}
+
 		conn.SetReadDeadline(time.Now().Add(30 * time.Second))
-		instance.processEvent(event)
+		instance.processEvent(&event, &rawMessage)
 	}
 }
 
-func (instance *Instance) processEvent(event structs.EventData) {
+func (instance *Instance) processEvent(event *structs.EventData, rawMessage *json.RawMessage) {
 	instance.Mu.RLock()
 	handler, exists := instance.Handlers[event.Event]
 	instance.Mu.RUnlock()
@@ -192,7 +200,7 @@ func (instance *Instance) processEvent(event structs.EventData) {
 			}
 		}()
 
-		handler(event)
+		handler(event, rawMessage)
 	}()
 }
 
