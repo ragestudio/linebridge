@@ -16,6 +16,7 @@ export default class NatsAdapter {
 		this.params = params
 
 		this.refName = this.engine.server.constructor.refName
+		this.subscriptions = new Map()
 	}
 
 	serializers = Serializers
@@ -37,18 +38,50 @@ export default class NatsAdapter {
 		opts.ackExplicit()
 		opts.deliverTo(createInbox())
 
-		this.subscription = await this.jetstream.subscribe(
+		this.ipcSub = await this.jetstream.subscribe(
 			`ipc.${this.refName}`,
 			opts,
 		)
 
 		const eventLoop = async () => {
-			for await (const message of this.subscription) {
+			for await (const message of this.ipcSub) {
 				this.handleUpstream(message)
 			}
 		}
 
 		eventLoop()
+	}
+
+	async subscribeToGlobalChannel(channel, handler) {
+		const subscription = this.nats.subscribe(`global.${channel}`)
+
+		this.subscriptions.set(channel, subscription)
+
+		const eventLoop = async () => {
+			for await (const message of subscription) {
+				try {
+					handler(this.codec.decode(message.data), message)
+				} catch (error) {
+					console.error(
+						`Error handling global message: ${error.message}`,
+					)
+				}
+			}
+		}
+
+		eventLoop()
+	}
+
+	async unsubscribeFromGlobalChannel(channel) {
+		const subscription = this.subscriptions.get(channel)
+
+		if (!subscription) {
+			return
+		}
+
+		await subscription.drain()
+
+		this.subscriptions.delete(channel)
 	}
 
 	handleUpstream = handleUpstream.bind(this)
