@@ -22,3 +22,9 @@ type ByUserIDOperation struct {
 		UserID string `json:"user_id"`
 	} `json:"data"`
 }
+
+type ByUserIdSendOperation struct {
+	Data struct {
+		UserID string `json:"user_id"`
+	} `json:"data"`
+}
