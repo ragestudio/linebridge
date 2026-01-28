@@ -47,7 +47,7 @@ func (manager *Instance) OnMessage(socket *gws.Conn, message *gws.Message) {
 	headers.Add("username", connCtx.Username)
 	headers.Add("session_id", connCtx.SessionID)
 
-	manager.Nats.PublishToIPC(unats.UpstreamPayload{
+	manager.Nats.PublishToIPC(&unats.UpstreamPayload{
 		Header: headers,
 		Event:  event,
 		Data:   sonic.NoCopyRawMessage(msgBytes),

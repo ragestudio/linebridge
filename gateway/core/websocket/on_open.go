@@ -56,7 +56,7 @@ func (manager *Instance) OnOpen(socket *gws.Conn) {
 	connEventData, _ := sonic.Marshal(ConnCtx)
 
 	manager.Nats.PublishToGlobal(
-		unats.UpstreamPayload{
+		&unats.UpstreamPayload{
 			Event: "connection",
 			Data:  connEventData,
 		},

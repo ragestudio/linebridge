@@ -23,7 +23,7 @@ func (manager *Instance) OnClose(conn *gws.Conn, err error) {
 	disccEventData, _ := sonic.Marshal(connCtx)
 
 	manager.Nats.PublishToGlobal(
-		unats.UpstreamPayload{
+		&unats.UpstreamPayload{
 			Event: "disconnection",
 			Data:  disccEventData,
 		},
