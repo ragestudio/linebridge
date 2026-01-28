@@ -1,7 +1,6 @@
 package nats_operations
 
 import (
-	"log"
 	"ultragateway/structs"
 
 	"github.com/bytedance/sonic"
@@ -13,8 +12,6 @@ func (context *Instance) SendToUserId(_ *gws.Conn, _ *structs.WSConnectionCtx, m
 	operationDataNode, err := sonic.Get(msg.Data, "data")
 
 	if err != nil {
-		log.Printf("SendToUserId > invalid json structure: %v", err)
-
 		return &structs.OperationResult{
 			Ok:    false,
 			Error: "Invalid payload format",
