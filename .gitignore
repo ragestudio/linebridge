@@ -1,4 +1,5 @@
 # Secrets
+/**/**/.npmrc
 /**/**/.env
 /**/**/origin.server
 /**/**/server.manifest
