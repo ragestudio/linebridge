@@ -42,6 +42,7 @@ type AppData struct {
 	SocketListener   *ipc.Instance
 	Nats             *unats.Instance
 	WebsocketManager *websocket.Instance
+	HttpPathsRefs    *sync.Map
 }
 
 func Start() {
@@ -85,7 +86,8 @@ func Start() {
 			"go_version": runtime.Version(),
 			"cpu_cores":  runtime.NumCPU(),
 		},
-		Services: make(map[string]*services.Service),
+		Services:      make(map[string]*services.Service),
+		HttpPathsRefs: &sync.Map{},
 	}
 
 	// if INFISICAL env injection in available, go ahead
@@ -169,6 +171,7 @@ func Start() {
 		Config:           appCfg,
 		WebsocketManager: appData.WebsocketManager,
 		Services:         appData.Services,
+		HttpPathsRefs:    appData.HttpPathsRefs,
 	}
 	serversWaitGroup := &sync.WaitGroup{}
 

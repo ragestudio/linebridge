@@ -1,6 +1,7 @@
 package requests
 
 import (
+	"sync"
 	"time"
 	"ultragateway/core/services"
 	"ultragateway/core/websocket"
@@ -16,4 +17,5 @@ type Requests struct {
 	Config           *structs.BaseConfig
 	WebsocketManager *websocket.Instance
 	Services         map[string]*services.Service
+	HttpPathsRefs    *sync.Map
 }
