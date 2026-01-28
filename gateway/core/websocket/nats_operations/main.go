@@ -28,7 +28,7 @@ func RespondWithResult(msg *nats.Msg, opResult *structs.OperationResult) {
 
 func RespondError(msg *nats.Msg, errStr string) {
 	RespondWithResult(msg, &structs.OperationResult{
-		Ok:    true,
+		Ok:    false,
 		Error: errStr,
 	})
 }
