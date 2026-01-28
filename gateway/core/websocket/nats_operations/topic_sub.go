@@ -20,20 +20,22 @@ func (context *Instance) TopicSubscribe(conn *gws.Conn, connCtx *structs.WSConne
 
 	if err != nil || op.Data.Topic == "" {
 		return &structs.OperationResult{
-			Ok:   false,
-			Data: []byte(`{ "error": "Invalid payload or missing topic" }`),
+			Ok:    false,
+			Error: "Invalid payload or missing topic",
 		}
 	}
 
-	log.Printf("Subcribing to topic %v", op.Data.Topic)
-
 	subscriber := NewSubscriber(conn)
-	context.PubSub.Subscribe(subscriber, op.Data.Topic, func(msg any) {})
+	context.PubSub.Subscribe(subscriber, op.Data.Topic, func(msg any) {
+		broadcaster := msg.(*gws.Broadcaster)
+		broadcaster.Broadcast(conn)
+	})
 
-	log.Printf("Subscribed to topic %v", op.Data.Topic)
+	if IsDebug {
+		log.Printf("User [%s] subscribed to topic [%s]", connCtx.Username, op.Data.Topic)
+	}
 
 	return &structs.OperationResult{
-		Ok:   true,
-		Data: []byte(`{ "topic": "` + op.Data.Topic + `" }`),
+		Ok: true,
 	}
 }
