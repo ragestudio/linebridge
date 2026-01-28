@@ -1,6 +1,7 @@
 package nats_operations
 
 import (
+	"os"
 	"ultragateway/core/websocket/connections"
 	"ultragateway/structs"
 
@@ -9,6 +10,8 @@ import (
 	"github.com/lxzan/gws"
 	"github.com/nats-io/nats.go"
 )
+
+var IsDebug bool = os.Getenv("DEBUG") == "true"
 
 type Instance struct {
 	PubSub      *event_emitter.EventEmitter[string, *PubSubSubscriber]
