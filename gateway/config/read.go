@@ -1,30 +1,24 @@
 package config
 
 import (
-	"os"
+	"path/filepath"
 	"ultragateway/structs"
 	"ultragateway/utils"
 )
 
 type ConfigManager struct {
 	Config *structs.BaseConfig
+	Pwd    string
+}
+
+func (manager *ConfigManager) GetAbsPath(item string) string {
+	return filepath.Join(manager.Pwd, item)
 }
 
 func (manager *ConfigManager) ReadConfig() (*structs.BaseConfig, error) {
 	var obj structs.BaseConfig
-	var path string = "gateway.config.json"
-	var pathOverride string
 
-	if len(os.Args) > 1 {
-		pathOverride = os.Args[1]
-	}
-
-	if pathOverride != "" {
-		// resolve the path
-		path = pathOverride + "/" + path
-	}
-
-	if err := utils.ReadJSON(path, &obj); err != nil {
+	if err := utils.ReadJSON(manager.GetAbsPath("gateway.config.json"), &obj); err != nil {
 		return nil, err
 	}
 
@@ -33,19 +27,8 @@ func (manager *ConfigManager) ReadConfig() (*structs.BaseConfig, error) {
 
 func (manager *ConfigManager) ReadPackageJson() (*structs.PackageJSON, error) {
 	var obj structs.PackageJSON
-	var path string = "package.json"
-	var pathOverride string
 
-	if len(os.Args) > 1 {
-		pathOverride = os.Args[1]
-	}
-
-	if pathOverride != "" {
-		// resolve the path
-		path = pathOverride + "/" + path
-	}
-
-	if err := utils.ReadJSON(path, &obj); err != nil {
+	if err := utils.ReadJSON(manager.GetAbsPath("package.json"), &obj); err != nil {
 		return nil, err
 	}
 
