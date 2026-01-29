@@ -32,7 +32,7 @@ func (context *Instance) TopicSubscribe(conn *gws.Conn, connCtx *structs.WSConne
 	})
 
 	if IsDebug {
-		log.Printf("User [%s] subscribed to topic [%s]", connCtx.Username, op.Data.Topic)
+		log.Printf("Conn [%s] subscribed to topic [%s]", connCtx.ID, op.Data.Topic)
 	}
 
 	return &structs.OperationResult{

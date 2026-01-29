@@ -3,6 +3,7 @@ package connections
 import (
 	"errors"
 	"sync"
+	"ultragateway/core/websocket/internal_events"
 	"ultragateway/structs"
 
 	"github.com/lxzan/gws"
@@ -10,8 +11,9 @@ import (
 )
 
 type ConnectionManager struct {
-	Clients  sync.Map
-	UsersRef sync.Map
+	Clients        sync.Map
+	UsersRef       sync.Map
+	InternalEvents *internal_events.InternalEvents
 }
 
 type NewConnOptions struct {
@@ -34,19 +36,30 @@ func (manager *ConnectionManager) Add(options *NewConnOptions) error {
 	options.Conn.Session().Store(structs.WSCtxStoreKey, options.Ctx)
 
 	// if user_id specified, store the connection reference by its id
-	if options.Ctx.UserID != "" {
-		userRefs, _ := manager.UsersRef.LoadOrStore(options.Ctx.UserID, &structs.WSUserConnections{
-			Conns: make(map[string]struct{}),
-		})
+	if options.Ctx.Meta != nil {
+		if options.Ctx.Meta["user_id"] != "" {
+			userRefs, _ := manager.UsersRef.LoadOrStore(options.Ctx.Meta["user_id"], &structs.WSUserConnections{
+				Conns: make(map[string]struct{}),
+			})
 
-		// cast
-		refs := userRefs.(*structs.WSUserConnections)
+			// cast
+			refs := userRefs.(*structs.WSUserConnections)
 
-		// store the connection id
-		refs.Mu.Lock()
-		refs.Conns[options.Ctx.ID] = struct{}{}
-		refs.Mu.Unlock()
+			// store the connection id
+			refs.Mutex.Lock()
+			refs.Conns[options.Ctx.ID] = struct{}{}
+			refs.Mutex.Unlock()
+		}
 	}
+
+	// trigger new conn event
+	manager.InternalEvents.Trigger("connection", &struct {
+		Ctx  *structs.WSConnectionCtx
+		Conn *gws.Conn
+	}{
+		Ctx:  options.Ctx,
+		Conn: options.Conn,
+	})
 
 	// create "THE LOOP"
 	options.Conn.ReadLoop()
@@ -69,24 +82,34 @@ func (manager *ConnectionManager) Remove(conn *gws.Conn) (*structs.WSConnectionC
 	// delete the session context (just in case)
 	conn.Session().Delete(structs.WSCtxStoreKey)
 
-	// delete the userid refs if any
-	if connCtx.UserID != "" {
-		// load the user connections
-		userRefs, ok := manager.UsersRef.Load(connCtx.UserID)
+	if connCtx.Meta != nil {
+		// delete the userid refs if any
+		if connCtx.Meta["user_id"] != "" {
+			// load the user connections
+			userRefs, ok := manager.UsersRef.Load(connCtx.Meta["user_id"])
 
-		if ok {
-			refs := userRefs.(*structs.WSUserConnections)
+			if ok {
+				refs := userRefs.(*structs.WSUserConnections)
 
-			refs.Mu.Lock()
-			defer refs.Mu.Unlock()
+				refs.Mutex.Lock()
+				defer refs.Mutex.Unlock()
 
-			delete(refs.Conns, connCtx.ID)
+				delete(refs.Conns, connCtx.ID)
 
-			if len(refs.Conns) == 0 {
-				manager.UsersRef.Delete(connCtx.UserID)
+				if len(refs.Conns) == 0 {
+					manager.UsersRef.Delete(connCtx.Meta["user_id"])
+				}
 			}
 		}
 	}
+
+	manager.InternalEvents.Trigger("disconnection", &struct {
+		Ctx  *structs.WSConnectionCtx
+		Conn *gws.Conn
+	}{
+		Ctx:  connCtx,
+		Conn: conn,
+	})
 
 	return connCtx, nil
 }
