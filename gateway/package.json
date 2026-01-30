@@ -1,6 +1,6 @@
 {
 	"name": "linebridge-gateway",
-	"version": "0.4.1",
+	"version": "0.5.0",
 	"description": "High-performance http/websocket hybrid gateway for linebridge microservices",
 	"author": "RageStudio <support@ragestudio.net>",
 	"publishConfig": {
