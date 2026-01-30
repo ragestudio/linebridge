@@ -270,7 +270,6 @@ func StartEmbeddedNats() *natsServer.Server {
 	opts := &natsServer.Options{
 		Host:       "0.0.0.0",
 		Port:       4222,
-		NoLog:      !IsDebug,
 		Debug:      IsDebug,
 		NoSigs:     true,
 		MaxPayload: 1024 * 1024,
@@ -289,7 +288,7 @@ func StartEmbeddedNats() *natsServer.Server {
 	go ns.Start()
 
 	if !ns.ReadyForConnections(5 * time.Second) {
-		log.Fatal("Failed to start embedded NATS server")
+		log.Fatal("Failed to start embedded NATS server. Server ready timeout")
 	}
 
 	log.Println("Embedded NATS server started")
