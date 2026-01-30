@@ -47,3 +47,5 @@ global.ToBoolean = (value) => {
 
 	return false
 }
+
+global.Boot = require("./boot_function.js")

@@ -1,18 +1,22 @@
-require("dotenv").config()
+// use sucrase transcompiler
 require("sucrase/register")
+require("dotenv").config()
 
 const path = require("node:path")
 const Module = require("node:module")
-const registerBaseAliases = require("./registerBaseAliases")
+const Aliases = require("./libs/aliases.js")
 
 // Override file execution arg
 process.argv.splice(1, 1)
 process.argv[1] = path.resolve(process.argv[1])
 
 // Expose to global
-global.paths = {
-	root: process.cwd(),
-	__src: path.resolve(process.cwd(), path.dirname(process.argv[1])),
+global["paths"] = {
+	root: process.env.ROOT_PATH ?? process.cwd(),
+	__src: path.resolve(
+		process.env.ROOT_PATH ?? process.cwd(),
+		path.dirname(process.argv[1]),
+	),
 }
 
 global["aliases"] = {
@@ -20,33 +24,29 @@ global["aliases"] = {
 	"@": global.paths.__src,
 
 	// expose shared resources
-	"@db": path.resolve(process.cwd(), "db_models"),
-	"@db_models": path.resolve(process.cwd(), "db_models"),
-	"@shared-utils": path.resolve(process.cwd(), "utils"),
-	"@shared-classes": path.resolve(process.cwd(), "classes"),
-	"@shared-lib": path.resolve(process.cwd(), "lib"),
-	"@shared-middlewares": path.resolve(process.cwd(), "middlewares"),
+	"@db": path.resolve(global.paths.root, "db"),
+	"@db_models": path.resolve(global.paths.root, "db_models"),
+	"@shared-classes": path.resolve(global.paths.root, "classes"),
+	"@shared-middlewares": path.resolve(global.paths.root, "middlewares"),
+	"@shared-utils": path.resolve(global.paths.root, "utils"),
+	"@shared-lib": path.resolve(global.paths.root, "lib"),
 
 	// expose internal resources
-	"@routes": path.resolve(paths.__src, "routes"),
-	"@models": path.resolve(paths.__src, "models"),
-	"@middlewares": path.resolve(paths.__src, "middlewares"),
-	"@classes": path.resolve(paths.__src, "classes"),
-	"@services": path.resolve(paths.__src, "services"),
-	"@config": path.resolve(paths.__src, "config"),
-	"@utils": path.resolve(paths.__src, "utils"),
-	"@lib": path.resolve(paths.__src, "lib"),
+	"@classes": path.resolve(global.paths.__src, "classes"),
+	"@middlewares": path.resolve(global.paths.__src, "middlewares"),
+	"@routes": path.resolve(global.paths.__src, "routes"),
+	"@models": path.resolve(global.paths.__src, "models"),
+	"@config": path.resolve(global.paths.__src, "config"),
+	"@utils": path.resolve(global.paths.__src, "utils"),
+	"@lib": path.resolve(global.paths.__src, "lib"),
 }
 
-// expose bootwrapper to global
-global.Boot = require("./bootWrapper")
-
 try {
-	// apply patches
-	require("./patches.js")
+	// apply global functions & patches
+	require("./globals.js")
 
 	// Apply aliases
-	registerBaseAliases(global.paths.__src, global["aliases"])
+	Aliases.registerBase(global.paths.__src, global["aliases"])
 
 	// execute main
 	Module.runMain()

@@ -1,4 +1,4 @@
-const injectEnvFromInfisical = require("./injectEnvFromInfisical")
+const InfisicalLib = require("./libs/infisical")
 
 module.exports = async function Boot(main) {
 	if (!main) {
@@ -11,12 +11,13 @@ module.exports = async function Boot(main) {
 
 	if (
 		process.env.INFISICAL_CLIENT_ID &&
-		process.env.INFISICAL_CLIENT_SECRET
+		process.env.INFISICAL_CLIENT_SECRET &&
+		typeof InfisicalLib.LoadFromEnv === "function"
 	) {
 		console.log(
-			`[BOOT] INFISICAL Credentials found, injecting env variables from INFISICAL...`,
+			`[BOOT] INFISICAL Credentials found, loading ENV variables from INFISICAL...`,
 		)
-		await injectEnvFromInfisical()
+		await InfisicalLib.LoadFromEnv()
 	}
 
 	const instance = new main()
