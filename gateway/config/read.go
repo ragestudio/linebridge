@@ -15,20 +15,20 @@ func (manager *ConfigManager) GetAbsPath(item string) string {
 	return filepath.Join(manager.Pwd, item)
 }
 
-func (manager *ConfigManager) ReadConfig() (*structs.BaseConfig, error) {
-	var obj structs.BaseConfig
+func (manager *ConfigManager) ReadPackageJson() (*structs.PackageJSON, error) {
+	var obj structs.PackageJSON
 
-	if err := utils.ReadJSON(manager.GetAbsPath("gateway.config.json"), &obj); err != nil {
+	if err := utils.ReadJSON(manager.GetAbsPath("package.json"), &obj); err != nil {
 		return nil, err
 	}
 
 	return &obj, nil
 }
 
-func (manager *ConfigManager) ReadPackageJson() (*structs.PackageJSON, error) {
-	var obj structs.PackageJSON
+func (manager *ConfigManager) ReadConfig() (*structs.BaseConfig, error) {
+	var obj structs.BaseConfig
 
-	if err := utils.ReadJSON(manager.GetAbsPath("package.json"), &obj); err != nil {
+	if err := utils.ReadJSON(manager.GetAbsPath("gateway.config.json"), &obj); err != nil {
 		return nil, err
 	}
 
