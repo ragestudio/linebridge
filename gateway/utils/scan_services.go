@@ -10,8 +10,8 @@ import (
 // searching for services/*.service.js and services/*.service.ts
 func ScanServices(pwd string) []map[string]string {
 	var services []map[string]string
-	var scanPathJS string = pwd + "services/**/*.service.js"
-	var scanPathTS string = pwd + "services/**/*.service.ts"
+	var scanPathJS string = pwd + "/services/**/*.service.js"
+	var scanPathTS string = pwd + "/services/**/*.service.ts"
 
 	// glob for js files
 	filesJS, err := filepath.Glob(scanPathJS)
