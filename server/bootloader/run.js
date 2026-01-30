@@ -21,7 +21,7 @@ function selfReload() {
 
 	childProcessInstance.kill()
 
-	run()
+	runFork()
 }
 
 function selfReloadDebounce() {
@@ -32,7 +32,7 @@ function selfReloadDebounce() {
 	reloadTimeout = setTimeout(selfReload, 300)
 }
 
-function run() {
+function runFork() {
 	childProcessInstance = childProcess.fork(bootloaderPath, [mainModulePath], {
 		stdio: "inherit",
 	})
@@ -43,6 +43,6 @@ if (process.argv.includes("--watch")) {
 	Watcher.create(mainModuleSrc, {
 		onReload: selfReloadDebounce,
 	})
+} else {
+	require(bootloaderPath)
 }
-
-run()
