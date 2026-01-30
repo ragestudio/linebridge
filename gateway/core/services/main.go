@@ -37,34 +37,23 @@ type Service struct {
 	SocketClient   *client.Client
 	BootloaderPath string
 
-	// internal state management
-	Mutex           sync.Mutex
-	StopCh          chan struct{}
-	RestartCh       chan struct{}
-	RestartTimer    *time.Timer
-	LastRestart     time.Time
-	CrashCount      int
-	IntentionalStop bool
-	KilledProcess   *os.Process
-	LastCrash       time.Time
-
-	ctx    context.Context
-	cancel context.CancelFunc
+	mutex            sync.Mutex
+	ctx              context.Context
+	cancel           context.CancelFunc
+	restartRequested bool
+	processDone      chan struct{}
+	skipNextRestart  bool
 }
 
 type NewServiceOptions struct {
-	Id                string // required
-	MainPath          string // required
+	Id                string
+	MainPath          string
 	Cwd               string
 	Env               map[string]string
 	EnableWatcher     bool
 	GatewaySocketPath string
 	BootloaderPath    string
 }
-
-var DebounceTime = 500 * time.Millisecond
-var MaxBackoffTime = 30 * time.Second
-var MinBackoffTime = 1 * time.Second
 
 func NewService(options *NewServiceOptions) *Service {
 	if options.Id == "" {
@@ -98,107 +87,51 @@ func NewService(options *NewServiceOptions) *Service {
 
 	// create the service obj
 	serviceObj := &Service{
-		ID:              options.Id,
-		MainPath:        options.MainPath,
-		BootloaderPath:  options.BootloaderPath,
-		Cwd:             options.Cwd,
-		Env:             options.Env,
-		Running:         false,
-		StopCh:          make(chan struct{}),
-		RestartCh:       make(chan struct{}, 10), // buffered to avoid blocking
-		ctx:             ctx,
-		cancel:          cancel,
-		IntentionalStop: false,
-		KilledProcess:   nil,
+		ID:               options.Id,
+		MainPath:         options.MainPath,
+		BootloaderPath:   options.BootloaderPath,
+		Cwd:              options.Cwd,
+		Env:              options.Env,
+		Running:          false,
+		ctx:              ctx,
+		cancel:           cancel,
+		processDone:      make(chan struct{}, 1),
+		restartRequested: false,
+		skipNextRestart:  false,
 	}
 
 	if options.EnableWatcher {
-		err := AttachWatcherToService(serviceObj)
-
+		err := attachWatcherToService(serviceObj)
 		if err != nil {
 			log.Printf("Failed to create watcher for service [%s]: %v", serviceObj.ID, err)
 		}
 	}
 
-	// start restart management goroutine
-	go serviceObj.manageRestarts()
-
 	log.Printf("Service [%s] created", serviceObj.ID)
-
 	return serviceObj
 }
 
-func (service *Service) requestRestart() {
-	select {
-	case service.RestartCh <- struct{}{}:
-		// restart request sent
-	default:
-		// channel full, drop the request to avoid blocking
+func (s *Service) Start() error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	if s.Running {
+		log.Printf("Service [%s] already running", s.ID)
+		return nil
 	}
+
+	return s.startProcessLocked()
 }
 
-func (service *Service) manageRestarts() {
-	for {
-		select {
-		case <-service.ctx.Done():
-			return
-		case <-service.RestartCh:
-			service.debouncedRestart()
-		}
-	}
-}
+func (s *Service) startProcessLocked() error {
+	log.Printf("Starting service [%s] %s", s.ID, s.MainPath)
 
-func (service *Service) debouncedRestart() {
-	service.Mutex.Lock()
-
-	// cancel any pending timer
-	if service.RestartTimer != nil {
-		service.RestartTimer.Stop()
-	}
-
-	// check if enough time has passed since last restart
-	elapsed := time.Since(service.LastRestart)
-
-	if elapsed < DebounceTime {
-		// schedule restart after debounce period
-		service.RestartTimer = time.AfterFunc(DebounceTime-elapsed, func() {
-			service.Mutex.Lock()
-			service.performRestart()
-			service.Mutex.Unlock()
-		})
-		service.Mutex.Unlock()
-		return
-	}
-
-	service.performRestart()
-	service.Mutex.Unlock()
-}
-
-func (service *Service) performRestart() {
-	service.LastRestart = time.Now()
-
-	log.Printf("Service [%s] performing restart", service.ID)
-
-	if service.Running {
-		service.stopProcess()
-	}
-
-	// reset crash counter for manual/planned restarts
-	service.CrashCount = 0
-	service.IntentionalStop = false
-
-	service.startProcessLocked()
-}
-
-func (service *Service) startProcessLocked() error {
-	log.Printf("Starting service [%s] %s", service.ID, service.MainPath)
-
-	cmd := exec.Command(service.BootloaderPath, service.MainPath)
-	cmd.Env = make([]string, 0, len(service.Env))
-	cmd.Dir = service.Cwd
+	cmd := exec.Command(s.BootloaderPath, s.MainPath)
+	cmd.Env = make([]string, 0, len(s.Env))
+	cmd.Dir = s.Cwd
 
 	// inject the env variables to cmd
-	for key, value := range service.Env {
+	for key, value := range s.Env {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", key, value))
 	}
 
@@ -208,165 +141,150 @@ func (service *Service) startProcessLocked() error {
 
 	err := cmd.Start()
 	if err != nil {
-		log.Printf("Failed to start service [%s]: %v", service.ID, err)
+		log.Printf("Failed to start service [%s]: %v", s.ID, err)
 		return err
 	}
 
-	service.Cmd = cmd
-	service.Running = true
-	service.IntentionalStop = false
+	s.Cmd = cmd
+	s.Running = true
+	s.skipNextRestart = false
 
 	// monitor process exit in goroutine
-	go service.monitorProcess(cmd)
+	go s.monitorProcess(cmd)
 
+	log.Printf("Service [%s] started with PID %d", s.ID, cmd.Process.Pid)
 	return nil
 }
 
-func (service *Service) monitorProcess(cmd *exec.Cmd) {
+func (s *Service) monitorProcess(cmd *exec.Cmd) {
+	log.Printf("Service [%s] monitoring process PID %d", s.ID, cmd.Process.Pid)
 	err := cmd.Wait()
 
-	service.Mutex.Lock()
-	service.Running = false
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
-	// check if this process was intentionally killed
-	wasIntentionallyKilled := false
+	// only update state if this is still the current command
+	if s.Cmd == cmd {
+		s.Running = false
+		s.Cmd = nil
 
-	if service.KilledProcess == cmd.Process {
-		wasIntentionallyKilled = true
-		service.KilledProcess = nil
-	}
+		// signal that process has terminated
+		select {
+		case s.processDone <- struct{}{}:
+			log.Printf("Service [%s] sent process done signal", s.ID)
+		default:
+			// channel full, clear it first
+			select {
+			case <-s.processDone:
+				s.processDone <- struct{}{}
+			default:
+			}
+		}
 
-	if err != nil {
-		log.Printf("Service [%s] exited with error: %v", service.ID, err)
+		log.Printf("Service [%s] process exited with: %v", s.ID, err)
 
-		// handle auto-restart on crash only if not intentionally stopped
-		if IsDebug && !service.IntentionalStop && !wasIntentionallyKilled {
-			service.handleCrashRestart()
+		// handle auto-restart on crash only if not skipped
+		if IsDebug && !s.skipNextRestart && err != nil {
+			log.Printf("Service [%s] crashed, will restart in 1 second", s.ID)
+
+			time.AfterFunc(1*time.Second, func() {
+				s.mutex.Lock()
+
+				if !s.Running && s.ctx.Err() == nil {
+					s.startProcessLocked()
+				}
+
+				s.mutex.Unlock()
+			})
+		} else if s.restartRequested {
+			// restart was requested, execute it now
+			s.restartRequested = false
+			log.Printf("Service [%s] executing requested restart", s.ID)
+			s.startProcessLocked()
 		}
 	} else {
-		log.Printf("Service [%s] exited normally", service.ID)
-		// reset crash counter on normal exit
-		service.CrashCount = 0
-	}
-
-	// reset intentionalStop flag after handling exit
-	service.IntentionalStop = false
-	service.Mutex.Unlock()
-}
-
-func (service *Service) handleCrashRestart() {
-	now := time.Now()
-
-	// calculate backoff based on crash count
-	var backoff time.Duration
-	if service.CrashCount == 0 {
-		backoff = MinBackoffTime
-	} else {
-		// exponential backoff with cap
-		backoff = MinBackoffTime * time.Duration(1<<uint(service.CrashCount))
-		if backoff > MaxBackoffTime {
-			backoff = MaxBackoffTime
-		}
-	}
-
-	// check if enough time has passed since last crash
-	if service.LastCrash.IsZero() || now.Sub(service.LastCrash) >= backoff {
-		service.CrashCount++
-		service.LastCrash = now
-
-		log.Printf("Service [%s] will restart after %v (crash count: %d)",
-			service.ID, backoff, service.CrashCount)
-
-		// schedule restart with backoff
-		time.AfterFunc(backoff, func() {
-			service.Mutex.Lock()
-			if !service.Running {
-				service.startProcessLocked()
-			}
-			service.Mutex.Unlock()
-		})
-	} else {
-		// crashes happening too fast, wait for full backoff
-		remaining := backoff - now.Sub(service.LastCrash)
-		log.Printf("Service [%s] crashes too fast, waiting %v before restart",
-			service.ID, remaining)
-
-		time.AfterFunc(remaining, func() {
-			service.Mutex.Lock()
-			if !service.Running {
-				service.CrashCount++
-				service.LastCrash = time.Now()
-				service.startProcessLocked()
-			}
-			service.Mutex.Unlock()
-		})
+		log.Printf("Service [%s] old process exited (already replaced)", s.ID)
 	}
 }
 
-func (service *Service) stopProcess() {
-	if service.Cmd != nil && service.Cmd.Process != nil {
-		log.Printf("Stopping service [%s] process", service.ID)
-
-		service.KilledProcess = service.Cmd.Process
-		service.Cmd.Process.Kill()
-
-		// wait a bit for process to exit
-		time.Sleep(100 * time.Millisecond)
-	}
-}
-
-func (service *Service) Start() error {
-	service.Mutex.Lock()
-	defer service.Mutex.Unlock()
-
-	if service.Running {
-		log.Printf("Service [%s] already running", service.ID)
-		return nil
-	}
-
-	return service.startProcessLocked()
-}
-
-func (service *Service) Stop() error {
-	log.Printf("Stopping service [%s]", service.ID)
+func (s *Service) Stop() error {
+	log.Printf("Stopping service [%s]", s.ID)
 
 	// cancel context to stop all goroutines
-	service.cancel()
+	s.cancel()
 
-	service.Mutex.Lock()
-	defer service.Mutex.Unlock()
-	service.IntentionalStop = true
-
-	// stop any pending restart timer
-	if service.RestartTimer != nil {
-		service.RestartTimer.Stop()
-	}
+	s.mutex.Lock()
+	s.skipNextRestart = true // skip auto-restart on shutdown
 
 	// close watcher if exists
-	if service.Watcher != nil {
-		service.Watcher.Close()
+	if s.Watcher != nil {
+		s.Watcher.Close()
+		s.Watcher = nil
 	}
 
-	// stop the process
-	service.stopProcess()
+	// stop the process if running
+	if s.Cmd != nil && s.Cmd.Process != nil {
+		log.Printf("Service [%s] stopping process PID %d", s.ID, s.Cmd.Process.Pid)
+		s.Cmd.Process.Signal(os.Interrupt)
 
-	// reset state
-	service.Running = false
-	service.CrashCount = 0
+		// wait a bit for graceful shutdown, then force kill
+		time.AfterFunc(2*time.Second, func() {
+			s.mutex.Lock()
 
-	close(service.StopCh)
+			if s.Cmd != nil && s.Cmd.Process != nil {
+				log.Printf("Service [%s] forcing kill of PID %d", s.ID, s.Cmd.Process.Pid)
+				s.Cmd.Process.Kill()
+			}
 
+			s.mutex.Unlock()
+		})
+	}
+
+	s.mutex.Unlock()
+
+	// wait for process to exit
+	select {
+	case <-s.processDone:
+		log.Printf("Service [%s] process terminated", s.ID)
+	case <-time.After(3 * time.Second):
+		log.Printf("Service [%s] timeout waiting for process termination", s.ID)
+	}
+
+	s.mutex.Lock()
+	s.Running = false
+	s.Cmd = nil
+	s.mutex.Unlock()
+
+	log.Printf("Service [%s] stopped", s.ID)
 	return nil
 }
 
-func (service *Service) Restart() error {
-	log.Printf("Manual restart requested for service [%s]", service.ID)
+func (s *Service) Restart() {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
-	service.Mutex.Lock()
-	service.CrashCount = 0 // reset crash counter for manual restart
-	service.IntentionalStop = false
-	service.Mutex.Unlock()
+	if s.Running {
+		s.restartRequested = true
+		s.skipNextRestart = true
 
-	service.requestRestart()
-	return nil
+		if s.Cmd != nil && s.Cmd.Process != nil {
+			log.Printf("Service [%s] stopping process for hot-reload", s.ID)
+
+			s.Cmd.Process.Signal(os.Interrupt)
+
+			// force kill after short timeout for faster restarts
+			time.AfterFunc(500*time.Millisecond, func() {
+				s.mutex.Lock()
+
+				if s.Cmd != nil && s.Cmd.Process != nil {
+					s.Cmd.Process.Kill()
+				}
+
+				s.mutex.Unlock()
+			})
+		}
+	} else {
+		// process not running, just start it
+		s.startProcessLocked()
+	}
 }
