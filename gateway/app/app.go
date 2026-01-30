@@ -6,6 +6,7 @@ import (
 	"maps"
 	"os"
 	"path"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -60,6 +61,7 @@ func Start() {
 		Pwd, _ = os.Getwd()
 	}
 
+	os.Setenv("ROOT_PATH", Pwd)
 	log.Printf("[%s v%s]", ProductName, VersionString)
 	log.Println(Pwd)
 
@@ -69,16 +71,32 @@ func Start() {
 
 	appCfg, err := configMng.ReadConfig()
 
-	natsServer := StartEmbeddedNats()
-
 	if err != nil {
 		log.Fatalln("Failed to load config.json", err)
 	}
 
+	// if no mode specified, default to dev
 	if appCfg.Mode == "" {
 		appCfg.Mode = "dev"
 	}
 
+	// if no bootloader specified, search in the pwd for built-in linebridge
+	// usually should be on node_modules
+	if appCfg.Services.Bootloader == "" {
+		lbModulePath := filepath.Join(Pwd, "node_modules", "linebridge")
+		lbBootloaderBinPath := filepath.Join(lbModulePath, "bootloader/bin")
+
+		// check if exist bin
+		if _, err := os.Stat(lbBootloaderBinPath); os.IsNotExist(err) {
+			log.Fatal("Linebridge bootloader not found. Check if 'linebridge' module is installed or use a custom bootloader on `config.services.bootloader=`")
+		}
+
+		appCfg.Services.Bootloader = lbBootloaderBinPath
+	}
+
+	natsServer := StartEmbeddedNats()
+
+	// read the current project package
 	projectPkgJson, err := configMng.ReadPackageJson()
 
 	if err != nil {
@@ -86,7 +104,7 @@ func Start() {
 	}
 
 	// Scan services on CWD
-	scannedServices := utils.ScanServices()
+	scannedServices := utils.ScanServices(Pwd)
 
 	if len(scannedServices) == 0 {
 		log.Fatal("No services found")

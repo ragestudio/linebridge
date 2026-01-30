@@ -2,32 +2,31 @@ package utils
 
 import (
 	"log"
-	"os"
 	"path/filepath"
 	"strings"
 )
 
 // scan all available microservices by search on the current cwd
-// searching for services/*.service.js
-func ScanServices() []map[string]string {
+// searching for services/*.service.js and services/*.service.ts
+func ScanServices(pwd string) []map[string]string {
 	var services []map[string]string
-	var scanPath string = "services/**/*.service.js"
-	var pathOverride string
+	var scanPathJS string = pwd + "services/**/*.service.js"
+	var scanPathTS string = pwd + "services/**/*.service.ts"
 
-	if len(os.Args) > 1 {
-		pathOverride = os.Args[1]
-	}
-
-	if pathOverride != "" {
-		// resolve the path
-		scanPath = pathOverride + "/" + scanPath
-	}
-
-	files, err := filepath.Glob(scanPath)
-
+	// glob for js files
+	filesJS, err := filepath.Glob(scanPathJS)
 	if err != nil {
 		return services
 	}
+
+	// glob for ts files
+	filesTS, err := filepath.Glob(scanPathTS)
+	if err != nil {
+		return services
+	}
+
+	// combine both file lists
+	files := append(filesJS, filesTS...)
 
 	for _, file := range files {
 		// resolve absolute path
