@@ -8,15 +8,20 @@ import (
 )
 
 func (instance *Instance) HandleOperations(msg *nats.Msg) {
-	startTime := time.Now()
-
 	if instance.OperationHandler == nil {
 		return
+	}
+	var startTime time.Time
+
+	if IsDebug {
+		startTime = time.Now()
 	}
 
 	instance.OperationHandler(msg)
 
-	log.Printf("NATS | operation took %v", time.Since(startTime))
+	if IsDebug {
+		log.Printf("NATS | operation took %v", time.Since(startTime))
+	}
 }
 
 // Handles the messages received from the subcribed downstream channel

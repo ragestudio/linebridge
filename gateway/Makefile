@@ -20,7 +20,7 @@ LDFLAGS=-ldflags \
 all: build
 
 build:
-	@echo "Compiling project (GOARCH=$(ARCH) GOAMD64=$(ARCH_LEVEL))..."
+	@echo "Compiling project..."
 
 	CGO_ENABLED=0 GOOS=linux GOARCH=$(ARCH) GOAMD64=$(ARCH_LEVEL) \
 	go build $(BUILD_FLAGS) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) $(MAIN_FILE)

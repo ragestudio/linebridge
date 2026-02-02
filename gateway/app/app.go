@@ -5,6 +5,8 @@ import (
 	"log"
 	"maps"
 	"os"
+	"path"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -12,6 +14,7 @@ import (
 	"ultragateway/config"
 	baseSrv "ultragateway/core/http"
 	"ultragateway/core/ipc"
+	"ultragateway/core/jsvm"
 	"ultragateway/core/nats"
 	unats "ultragateway/core/nats"
 	"ultragateway/core/services"
@@ -19,6 +22,9 @@ import (
 	"ultragateway/requests"
 	"ultragateway/structs"
 	"ultragateway/utils"
+
+	"github.com/nats-io/nats-server/v2/server"
+	natsServer "github.com/nats-io/nats-server/v2/server"
 )
 
 var IsDebug = os.Getenv("DEBUG") == "true"
@@ -43,12 +49,25 @@ type AppData struct {
 	Nats             *unats.Instance
 	WebsocketManager *websocket.Instance
 	HttpPathsRefs    *sync.Map
+	JSVM             *jsvm.JSVM
 }
 
-func Start() {
-	log.Printf("[%s v%s]", ProductName, VersionString)
+var Pwd string
 
-	configMng := &config.ConfigManager{}
+func Start() {
+	if len(os.Args) > 1 {
+		Pwd = os.Args[1]
+	} else {
+		Pwd, _ = os.Getwd()
+	}
+
+	os.Setenv("ROOT_PATH", Pwd)
+	log.Printf("[%s v%s]", ProductName, VersionString)
+	log.Println(Pwd)
+
+	configMng := &config.ConfigManager{
+		Pwd: Pwd,
+	}
 
 	appCfg, err := configMng.ReadConfig()
 
@@ -56,10 +75,28 @@ func Start() {
 		log.Fatalln("Failed to load config.json", err)
 	}
 
+	// if no mode specified, default to dev
 	if appCfg.Mode == "" {
 		appCfg.Mode = "dev"
 	}
 
+	// if no bootloader specified, search in the pwd for built-in linebridge
+	// usually should be on node_modules
+	if appCfg.Services.Bootloader == "" {
+		lbModulePath := filepath.Join(Pwd, "node_modules", "linebridge")
+		lbBootloaderBinPath := filepath.Join(lbModulePath, "bootloader/bin")
+
+		// check if exist bin
+		if _, err := os.Stat(lbBootloaderBinPath); os.IsNotExist(err) {
+			log.Fatal("Linebridge bootloader not found. Check if 'linebridge' module is installed or use a custom bootloader on `config.services.bootloader=`")
+		}
+
+		appCfg.Services.Bootloader = lbBootloaderBinPath
+	}
+
+	natsServer := StartEmbeddedNats()
+
+	// read the current project package
 	projectPkgJson, err := configMng.ReadPackageJson()
 
 	if err != nil {
@@ -67,7 +104,7 @@ func Start() {
 	}
 
 	// Scan services on CWD
-	scannedServices := utils.ScanServices()
+	scannedServices := utils.ScanServices(Pwd)
 
 	if len(scannedServices) == 0 {
 		log.Fatal("No services found")
@@ -110,7 +147,8 @@ func Start() {
 
 	// initialize Websocket
 	appData.WebsocketManager = websocket.NewManager(&websocket.NewManagerOptions{
-		Nats: appData.Nats,
+		Nats:     appData.Nats,
+		Services: &appData.Services,
 	})
 
 	// initialize the Unix socket listener for inter-service communication
@@ -142,6 +180,30 @@ func Start() {
 	// if infiscal env is available, copy them
 	if appData.InfisicalEnv != nil {
 		maps.Copy(servicesEnv, appData.InfisicalEnv)
+	}
+
+	// create a JSVM instance
+	appData.JSVM = jsvm.Create(&jsvm.JSVM{
+		WebsocketManager: appData.WebsocketManager,
+	})
+
+	// load plugins scripts
+	for _, script := range appData.Config.Scripts {
+		// resolve path
+		script.Path = path.Join(Pwd, script.Path)
+
+		log.Printf("Loading script > %s", script.Path)
+
+		// run script
+		if _, err := appData.JSVM.RunScript(script.Path); err != nil {
+			log.Printf("Failed to run script %s: %v", script.Path, err)
+
+			if script.CrashIfFailed {
+				log.Fatal("Required script failed")
+			}
+
+			continue
+		}
 	}
 
 	// initialize all base microservices
@@ -186,6 +248,9 @@ func Start() {
 
 	// Setup cleanup on exit
 	defer func() {
+		log.Println("Stopping embedded NATS server")
+		natsServer.Shutdown()
+
 		log.Println("Stoping IPC socket")
 		appData.SocketListener.Stop()
 
@@ -199,4 +264,34 @@ func Start() {
 
 	serversWaitGroup.Wait()
 	log.Println("All servers finished, executing internal cleanup")
+}
+
+func StartEmbeddedNats() *natsServer.Server {
+	opts := &natsServer.Options{
+		Host:       "0.0.0.0",
+		Port:       4222,
+		Debug:      IsDebug,
+		NoSigs:     true,
+		MaxPayload: 1024 * 1024,
+		JetStream:  true,
+		StoreDir:   "./nats-data",
+	}
+
+	ns, err := server.NewServer(opts)
+
+	if err != nil {
+		log.Fatalf("Failed to create embedded NATS server: %v", err)
+	}
+
+	log.Println("Starting embedded NATS server")
+
+	go ns.Start()
+
+	if !ns.ReadyForConnections(5 * time.Second) {
+		log.Fatal("Failed to start embedded NATS server. Server ready timeout")
+	}
+
+	log.Println("Embedded NATS server started")
+
+	return ns
 }

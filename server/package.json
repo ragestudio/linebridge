@@ -1,6 +1,6 @@
 {
 	"name": "linebridge",
-	"version": "1.5.0",
+	"version": "1.6.1",
 	"license": "MIT",
 	"description": "Multiproposal framework to build fast, scalable, and secure servers.",
 	"author": "RageStudio <support@ragestudio.net>",
@@ -51,6 +51,6 @@
 	},
 	"devDependencies": {
 		"@ragestudio/hermes": "^1.0.1",
-		"mocha": "^11.1.0"
+		"mocha": "^11.3.0"
 	}
 }

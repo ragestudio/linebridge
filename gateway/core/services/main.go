@@ -1,16 +1,20 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"ultragateway/utils"
+	"sync"
+	"time"
 
 	"github.com/cloudwego/hertz/pkg/app/client"
 	"github.com/fsnotify/fsnotify"
 )
+
+var IsDebug bool = os.Getenv("DEBUG") == "true"
 
 type ServiceInterface interface {
 	Start() error
@@ -22,20 +26,28 @@ type ServiceInterface interface {
 }
 
 type Service struct {
-	id           string
-	mainPath     string
-	cwd          string
-	cmd          *exec.Cmd
-	env          map[string]string
-	running      bool
-	watcher      *fsnotify.Watcher
-	listenSocket string
-	socketClient *client.Client
+	ID             string
+	MainPath       string
+	Cwd            string
+	Cmd            *exec.Cmd
+	Env            map[string]string
+	Running        bool
+	Watcher        *fsnotify.Watcher
+	ListenSocket   string
+	SocketClient   *client.Client
+	BootloaderPath string
+
+	mutex            sync.Mutex
+	ctx              context.Context
+	cancel           context.CancelFunc
+	restartRequested bool
+	processDone      chan struct{}
+	skipNextRestart  bool
 }
 
 type NewServiceOptions struct {
-	Id                string // required
-	MainPath          string // required
+	Id                string
+	MainPath          string
 	Cwd               string
 	Env               map[string]string
 	EnableWatcher     bool
@@ -70,165 +82,209 @@ func NewService(options *NewServiceOptions) *Service {
 		options.Env["LB_GATEWAY_SOCKET"] = options.GatewaySocketPath
 	}
 
+	// create context for lifecycle management
+	ctx, cancel := context.WithCancel(context.Background())
+
 	// create the service obj
 	serviceObj := &Service{
-		id:       options.Id,
-		mainPath: options.MainPath,
-		cwd:      options.Cwd,
-		env:      options.Env,
-		running:  false,
+		ID:               options.Id,
+		MainPath:         options.MainPath,
+		BootloaderPath:   options.BootloaderPath,
+		Cwd:              options.Cwd,
+		Env:              options.Env,
+		Running:          false,
+		ctx:              ctx,
+		cancel:           cancel,
+		processDone:      make(chan struct{}, 1),
+		restartRequested: false,
+		skipNextRestart:  false,
 	}
 
 	if options.EnableWatcher {
-		err := AttachWatcherToService(serviceObj)
-
+		err := attachWatcherToService(serviceObj)
 		if err != nil {
-			log.Printf("Failed to create watcher for service [%s]: %v", serviceObj.id, err)
-			return nil
+			log.Printf("Failed to create watcher for service [%s]: %v", serviceObj.ID, err)
 		}
 	}
 
-	serviceObj.cmd = exec.Command(options.BootloaderPath, options.MainPath)
-	serviceObj.cmd.Dir = serviceObj.cwd
-
-	// inject the env variables to cmd
-	serviceObj.cmd.Env = make([]string, 0, len(options.Env))
-	for key, value := range options.Env {
-		serviceObj.cmd.Env = append(serviceObj.cmd.Env, fmt.Sprintf("%s=%s", key, value))
-	}
-
-	log.Printf("Service [%s] created", serviceObj.id)
-
+	log.Printf("Service [%s] created", serviceObj.ID)
 	return serviceObj
 }
 
-func AttachWatcherToService(service *Service) error {
-	watcher, err := fsnotify.NewWatcher()
+func (s *Service) Start() error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
-	if err != nil {
-		return err
+	if s.Running {
+		log.Printf("Service [%s] already running", s.ID)
+		return nil
 	}
 
-	service.watcher = watcher
-
-	go func() {
-		for {
-			select {
-			case event, ok := <-watcher.Events:
-				if !ok {
-					return
-				}
-
-				log.Println("event:", event)
-
-				if event.Has(fsnotify.Write) {
-					log.Println("modified file:", event.Name)
-				}
-			case err, ok := <-watcher.Errors:
-				if !ok {
-					return
-				}
-
-				log.Println("error:", err)
-			}
-		}
-	}()
-
-	watcher.Add(service.cwd)
-
-	return nil
+	return s.startProcessLocked()
 }
 
-func (service *Service) Start() error {
-	log.Printf("Starting service [%s] %s", service.id, service.mainPath)
+func (s *Service) startProcessLocked() error {
+	log.Printf("Starting service [%s] %s", s.ID, s.MainPath)
+
+	cmd := exec.Command(s.BootloaderPath, s.MainPath)
+	cmd.Env = make([]string, 0, len(s.Env))
+	cmd.Dir = s.Cwd
+
+	// inject the env variables to cmd
+	for key, value := range s.Env {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", key, value))
+	}
 
 	// pipe stdout and stderr to the current process
-	service.cmd.Stdout = os.Stdout
-	service.cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 
-	err := service.cmd.Start()
-
+	err := cmd.Start()
 	if err != nil {
-		log.Printf("Failed to start service [%s]: %v", service.id, err)
+		log.Printf("Failed to start service [%s]: %v", s.ID, err)
 		return err
 	}
 
-	service.running = true
+	s.Cmd = cmd
+	s.Running = true
+	s.skipNextRestart = false
 
-	// listen when the process exit to handle a cleanup
-	go func() {
-		err := service.cmd.Wait()
+	// monitor process exit in goroutine
+	go s.monitorProcess(cmd)
 
-		service.running = false
+	log.Printf("Service [%s] started with PID %d", s.ID, cmd.Process.Pid)
+	return nil
+}
 
-		if service.watcher != nil {
-			service.watcher.Close()
+func (s *Service) monitorProcess(cmd *exec.Cmd) {
+	log.Printf("Service [%s] monitoring process PID %d", s.ID, cmd.Process.Pid)
+	err := cmd.Wait()
+
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	// only update state if this is still the current command
+	if s.Cmd == cmd {
+		s.Running = false
+		s.Cmd = nil
+
+		// signal that process has terminated
+		select {
+		case s.processDone <- struct{}{}:
+			log.Printf("Service [%s] sent process done signal", s.ID)
+		default:
+			// channel full, clear it first
+			select {
+			case <-s.processDone:
+				s.processDone <- struct{}{}
+			default:
+			}
 		}
 
-		if err != nil {
-			log.Printf("Service [%s] exited with error: %v", service.id, err)
-		} else {
-			log.Printf("Service [%s] exited", service.id)
+		log.Printf("Service [%s] process exited with: %v", s.ID, err)
+
+		// handle auto-restart on crash only if not skipped
+		if IsDebug && !s.skipNextRestart && err != nil {
+			log.Printf("Service [%s] crashed, will restart in 1 second", s.ID)
+
+			time.AfterFunc(1*time.Second, func() {
+				s.mutex.Lock()
+
+				if !s.Running && s.ctx.Err() == nil {
+					s.startProcessLocked()
+				}
+
+				s.mutex.Unlock()
+			})
+		} else if s.restartRequested {
+			// restart was requested, execute it now
+			s.restartRequested = false
+			log.Printf("Service [%s] executing requested restart", s.ID)
+			s.startProcessLocked()
 		}
-	}()
+	} else {
+		log.Printf("Service [%s] old process exited (already replaced)", s.ID)
+	}
+}
 
+func (s *Service) Stop() error {
+	log.Printf("Stopping service [%s]", s.ID)
+
+	// cancel context to stop all goroutines
+	s.cancel()
+
+	s.mutex.Lock()
+	s.skipNextRestart = true // skip auto-restart on shutdown
+
+	// close watcher if exists
+	if s.Watcher != nil {
+		s.Watcher.Close()
+		s.Watcher = nil
+	}
+
+	// stop the process if running
+	if s.Cmd != nil && s.Cmd.Process != nil {
+		log.Printf("Service [%s] stopping process PID %d", s.ID, s.Cmd.Process.Pid)
+		s.Cmd.Process.Signal(os.Interrupt)
+
+		// wait a bit for graceful shutdown, then force kill
+		time.AfterFunc(2*time.Second, func() {
+			s.mutex.Lock()
+
+			if s.Cmd != nil && s.Cmd.Process != nil {
+				log.Printf("Service [%s] forcing kill of PID %d", s.ID, s.Cmd.Process.Pid)
+				s.Cmd.Process.Kill()
+			}
+
+			s.mutex.Unlock()
+		})
+	}
+
+	s.mutex.Unlock()
+
+	// wait for process to exit
+	select {
+	case <-s.processDone:
+		log.Printf("Service [%s] process terminated", s.ID)
+	case <-time.After(3 * time.Second):
+		log.Printf("Service [%s] timeout waiting for process termination", s.ID)
+	}
+
+	s.mutex.Lock()
+	s.Running = false
+	s.Cmd = nil
+	s.mutex.Unlock()
+
+	log.Printf("Service [%s] stopped", s.ID)
 	return nil
 }
 
-func (service *Service) Stop() error {
-	log.Printf("Stopping service [%s]", service.id)
+func (s *Service) Restart() {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
-	err := service.cmd.Process.Kill()
+	if s.Running {
+		s.restartRequested = true
+		s.skipNextRestart = true
 
-	if err != nil {
-		log.Printf("Failed to stop service [%s]: %v", service.id, err)
-		return err
+		if s.Cmd != nil && s.Cmd.Process != nil {
+			log.Printf("Service [%s] stopping process for hot-reload", s.ID)
+
+			s.Cmd.Process.Signal(os.Interrupt)
+
+			// force kill after short timeout for faster restarts
+			time.AfterFunc(500*time.Millisecond, func() {
+				s.mutex.Lock()
+
+				if s.Cmd != nil && s.Cmd.Process != nil {
+					s.Cmd.Process.Kill()
+				}
+
+				s.mutex.Unlock()
+			})
+		}
+	} else {
+		// process not running, just start it
+		s.startProcessLocked()
 	}
-
-	return nil
-}
-
-func (service *Service) Restart() error {
-	log.Printf("Restarting service [%s]", service.id)
-
-	err := service.Stop()
-
-	if err != nil {
-		return err
-	}
-
-	err = service.Start()
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (service *Service) SetListenSocket(socket string) error {
-	service.listenSocket = socket
-
-	newClient, err := utils.NewUnixSocketClient(socket)
-
-	if err != nil {
-		log.Printf("Failed to create socket client for service [%s]: %v", service.id, err)
-		return err
-	}
-
-	service.socketClient = newClient
-
-	return nil
-}
-
-func (service *Service) GetListenSocket() string {
-	return service.listenSocket
-}
-
-func (service *Service) GetSocketClient() *client.Client {
-	return service.socketClient
-}
-
-func (service *Service) Ctx() *Service {
-	return service
 }

@@ -1,28 +1,28 @@
 package structs
 
-import "sync"
+import (
+	"sync"
+)
 
 const WSCtxStoreKey = "uctx"
 
 type WSConnectionCtx struct {
-	// required ctx
-	ID    string `json:"socket_id"`       // the conn id
-	Token string `json:"token,omitempty"` // required for auth support
+	Authorized bool `json:"authorized,omitempty"` // required for auth support
 
-	// comty-standard specific properties
-	UserID    string `json:"user_id,omitempty"`
-	Username  string `json:"username,omitempty"`
-	SessionID string `json:"session_id,omitempty"`
+	// required ctx
+	ID    string            `json:"socket_id"`       // the conn id
+	Token string            `json:"token,omitempty"` // required for auth support
+	Meta  map[string]string `json:"meta,omitempty"`
 }
 
 type WSUserConnections struct {
-	Mu    sync.Mutex
 	Conns map[string]struct{}
+	Mutex sync.Mutex
 }
 
 func (ctx *WSUserConnections) Keys() []string {
-	ctx.Mu.Lock()
-	defer ctx.Mu.Unlock()
+	ctx.Mutex.Lock()
+	defer ctx.Mutex.Unlock()
 
 	ids := make([]string, 0, len(ctx.Conns))
 

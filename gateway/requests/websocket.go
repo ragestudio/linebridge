@@ -2,6 +2,7 @@ package requests
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 	"ultragateway/core/websocket/connections"
 	"ultragateway/structs"
@@ -84,19 +85,32 @@ func (instance *Requests) Websocket(writter http.ResponseWriter, request *http.R
 		return
 	}
 
-	// TODO: Implement custom connection context structures,
-	// using the provided app config or whatever.
+	// create the context
 	ctx := &structs.WSConnectionCtx{
-		Token: tokenString,
+		Token:      tokenString,
+		Meta:       map[string]string{},
+		Authorized: token != nil,
 	}
 
-	// by now inject with comty-standard jwt authorized schema
-	if token != nil {
-		claims := token.Claims.(jwt.MapClaims)
-
-		ctx.UserID = claims["user_id"].(string)
-		ctx.SessionID = claims["session_id"].(string)
-		ctx.Username = claims["username"].(string)
+	// inject meta data, if config defines.
+	// only must inject if token has been successfully verified
+	if token != nil && len(instance.Config.JWT.UseKeys) > 0 {
+		for _, selector := range instance.Config.JWT.UseKeys {
+			if value, ok := token.Claims.(jwt.MapClaims)[selector["key"]]; ok {
+				if typeStr, hasType := selector["type"]; hasType {
+					switch typeStr {
+					case "string":
+						ctx.Meta[selector["key"]] = value.(string)
+					case "bool":
+						ctx.Meta[selector["key"]] = strconv.FormatBool(value.(bool))
+					default:
+						continue
+					}
+				} else {
+					continue
+				}
+			}
+		}
 	}
 
 	// add the connection to the manager

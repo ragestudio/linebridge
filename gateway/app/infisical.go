@@ -35,4 +35,9 @@ func LoadInfisicalEnvs(appData *AppData) {
 	for _, secret := range infisicalEnv {
 		appData.InfisicalEnv[secret.SecretKey] = secret.SecretValue
 	}
+
+	// remove the infisical secrets itself from env
+	os.Unsetenv("INFISICAL_CLIENT_ID")
+	os.Unsetenv("INFISICAL_CLIENT_SECRET")
+	os.Unsetenv("INFISICAL_PROJECT_ID")
 }

@@ -5,12 +5,18 @@ type PackageJSON struct {
 	Version string `json:"version"`
 }
 
+type ScriptConfig struct {
+	Path          string `json:"path"`
+	CrashIfFailed bool   `json:"crash_if_failed"`
+}
+
 type BaseConfig struct {
 	Mode     string         `json:"mode"`
 	Http     HttpConfig     `json:"http"`
 	IPC      IPCConfig      `json:"ipc"`
 	Services ServicesConfig `json:"services"`
 	JWT      JWTConfig      `json:"jwt"`
+	Scripts  []ScriptConfig `json:"scripts"`
 }
 
 type HttpConfig struct {
@@ -33,5 +39,6 @@ type CertificatesConfig struct {
 }
 
 type JWTConfig struct {
-	Secret string `json:"secret"`
+	Secret  string              `json:"secret"`
+	UseKeys []map[string]string `json:"use_keys"`
 }

@@ -3,6 +3,7 @@ package nats
 import (
 	"context"
 	"log"
+	"os"
 	"sync"
 	"time"
 
@@ -11,6 +12,8 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 )
+
+var IsDebug bool = os.Getenv("DEBUG") == "true"
 
 type NatsInterface interface {
 	Start() error

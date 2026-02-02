@@ -55,7 +55,9 @@ export default class Engine {
 					onUpgrade: this.server.handleWsUpgrade,
 					onConnection: this.server.handleWsConnection,
 					onDisconnect: this.server.handleWsDisconnect,
-					nats: this.server.params.websockets.nats,
+					nats: {
+						enabled: ToBoolean(process.env.LB_SOCKET_MODE),
+					},
 				})
 
 				global.websockets = this.ws

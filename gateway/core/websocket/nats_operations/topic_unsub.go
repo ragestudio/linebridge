@@ -29,7 +29,7 @@ func (context *Instance) TopicUnsubscribe(conn *gws.Conn, connCtx *structs.WSCon
 	context.PubSub.UnSubscribe(subscriber, op.Data.Topic)
 
 	if IsDebug {
-		log.Printf("User [%s] unsubscribed of topic [%s]", connCtx.Username, op.Data.Topic)
+		log.Printf("Conn [%s] unsubscribed of topic [%s]", connCtx.ID, op.Data.Topic)
 	}
 
 	return &structs.OperationResult{

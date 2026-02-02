@@ -21,42 +21,23 @@ func (manager *Instance) OnOpen(socket *gws.Conn) {
 	connectedMessage, _ := sonic.Marshal(structs.EventData{
 		Event: "connected",
 		Data: struct {
-			Id            string `json:"id"`
-			Authenticated bool   `json:"authenticated"`
+			Id            string            `json:"id"`
+			Authenticated bool              `json:"authenticated"`
+			Meta          map[string]string `json:"meta"`
 		}{
 			Id:            ConnCtx.ID,
 			Authenticated: ConnCtx.Token != "",
+			Meta:          ConnCtx.Meta,
 		},
 	})
 
 	socket.WriteMessage(gws.OpcodeText, connectedMessage)
 
-	if ConnCtx.SessionID == "" {
-		unauthorizedMessage, _ := sonic.Marshal(structs.EventData{
-			Event: "user:unauthorized",
-		})
-
-		socket.WriteMessage(gws.OpcodeText, unauthorizedMessage)
-
-		return
-	} else {
-		authorizedMessage, _ := sonic.Marshal(structs.EventData{
-			Event: "user:authed",
-			Data: struct {
-				UserID string `json:"user_id"`
-			}{
-				UserID: ConnCtx.UserID,
-			},
-		})
-
-		socket.WriteMessage(gws.OpcodeText, authorizedMessage)
-	}
-
 	// send to global
 	connEventData, _ := sonic.Marshal(ConnCtx)
 
 	manager.Nats.PublishToGlobal(
-		unats.UpstreamPayload{
+		&unats.UpstreamPayload{
 			Event: "connection",
 			Data:  connEventData,
 		},
