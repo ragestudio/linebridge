@@ -22,18 +22,18 @@ jobs:
           go-version: 1.25
 
       - name: Compile (amd64 v2)
-        run: GOARCH=amd64 GOAMD64=v2 BINARY_NAME=ultragateway-amd64-v2 make build
+        run: GOARCH=amd64 GOAMD64=v2 BINARY_NAME=ultragateway-linux-amd64-v2 make build
         working-directory: ./gateway
 
       - name: Compile (amd64 v3)
-        run: GOARCH=amd64 GOAMD64=v3 BINARY_NAME=ultragateway-amd64-v3 make build
+        run: GOARCH=amd64 GOAMD64=v3 BINARY_NAME=ultragateway-linux-amd64-v3 make build
         working-directory: ./gateway
 
       - name: Compile (arm64)
-        run: GOARCH=arm64 make build
+        run: GOARCH=arm64 TARGET_BINARY_NAME=ultragateway-linux-arm64 make build
         working-directory: ./gateway
 
-      - name: Upload artifact
+      - name: Upload artifacts
         uses: actions/upload-artifact@v6
         with:
           name: gateway
