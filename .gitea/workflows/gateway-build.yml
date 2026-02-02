@@ -25,16 +25,28 @@ jobs:
         run: GOARCH=amd64 GOAMD64=v2 BINARY_NAME=ultragateway-linux-amd64-v2 make build
         working-directory: ./gateway
 
+      - name: Upload artifact (amd64 v2)
+        uses: https://github.com/christopherHX/gitea-upload-artifact@v4
+        with:
+          name: ultragateway-linux-amd64-v2
+          path: ./gateway/dist/ultragateway-linux-amd64-v2
+
       - name: Compile (amd64 v3)
         run: GOARCH=amd64 GOAMD64=v3 BINARY_NAME=ultragateway-linux-amd64-v3 make build
         working-directory: ./gateway
 
-      - name: Compile (arm64)
-        run: GOARCH=arm64 TARGET_BINARY_NAME=ultragateway-linux-arm64 make build
-        working-directory: ./gateway
-
-      - name: Upload artifacts
+      - name: Upload artifact (amd64 v3)
         uses: https://github.com/christopherHX/gitea-upload-artifact@v4
         with:
-          name: gateway
-          path: ./gateway/dist/*
+          name: ultragateway-linux-amd64-v3
+          path: ./gateway/dist/ultragateway-linux-amd64-v3
+
+      - name: Compile (arm64)
+        run: GOARCH=arm64 BINARY_NAME=ultragateway-linux-arm64 make build
+        working-directory: ./gateway
+
+      - name: Upload artifact (arm64)
+        uses: https://github.com/christopherHX/gitea-upload-artifact@v4
+        with:
+          name: ultragateway-linux-arm64
+          path: ./gateway/dist/ultragateway-linux-arm64
