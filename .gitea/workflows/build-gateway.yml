@@ -34,7 +34,7 @@ jobs:
         working-directory: ./gateway
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v6
+        uses: https://github.com/christopherHX/gitea-upload-artifact@v4
         with:
           name: gateway
           path: ./gateway/dist/*
