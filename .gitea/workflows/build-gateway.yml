@@ -37,4 +37,4 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: gateway
-          path: ./gateway/dist
+          path: ./gateway/dist/
