@@ -43,6 +43,8 @@ if (process.argv.includes("--watch")) {
 	Watcher.create(mainModuleSrc, {
 		onReload: selfReloadDebounce,
 	})
+
+	runFork()
 } else {
 	require(bootloaderPath)
 }
