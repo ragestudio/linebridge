@@ -29,7 +29,7 @@ func (instance *Requests) ProxyHandler(mctx context.Context, ctx *app.RequestCon
 	requestMethod := ctx.Method()
 
 	if bytes.Equal(requestMethod, []byte("OPTIONS")) {
-		ctx.SetStatusCode(consts.StatusOK)
+		ctx.SetStatusCode(consts.StatusNoContent)
 		return
 	}
 
