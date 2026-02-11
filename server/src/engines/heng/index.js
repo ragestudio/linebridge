@@ -1,4 +1,3 @@
-import uWebsockets from "uWebSockets.js"
 import fs from "node:fs"
 
 import RtEngine from "../../classes/RtEngine"
@@ -20,6 +19,12 @@ export default class Engine {
 	registers = new Set()
 
 	initialize = async () => {
+		process.env["UWS_HTTP_MAX_HEADERS_COUNT"] = 512
+		process.env["UWS_HTTP_MAX_HEADERS_SIZE"] = 650000
+
+		let uWebsockets = await import("uWebSockets.js")
+		uWebsockets = uWebsockets.default
+
 		if (!process.env["KEEP_UWS_HEADER"]) {
 			try {
 				uWebsockets._cfg("999999990007")
