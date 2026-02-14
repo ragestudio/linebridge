@@ -1,6 +1,7 @@
 package app
 
 import (
+	"encoding/base64"
 	"fmt"
 	"log"
 	"maps"
@@ -23,6 +24,7 @@ import (
 	"ultragateway/structs"
 	"ultragateway/utils"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/nats-io/nats-server/v2/server"
 	natsServer "github.com/nats-io/nats-server/v2/server"
 )
@@ -136,6 +138,21 @@ func Start() {
 		if appData.InfisicalEnv["JWT_SECRET"] != "" {
 			appData.Config.JWT.Secret = appData.InfisicalEnv["JWT_SECRET"]
 		}
+
+		// Automatically decode base64 encoded ECDSA keys, if they exist
+		if appData.InfisicalEnv["ECDSA_PRIVATE_KEY_B64"] != "" && appData.InfisicalEnv["ECDSA_PUBLIC_KEY_B64"] != "" {
+			if val, err := base64.StdEncoding.DecodeString(appData.InfisicalEnv["ECDSA_PRIVATE_KEY_B64"]); err == nil {
+				appData.InfisicalEnv["ECDSA_PRIVATE_KEY"] = string(val)
+				appData.Config.JWT.PrivateKey = appData.InfisicalEnv["ECDSA_PRIVATE_KEY"]
+				appData.Config.JWT.ECDSAPrivateKey, _ = jwt.ParseECPrivateKeyFromPEM(val)
+			}
+			if val, err := base64.StdEncoding.DecodeString(appData.InfisicalEnv["ECDSA_PUBLIC_KEY_B64"]); err == nil {
+				appData.InfisicalEnv["ECDSA_PUBLIC_KEY"] = string(val)
+				appData.Config.JWT.PublicKey = appData.InfisicalEnv["ECDSA_PUBLIC_KEY"]
+				appData.Config.JWT.ECDSAPublicKey, _ = jwt.ParseECPublicKeyFromPEM(val)
+			}
+		}
+
 	}
 
 	// initialize NATS

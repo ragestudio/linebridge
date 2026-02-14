@@ -1,5 +1,7 @@
 package structs
 
+import "crypto/ecdsa"
+
 type PackageJSON struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
@@ -39,6 +41,10 @@ type CertificatesConfig struct {
 }
 
 type JWTConfig struct {
-	Secret  string              `json:"secret"`
-	UseKeys []map[string]string `json:"use_keys"`
+	Secret          string              `json:"secret"`
+	PrivateKey      string              `json:"private_key"`
+	PublicKey       string              `json:"public_key"`
+	ECDSAPrivateKey *ecdsa.PrivateKey   `json:"ecdsa_private_key"`
+	ECDSAPublicKey  *ecdsa.PublicKey    `json:"ecdsa_public_key"`
+	UseKeys         []map[string]string `json:"use_keys"`
 }
