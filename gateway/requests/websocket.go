@@ -1,6 +1,8 @@
 package requests
 
 import (
+	"crypto/ecdsa"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -27,10 +29,10 @@ func getToken(request *http.Request) (bool, string) {
 	return true, ""
 }
 
-func JWTAuth(tokenString string, signedKey string) (error, *jwt.Token) {
+func JWTAuth(tokenString string, ECDSAPublicKey *ecdsa.PublicKey) (error, *jwt.Token) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
-		return []byte(signedKey), nil
-	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
+		return ECDSAPublicKey, nil
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodES256.Alg()}))
 
 	if err != nil {
 		return err, nil
@@ -55,13 +57,14 @@ func (instance *Requests) Websocket(writter http.ResponseWriter, request *http.R
 	emptyTokenString, tokenString := getToken(request)
 
 	// check if JWT Authorize is enabled
-	if instance.Config.JWT.Secret != "" {
+	if instance.Config.JWT.PublicKey != "" {
 		if !emptyTokenString {
-			err, data := JWTAuth(tokenString, instance.Config.JWT.Secret)
+			err, data := JWTAuth(tokenString, instance.Config.JWT.ECDSAPublicKey)
 
 			if err != nil {
+				log.Println(err)
 				writter.WriteHeader(401)
-				writter.Write([]byte("Unauthorized"))
+				writter.Write([]byte("{'error': '" + err.Error() + "'}"))
 
 				return
 			}
