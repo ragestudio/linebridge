@@ -34,6 +34,7 @@ func CreateEngine(parameters CreateEngineOptions) {
 		server.WithMaxRequestBodySize(10 * 1024 * 1024),
 		server.WithExitWaitTime(time.Second),
 		server.WithHostPorts(fmt.Sprintf(":%d", parameters.ListenPort)),
+		server.WithDisablePrintRoute(true),
 	}
 
 	// if tlsConfig is present, enable TLS and HTTP/2
