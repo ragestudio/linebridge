@@ -152,7 +152,6 @@ func Start() {
 				appData.Config.JWT.ECDSAPublicKey, _ = jwt.ParseECPublicKeyFromPEM(val)
 			}
 		}
-
 	}
 
 	// initialize NATS
