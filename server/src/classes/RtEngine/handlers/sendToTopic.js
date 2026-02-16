@@ -1,11 +1,13 @@
 export default async function (topic, event, data) {
-	if (this.nats && typeof this.nats.operations?.sendToTopic === "function") {
-		return await this.nats.operations.sendToTopic(topic, event, data)
-	}
-
-	// ensure engine is properly initialized
 	if (!this.engine) {
 		throw new Error("Engine not initialized")
+	}
+
+	if (
+		this.server.nats &&
+		typeof this.server.nats.operations?.sendToTopic === "function"
+	) {
+		return await this.server.nats.operations.sendToTopic(topic, event, data)
 	}
 
 	// publish message to topic with structured payload

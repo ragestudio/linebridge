@@ -36,7 +36,7 @@ module.exports = async function Boot(main) {
 		process.exit(0)
 	})
 
-	await instance.initialize()
+	await instance.run()
 
 	if (process.env.lb_service && process.send) {
 		process.send({

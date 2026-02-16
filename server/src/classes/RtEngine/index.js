@@ -1,6 +1,4 @@
 import Clients from "./classes/clients"
-import NatsAdapter from "../Nats/adapter"
-
 import BuiltInEvents from "./events"
 import { WebsocketRequestHandler } from "../Handler"
 
@@ -65,22 +63,6 @@ class RTEngine {
 		this.onUpgrade = config.onUpgrade || null
 		this.onConnection = config.onConnection || null
 		this.onDisconnect = config.onDisconnect || null
-
-		// initialize nats adapter support if needed
-		if (typeof config.nats === "object") {
-			if (config.nats.enabled === true) {
-				console.warn(
-					"[RTE] NATS adapter is not fully implemented, not recommended for production use",
-				)
-
-				this.nats = new NatsAdapter(this, {
-					address: config.nats.address ?? "127.0.0.1",
-					port: config.nats.port ?? 4222,
-				})
-
-				this.nats.initialize()
-			}
-		}
 	}
 
 	// map of connected clients indexed by socket id

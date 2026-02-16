@@ -2,7 +2,7 @@ import("./patches")
 
 import { EventEmitter } from "@foxify/events"
 
-import IPCClient from "./classes/IPCClient"
+import { IPCClient } from "./classes/IPC"
 import Route from "./classes/Route"
 
 import registerBaseRoutes from "./registers/baseRoutes"
@@ -10,7 +10,6 @@ import registerBaseMiddlewares from "./registers/baseMiddlewares"
 import registerBaseHeaders from "./registers/baseHeaders"
 import registerWebsocketsFileEvents from "./registers/websocketFileEvents"
 import registerHttpFileRoutes from "./registers/httpFileRoutes"
-import registerServiceToIPC from "./registers/ipcService"
 import registerGateway from "./registers/gateway"
 import bypassCorsHeaders from "./registers/bypassCorsHeaders"
 import registerPlugins from "./registers/plugins"
@@ -21,6 +20,7 @@ import composeMiddlewares from "./utils/composeMiddlewares"
 
 import Vars from "./vars"
 import Engines from "./engines"
+import NatsAdapter from "./classes/Nats/adapter"
 
 class Server {
 	constructor(params = {}) {
@@ -102,6 +102,7 @@ class Server {
 	events = {}
 	contexts = {}
 	engine = null
+	nats = null
 	plugins = new Map()
 
 	get hasSSL() {
@@ -116,7 +117,7 @@ class Server {
 		return isExperimental()
 	}
 
-	initialize = async () => {
+	run = async () => {
 		const startHrTime = process.hrtime()
 
 		// resolve current local private address of the host
@@ -127,6 +128,18 @@ class Server {
 		// register declared events to eventBus
 		for (const [eventName, eventHandler] of Object.entries(this.events)) {
 			this.eventBus.on(eventName, eventHandler)
+		}
+
+		if (process.env.LB_GATEWAY_SOCKET) {
+			console.info("Starting NATS adapter")
+			this.nats = global.nats = new NatsAdapter(this, {
+				address: this.params.nats?.address || "127.0.0.1",
+				port: this.params.nats?.port || 4222,
+			})
+			await this.nats.initialize()
+
+			console.info("Starting IPC client")
+			this.ipc = global.ipc = new IPCClient(this, process)
 		}
 
 		// initialize engine
@@ -145,10 +158,18 @@ class Server {
 			await this.engine.initialize()
 		}
 
-		// at this point, we wanna to pass to onInitialize hook,
-		// a simple base context, without any registers extra
+		// if a initialize arrays is defined, execute them in parallel
+		if (Array.isArray(this.initialize) && this.initialize.length > 0) {
+			await Promise.all(
+				this.initialize.map(async (task) => await task()),
+			).catch((err) => {
+				console.error(err)
+				process.exit(1)
+			})
+		}
 
-		// fire onInitialize hook
+		// at this point, we wanna to execute the onInitialize hook,
+		// with a simple base context, without any registers extra
 		if (typeof this.onInitialize === "function") {
 			try {
 				await this.onInitialize()
@@ -205,16 +226,9 @@ class Server {
 			await registerBaseRoutes(this)
 		}
 
-		// if is a linebridge service, then initialize IPC Channels
-		if (process.env.lb_service) {
-			console.info("🚄 Starting IPC client")
-			this.ipc = global.ipc = new IPCClient(this, process)
-
-			await registerServiceToIPC(this)
-		}
-
+		// if gateway socket mode is enabled, send to gateway
 		if (process.env.LB_GATEWAY_SOCKET) {
-			console.info("🚀 Registering to Gateway")
+			console.info("Publishing to Gateway")
 			await registerGateway(this)
 		}
 

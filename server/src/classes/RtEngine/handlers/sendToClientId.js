@@ -1,13 +1,17 @@
 export default async function (client_id, event, data) {
-	if (
-		this.nats &&
-		typeof this.nats.operations?.sendToClientID === "function"
-	) {
-		return await this.nats.operations.sendToClientID(client_id, event, data)
-	}
-
 	if (!this.engine) {
 		throw new Error("Engine not initialized")
+	}
+
+	if (
+		this.server.nats &&
+		typeof this.server.nats.operations?.sendToClientID === "function"
+	) {
+		return await this.server.nats.operations.sendToClientID(
+			client_id,
+			event,
+			data,
+		)
 	}
 
 	// get the clients
