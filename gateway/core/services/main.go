@@ -1,14 +1,17 @@
 package services
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sync"
 	"time"
+	"ultragateway/utils"
 
 	"github.com/cloudwego/hertz/pkg/app/client"
 	"github.com/fsnotify/fsnotify"
@@ -135,11 +138,24 @@ func (s *Service) startProcessLocked() error {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", key, value))
 	}
 
-	// pipe stdout and stderr to the current process
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	// create transformers for stdout and stderr with service ID prefix
+	stdoutPipe, err := cmd.StdoutPipe()
+	if err != nil {
+		log.Printf("Failed to create stdout pipe for service [%s]: %v", s.ID, err)
+		return err
+	}
 
-	err := cmd.Start()
+	stderrPipe, err := cmd.StderrPipe()
+	if err != nil {
+		log.Printf("Failed to create stderr pipe for service [%s]: %v", s.ID, err)
+		return err
+	}
+
+	// start transformers in goroutines
+	go s.transformOutput(stdoutPipe, os.Stdout, "stdout")
+	go s.transformOutput(stderrPipe, os.Stderr, "stderr")
+
+	err = cmd.Start()
 	if err != nil {
 		log.Printf("Failed to start service [%s]: %v", s.ID, err)
 		return err
@@ -157,7 +173,6 @@ func (s *Service) startProcessLocked() error {
 }
 
 func (s *Service) monitorProcess(cmd *exec.Cmd) {
-	log.Printf("Service [%s] monitoring process PID %d", s.ID, cmd.Process.Pid)
 	err := cmd.Wait()
 
 	s.mutex.Lock()
@@ -257,6 +272,21 @@ func (s *Service) Stop() error {
 
 	log.Printf("Service [%s] stopped", s.ID)
 	return nil
+}
+
+func (s *Service) transformOutput(source io.Reader, destination io.Writer, streamType string) {
+	scanner := bufio.NewScanner(source)
+	colorCode := utils.GetColorFromString(s.ID)
+	prefix := fmt.Sprintf("%s[%s]%s ", colorCode, s.ID, utils.AnsiReset)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		fmt.Fprintf(destination, "%s%s\n", prefix, line)
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Printf("Service [%s] error reading %s: %v", s.ID, streamType, err)
+	}
 }
 
 func (s *Service) Restart() {
