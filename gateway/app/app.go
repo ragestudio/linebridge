@@ -13,6 +13,8 @@ import (
 	"sync"
 	"time"
 	"ultragateway/config"
+	"ultragateway/control_api"
+	control "ultragateway/control_api"
 	baseSrv "ultragateway/core/http"
 	"ultragateway/core/ipc"
 	"ultragateway/core/jsvm"
@@ -52,6 +54,7 @@ type AppData struct {
 	WebsocketManager *websocket.Instance
 	HttpPathsRefs    *sync.Map
 	JSVM             *jsvm.JSVM
+	ControlAPI       *control.ControlAPI
 }
 
 var Pwd string
@@ -129,6 +132,8 @@ func Start() {
 		HttpPathsRefs: &sync.Map{},
 	}
 
+	go appData.StartReadline()
+
 	// if INFISICAL env injection in available, go ahead
 	if os.Getenv("INFISICAL_CLIENT_ID") != "" {
 		log.Printf("Loading Infisical environment variables")
@@ -152,6 +157,13 @@ func Start() {
 				appData.Config.JWT.ECDSAPublicKey, _ = jwt.ParseECPublicKeyFromPEM(val)
 			}
 		}
+	}
+
+	// Initialize Control API
+	if appData.Config.ControlAPI.Enabled == true {
+		appData.ControlAPI = control_api.NewControlAPI(&control.NewControlAPIOptions{
+			Config: appData.Config,
+		})
 	}
 
 	// initialize NATS
@@ -257,9 +269,10 @@ func Start() {
 	serversWaitGroup.Add(1)
 
 	go baseSrv.CreateEngine(baseSrv.CreateEngineOptions{
-		WaitGroup:  serversWaitGroup,
-		Requests:   requests,
-		ListenPort: appCfg.Http.Port,
+		WaitGroup:    serversWaitGroup,
+		Requests:     requests,
+		ListenPort:   appCfg.Http.Port,
+		CustomRoutes: appCfg.Routes,
 	})
 
 	// Setup cleanup on exit
