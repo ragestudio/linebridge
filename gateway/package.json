@@ -11,8 +11,8 @@
 	},
 	"license": "MIT",
 	"bin": {
-		"linebridge-gateway": "./dist/ultragateway",
-		"linebridge-gateway-debug": "./debug.sh"
+		"linebridge-gateway": "./run",
+		"linebridge-gateway-debug": "./debug"
 	},
 	"scripts": {
 		"build": "make build",

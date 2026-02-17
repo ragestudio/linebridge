@@ -1,0 +1,22 @@
+#!/bin/sh
+BIN_DIR="./bin"
+BINARY_NAME="ultragateway"
+
+BIN_LINUX_AMD64v1="$BIN_DIR/$BINARY_NAME.linux.x86_64"
+BIN_LINUX_AMD64v3="$BIN_DIR/$BINARY_NAME.linux.v3.x86_64"
+BIN_LINUX_ARM64="$BIN_DIR/$BINARY_NAME.linux.aarch64"
+
+TARGET_ARCH=$(go version | grep -q "arm64" && echo "arm64" || echo "amd64")
+if lscpu 2>/dev/null | grep -q -E "avx2"; then
+    TARGET_ARCH_LEVEL="v3"
+else
+    TARGET_ARCH_LEVEL="v1"
+fi
+
+if [ "$TARGET_ARCH" = "arm64" ]; then
+    "$BIN_LINUX_ARM64"
+elif [ "$TARGET_ARCH_LEVEL" = "v3" ]; then
+    "$BIN_LINUX_AMD64v3"
+else
+    "$BIN_LINUX_AMD64v1"
+fi
