@@ -33,8 +33,20 @@ jobs:
         run: make binaries
         working-directory: ./gateway
 
-      - name: Upload artifacts
+      - name: Upload Linux AMD64 Binary
         uses: https://github.com/christopherHX/gitea-upload-artifact@v4
         with:
-          name: ultragateway-binaries
-          path: ./gateway/bin
+          name: ultragateway-linux-amd64
+          path: ./gateway/bin/ultragateway.linux.x86_64
+
+      - name: Upload Linux AMD64-v3 Binary
+        uses: https://github.com/christopherHX/gitea-upload-artifact@v4
+        with:
+          name: ultragateway-linux-amd64-v3
+          path: ./gateway/bin/ultragateway.linux.v3.x86_64
+
+      - name: Upload Linux ARM64 Binary
+        uses: https://github.com/christopherHX/gitea-upload-artifact@v4
+        with:
+          name: ultragateway-linux-arm64
+          path: ./gateway/bin/ultragateway.linux.aarch64
