@@ -17,8 +17,6 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
-var IsDebug bool = os.Getenv("DEBUG") == "true"
-
 type ServiceInterface interface {
 	Start() error
 	Stop() error
@@ -199,7 +197,7 @@ func (s *Service) monitorProcess(cmd *exec.Cmd) {
 		log.Printf("Service [%s] process exited with: %v", s.ID, err)
 
 		// handle auto-restart on crash only if not skipped
-		if IsDebug && !s.skipNextRestart && err != nil {
+		if !s.skipNextRestart && err != nil {
 			log.Printf("Service [%s] crashed, will restart in 1 second", s.ID)
 
 			time.AfterFunc(1*time.Second, func() {
