@@ -40,7 +40,7 @@ jobs:
           path: ./gateway/bin
 
   gitea_release:
-    needs: binaries
+    needs: build
     runs-on: ubuntu-latest
 
     env:
