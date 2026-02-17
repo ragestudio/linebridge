@@ -13,12 +13,14 @@ type ScriptConfig struct {
 }
 
 type BaseConfig struct {
-	Mode     string         `json:"mode"`
-	Http     HttpConfig     `json:"http"`
-	IPC      IPCConfig      `json:"ipc"`
-	Services ServicesConfig `json:"services"`
-	JWT      JWTConfig      `json:"jwt"`
-	Scripts  []ScriptConfig `json:"scripts"`
+	Mode       string           `json:"mode"`
+	Http       HttpConfig       `json:"http"`
+	IPC        IPCConfig        `json:"ipc"`
+	Services   ServicesConfig   `json:"services"`
+	JWT        JWTConfig        `json:"jwt"`
+	Scripts    []ScriptConfig   `json:"scripts"`
+	Routes     []CustomRoute    `json:"routes"`
+	ControlAPI ControlAPIConfig `json:"control_api"`
 }
 
 type HttpConfig struct {
@@ -47,4 +49,16 @@ type JWTConfig struct {
 	ECDSAPrivateKey *ecdsa.PrivateKey   `json:"ecdsa_private_key"`
 	ECDSAPublicKey  *ecdsa.PublicKey    `json:"ecdsa_public_key"`
 	UseKeys         []map[string]string `json:"use_keys"`
+}
+
+type CustomRoute struct {
+	Path        string            `json:"path"`
+	Target      string            `json:"target"`
+	PathRewrite map[string]string `json:"path_rewrite"`
+	Websocket   bool              `json:"websocket"`
+}
+
+type ControlAPIConfig struct {
+	Enabled bool   `json:"enabled"`
+	Listen  string `json:"listen"`
 }

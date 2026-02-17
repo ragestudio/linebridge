@@ -15,6 +15,7 @@ export default {
 		listenPort: 3000,
 		useEngine: "heng",
 		websockets: false,
+		nats: null,
 		bypassCors: false,
 		baseRoutes: true,
 		routesPath: path.resolve(process.cwd(), "routes"),

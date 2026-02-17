@@ -1,6 +1,6 @@
 {
 	"name": "linebridge-gateway",
-	"version": "0.6.0",
+	"version": "0.7.0",
 	"description": "High-performance http/websocket hybrid gateway for linebridge microservices",
 	"author": "RageStudio <support@ragestudio.net>",
 	"publishConfig": {
@@ -11,8 +11,8 @@
 	},
 	"license": "MIT",
 	"bin": {
-		"linebridge-gateway": "./dist/ultragateway",
-		"linebridge-gateway-debug": "./debug.sh"
+		"linebridge-gateway": "./run",
+		"linebridge-gateway-debug": "./debug"
 	},
 	"scripts": {
 		"build": "make build",

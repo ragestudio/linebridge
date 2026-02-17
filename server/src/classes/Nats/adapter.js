@@ -11,11 +11,11 @@ import sendToClientID from "./operations/sendToClientID"
 import sendToUserId from "./operations/sendToUserId"
 
 export default class NatsAdapter {
-	constructor(engine, params = {}) {
-		this.engine = engine
+	constructor(server, params = {}) {
+		this.server = server
 		this.params = params
 
-		this.refName = this.engine.server.constructor.refName
+		this.refName = this.server.constructor.refName
 		this.subscriptions = new Map()
 	}
 

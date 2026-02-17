@@ -1,6 +1,10 @@
 export default async function (user_id) {
-	if (this.nats) {
-		return await this.nats.operations.findClientsByUserId(user_id)
+	if (!this.engine) {
+		throw new Error("Engine not initialized")
+	}
+
+	if (this.server.nats) {
+		return await this.server.nats.operations.findClientsByUserId(user_id)
 	}
 
 	// initialize array to store matching clients

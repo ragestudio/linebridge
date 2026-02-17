@@ -1,4 +1,4 @@
-import NatsClient from "../client"
+import SyntheticClient from "../client"
 
 export default async function (message) {
 	let event = null
@@ -14,30 +14,30 @@ export default async function (message) {
 			return null
 		}
 
-		client = new NatsClient({
-			engine: this.engine,
+		client = new SyntheticClient({
+			engine: this.server.engine,
 			nats: this.nats,
-			headers: message.headers,
 			codec: this.codec,
+			headers: message.headers, // the client data is in the headers
 		})
 
 		if (event === "socket:connected") {
-			if (typeof this.engine.onConnection === "function") {
-				return await this.engine.onConnection(client)
+			if (typeof this.server.engine.ws.onConnection === "function") {
+				return await this.server.engine.ws.onConnection(client)
 			}
 
 			return null
 		}
 
 		if (event === "socket:disconnected") {
-			if (typeof this.engine.onDisconnect === "function") {
-				return await this.engine.onDisconnect(client)
+			if (typeof this.server.engine.ws.onDisconnect === "function") {
+				return await this.server.engine.ws.onDisconnect(client)
 			}
 
 			return null
 		}
 
-		handler = this.engine.events.get(event)
+		handler = this.server.engine.ws.events.get(event)
 
 		if (!handler) {
 			await client.ack(event, null, `No handler for event [${event}]`)
