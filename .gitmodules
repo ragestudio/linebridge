@@ -1,0 +1,3 @@
+[submodule "linebridge-gateway"]
+	path = linebridge-gateway
+	url = https://git.ragestudio.net/RageStudio/linebridge-gateway
