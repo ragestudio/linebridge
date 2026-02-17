@@ -36,8 +36,8 @@ jobs:
       - name: Upload binaries
         uses: https://github.com/christopherHX/gitea-upload-artifact@v4
         with:
-          name: bin
-          path: bin
+          name: ./gateway/bin
+          path: ./gateway/bin
 
   gitea_release:
     needs: binaries
