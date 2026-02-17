@@ -8,9 +8,9 @@ TARGET_BINARY_NAME=$(if $(BINARY_NAME),$(BINARY_NAME),ultragateway)
 TARGET_ARCH=$(if $(GOARCH),$(GOARCH),$(shell go version | grep -q "arm64" && echo "arm64" || echo "amd64"))
 TARGET_ARCH_LEVEL=$(if $(GOAMD64),$(GOAMD64),$(shell lscpu 2>/dev/null | grep -o -E "avx512" >/dev/null && echo "v4" || (lscpu 2>/dev/null | grep -o -E "avx2" >/dev/null && echo "v3" || echo "v2")))
 
-BIN_LINUX_AMD64v1=$(BUILD_DIR)/$(TARGET_BINARY_NAME).linux.x86_64
-BIN_LINUX_AMD64v3=$(BUILD_DIR)/$(TARGET_BINARY_NAME).linux.v3.x86_64
-BIN_LINUX_ARM64=$(BUILD_DIR)/$(TARGET_BINARY_NAME).linux.aarch64
+BIN_LINUX_AMD64v1=$(BUILD_DIR)/$(TARGET_BINARY_NAME)_linux_x86_64
+BIN_LINUX_AMD64v3=$(BUILD_DIR)/$(TARGET_BINARY_NAME)_linux_v3_x86_64
+BIN_LINUX_ARM64=$(BUILD_DIR)/$(TARGET_BINARY_NAME)_linux_aarch64
 
 VERSION=$(shell grep -o '"version": *"[^"]*"' package.json | cut -d'"' -f4)
 BUILD_DATE=$(shell date -u +%Y-%m-%d)
