@@ -2,7 +2,7 @@ import("./patches")
 
 import { EventEmitter } from "@foxify/events"
 
-import { IPCClient } from "./classes/IPC"
+import IPC from "./classes/IPC"
 import Route from "./classes/Route"
 
 import registerBaseRoutes from "./registers/baseRoutes"
@@ -139,7 +139,7 @@ class Server {
 			await this.nats.initialize()
 
 			console.info("Starting IPC client")
-			this.ipc = global.ipc = new IPCClient(this, process)
+			this.ipc = global.ipc = new IPC(this, this.nats.nats)
 		}
 
 		// initialize engine
