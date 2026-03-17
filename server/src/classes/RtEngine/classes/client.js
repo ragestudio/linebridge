@@ -79,7 +79,7 @@ class Client {
 	 * sends an error message to the client
 	 * converts error objects to strings for transmission
 	 * @param {Error|string} error - the error to send to client
-	 * @returns {any} result from emit operation
+	 * @returns {void}
 	 */
 	error(error) {
 		// convert error objects to string representation
@@ -88,7 +88,7 @@ class Client {
 		}
 
 		// emit the error as a standard error event
-		return this.emit("error", null, error)
+		this.emit("error", null, error)
 	}
 
 	/**
@@ -110,7 +110,7 @@ class Client {
 	 * subscribes the client to a topic/channel
 	 * notifies client of successful subscription
 	 * @param {string} topic - the topic name to subscribe to
-	 * @returns {any} result from socket subscription
+	 * @returns {void}
 	 */
 	subscribe(topic) {
 		// subscribe the underlying socket to the topic
@@ -118,15 +118,13 @@ class Client {
 
 		// notify client that subscription was successful
 		this.emit("topic:subscribed", topic)
-
-		return null
 	}
 
 	/**
 	 * unsubscribes the client from a topic/channel
 	 * notifies client of successful unsubscription
 	 * @param {string} topic - the topic name to unsubscribe from
-	 * @returns {any} result from socket unsubscription
+	 * @returns {void}
 	 */
 	unsubscribe(topic) {
 		// unsubscribe the underlying socket from the topic
@@ -134,8 +132,6 @@ class Client {
 
 		// notify client that unsubscription was successful
 		this.emit("topic:unsubscribed", topic)
-
-		return null
 	}
 
 	/**
