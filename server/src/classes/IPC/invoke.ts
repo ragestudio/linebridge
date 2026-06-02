@@ -1,5 +1,5 @@
-import { headers } from "nats"
-import type { Msg } from "nats"
+import { headers } from "@nats-io/transport-node"
+import type { Msg } from "@nats-io/transport-node"
 import type IPC from "./index"
 
 type invoke = (this: IPC, message: Msg) => Promise<void>

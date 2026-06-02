@@ -1,4 +1,4 @@
-import type { Msg } from "nats"
+import type { Msg } from "@nats-io/transport-node"
 import type IPC from "./index"
 
 type handleReceivedEvent = (this: IPC, message: Msg) => Promise<void>

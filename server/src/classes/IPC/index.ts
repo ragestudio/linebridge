@@ -1,8 +1,18 @@
-import { JSONCodec } from "nats"
-import type { NatsConnection } from "nats"
+import { Codec } from "@nats-io/transport-node"
+import type { NatsConnection } from "@nats-io/transport-node"
 
 import handleReceivedEvent from "./handleReceivedEvent"
 import invoke from "./invoke"
+
+class JSONCodec implements Codec<any> {
+	encode(data: any): Uint8Array {
+		return Buffer.from(JSON.stringify(data))
+	}
+
+	decode(data: any): any {
+		return JSON.parse(data)
+	}
+}
 
 class IPC {
 	constructor(server: any, nats: NatsConnection) {
@@ -37,7 +47,7 @@ class IPC {
 
 	server: any
 	nats: NatsConnection
-	codec = JSONCodec()
+	codec = new JSONCodec()
 
 	get isAvailable() {
 		if (!this.nats) {
