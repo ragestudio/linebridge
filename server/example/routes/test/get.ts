@@ -1,8 +1,8 @@
-import API from "@/index"
+import Main from "@/index"
 
-export default defineRoute<API>({
+export default defineRoute<Main>()({
 	useMiddlewares: ["test"],
-	useContexts: ["sum", "server"],
+	useContexts: ["sum", "server"] as const,
 	fn: (req, res, ctx) => {
 		const testSum = ctx.sum(5, 10)
 
