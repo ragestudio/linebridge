@@ -5,17 +5,13 @@ import Vars from "../vars"
 import type Server from "../server"
 import type { Route } from "../classes/Route"
 
+import MainBaseRoute from "../baseRoutes/main"
+import MapBaseRoute from "../baseRoutes/map"
+
+const base_routes = [MainBaseRoute, MapBaseRoute]
+
 export default async (server: Server): Promise<void> => {
-	const scanPath = path.resolve(Vars.libPath, "baseRoutes")
-	const files = fs.readdirSync(scanPath)
-
-	for await (const file of files) {
-		if (file === "index.js") {
-			continue
-		}
-
-		let mod = await import(path.join(scanPath, file))
-
-		server.engine.register(new (mod.default as typeof Route<Server>)())
+	for await (const route of base_routes) {
+		server.engine.register(new (route as typeof Route<Server>)())
 	}
 }

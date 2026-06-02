@@ -1,5 +1,5 @@
 import path from "node:path"
-import type { ServerParams } from "./types"
+import type { ServerParams } from "./server"
 
 declare const __dirname: string
 

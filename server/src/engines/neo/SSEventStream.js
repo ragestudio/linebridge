@@ -1,4 +1,4 @@
-export default class SSEventStream {
+export class SSEventStream {
 	_response
 
 	#wrote_headers = false
@@ -111,3 +111,5 @@ export default class SSEventStream {
 		return !this._response.completed
 	}
 }
+
+export default SSEventStream

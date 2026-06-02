@@ -1,4 +1,4 @@
-import { Server } from "../src/server"
+import { Server } from "../src"
 
 export default class ExampleAPI extends Server {
 	static useMiddlewares = ["logs"]

@@ -1,6 +1,6 @@
 {
 	"name": "linebridge",
-	"version": "2.0.0-alpha.2",
+	"version": "2.0.0-alpha9",
 	"license": "MIT",
 	"description": "Multiproposal framework to build fast, scalable, and secure servers.",
 	"author": "RageStudio <support@ragestudio.net>",
@@ -10,6 +10,7 @@
 	"publishConfig": {
 		"access": "public"
 	},
+	"types": "./dist/index.d.ts",
 	"main": "./dist/index.js",
 	"bin": {
 		"linebridge-boot": "./bootloader/bin"
@@ -17,14 +18,8 @@
 	"engines": {
 		"node": ">24.0.0"
 	},
-	"files": [
-		"bootloader/**/**",
-		"src/**/**",
-		"dist/**/**",
-		"./package.json"
-	],
 	"scripts": {
-		"build": "hermes build --parallel --clean"
+		"build": "tsdown && cp -r bootloader build && cp package.json build && cp README.md build"
 	},
 	"optionalDependencies": {
 		"@infisical/sdk": "^5.0.2",
@@ -51,6 +46,7 @@
 		"@types/cookie-signature": "^1.1.2",
 		"@types/express": "^5.0.6",
 		"@types/mime-types": "^3.0.1",
-		"@types/node": "^25.9.1"
+		"@types/node": "^25.9.1",
+		"tsdown": "^0.22.1"
 	}
 }

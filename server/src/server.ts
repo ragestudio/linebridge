@@ -91,7 +91,7 @@ export class Server {
 	// instance properties
 	params: ServerParams
 
-	base_contexts = {
+	base_contexts: { server: Server } = {
 		server: this,
 	}
 	base_middlewares = {

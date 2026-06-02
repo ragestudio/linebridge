@@ -106,7 +106,7 @@ function to_forward_slashes(string) {
 	return string.split("\\").join("/")
 }
 
-module.exports = {
+export {
 	array_buffer_to_string,
 	wrap_object,
 	async_wait,

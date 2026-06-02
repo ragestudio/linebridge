@@ -2,7 +2,7 @@ import FileSystem from "fs"
 import EventEmitter from "events"
 import { wrap_object, async_wait } from "./utils.js"
 
-export default class LiveFile extends EventEmitter {
+export class LiveFile extends EventEmitter {
 	#name
 	#watcher
 	#extension
@@ -172,3 +172,5 @@ export default class LiveFile extends EventEmitter {
 		return this.#watcher
 	}
 }
+
+export default LiveFile

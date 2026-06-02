@@ -20,7 +20,6 @@ global["paths"] = {
 }
 
 global["aliases"] = {
-	linebridge: path.resolve(__dirname, "../", "src"),
 	// expose src
 	"@": global.paths.__src,
 

@@ -1,10 +1,9 @@
 import uWebsockets from "uWebSockets.js"
 
-import Route from "../router/Route.js"
-import Websocket from "./Websocket.js"
-import { wrap_object, array_buffer_to_string } from "../../shared/operators.js"
+import Websocket from "./Websocket"
+import { wrap_object, array_buffer_to_string } from "../utils"
 
-export default class WebsocketRoute extends Route {
+export default class WebsocketRoute {
 	#upgrade_with
 	#message_parser
 	options = {
@@ -16,9 +15,6 @@ export default class WebsocketRoute extends Route {
 	}
 
 	constructor({ app, pattern, handler, options }) {
-		// Initialize the super Router class
-		super({ app, method: "ws", pattern, options, handler })
-
 		// Wrap local default options with user specified options
 		wrap_object(this.options, options)
 		this.#message_parser = this._get_message_parser(
