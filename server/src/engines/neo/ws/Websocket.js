@@ -1,4 +1,4 @@
-import EventEmitter from "events"
+import { EventEmitter } from "tseep/lib/ee-safe"
 import { Readable, Writable } from "stream"
 import { array_buffer_to_string } from "../utils.js"
 
