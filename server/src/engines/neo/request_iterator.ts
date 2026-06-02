@@ -17,6 +17,22 @@ export default async function (
 	const middleware = allMiddlewares[cursor]
 
 	try {
+		if (
+			cursor == 0 &&
+			request._body_parser_run(response, this.options.max_body_length)
+		) {
+			response._cork = true
+
+			if (
+				request._body_expected_bytes > -1 ||
+				request._body_chunked_transfer
+			) {
+				await request.parseBody()
+			}
+
+			if (response.completed) return
+		}
+
 		if (middleware) {
 			response._track_middleware_cursor(cursor)
 
@@ -42,19 +58,8 @@ export default async function (
 				await next()
 			}
 		} else {
-			if (
-				request._body_parser_run(response, this.options.max_body_length)
-			) {
-				if (
-					request._body_expected_bytes > -1 ||
-					request._body_chunked_transfer
-				) {
-					await request.parseBody()
-				}
-
-				await route.handler.execute(request, response)
-				if (!response.completed) response._cork = true
-			}
+			await route.handler.execute(request, response)
+			if (!response.completed) response._cork = true
 		}
 	} catch (error: any) {
 		console.error("Unhandled error:", error)

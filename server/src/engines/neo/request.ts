@@ -200,6 +200,13 @@ export default class Request<TServer extends Server>
 			return
 
 		this._body_parser_flushing = true
+
+		// resolve any pending passthrough promise so parseBody does not hang
+		if (this._body_parser_mode === 1 && this._body_parser_passthrough) {
+			this._body_parser_passthrough(new Uint8Array(0), true)
+			this._body_parser_passthrough = null
+		}
+
 		this.push(null)
 		this.resume()
 	}
@@ -213,12 +220,12 @@ export default class Request<TServer extends Server>
 		if (incoming_bytes > this._body_limit_bytes) {
 			this._body_parser_stop()
 
-			if (!response.initiated) {
-				if (this.engine?.options.fast_abort) {
-					response.close()
-				} else if (this.received) {
-					response.status(413).send()
-				}
+			if (this.engine?.options.fast_abort) {
+				response.close()
+			} else if (response.initiated) {
+				response.close()
+			} else {
+				response.status(413).send()
 			}
 			return true
 		}
@@ -271,8 +278,16 @@ export default class Request<TServer extends Server>
 
 			this.emit("received", this._body_received_bytes)
 
-			if (this._body_parser_flushing)
+			if (this._body_parser_flushing) {
+				if (
+					this._body_parser_mode === 1 &&
+					this._body_parser_passthrough
+				) {
+					this._body_parser_passthrough(new Uint8Array(0), true)
+				}
+
 				this._body_parser_enforce_limit(response)
+			}
 		}
 	}
 
@@ -357,6 +372,12 @@ export default class Request<TServer extends Server>
 			}
 			this._body_parser_mode = 1
 			this._body_parser_flush_buffered()
+
+			// ensure passthrough resolves if all data was already received
+			// but the buffer was empty (e.g. data consumed by stream reader before parseBody)
+			if (this.received && this._body_parser_passthrough) {
+				this._body_parser_passthrough(new Uint8Array(0), true)
+			}
 		})
 		return this._received_data_promise
 	}
@@ -407,6 +428,7 @@ export default class Request<TServer extends Server>
 
 		this._json_promise = this._resolve_raw_body().then((raw) => {
 			const text = this._uint8_to_string(raw)
+
 			try {
 				this._body = JSON.parse(text)
 			} catch (error) {

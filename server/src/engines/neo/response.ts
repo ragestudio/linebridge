@@ -310,7 +310,12 @@ export default class Response<TServer extends Server>
 				this.write(body)
 			}
 
-			this.end()
+			if (!this._streaming) {
+				this._streaming = true
+				this.once("finish", () => this.send())
+			}
+
+			super.end()
 			return this
 		}
 
