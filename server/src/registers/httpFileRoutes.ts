@@ -1,9 +1,8 @@
 import fs from "node:fs"
 
-import Route from "../classes/Route"
+import Route, { RouteHttpMethods } from "../classes/Route"
 import RecursiveRegister from "../utils/recursiveRegister"
 import type Server from "../server"
-import { RouteHttpMethods } from "../classes/Route"
 
 const parametersRegex = /\[([a-zA-Z0-9_]+)\]/g
 
@@ -25,9 +24,7 @@ export default async (
 		onMatch: async ({ absolutePath, relativePath }) => {
 			const paths = relativePath.split("/")
 
-			let method = paths[paths.length - 1]
-				.split(".")[0]
-				.toLocaleLowerCase()
+			let method = paths[paths.length - 1].split(".")[0].toLocaleLowerCase()
 			let path = paths.slice(0, paths.length - 1).join("/")
 
 			path = path.replace(parametersRegex, ":$1")
@@ -42,7 +39,7 @@ export default async (
 
 			path = `/${path}`
 
-			let fileObj = await import(absolutePath)
+			let fileObj = require(absolutePath)
 
 			fileObj = fileObj.default ?? fileObj
 

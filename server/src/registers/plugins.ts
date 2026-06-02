@@ -3,8 +3,7 @@ import path from "node:path"
 import type Server from "../server"
 
 const pluginsPath =
-	process.env.LINEBRIDGE_PLUGINS_PATH ??
-	path.join(process.cwd(), "lb-plugins")
+	process.env.LINEBRIDGE_PLUGINS_PATH ?? path.join(process.cwd(), "lb-plugins")
 
 export default async (server: Server): Promise<void | null> => {
 	if (typeof process.env.LINEBRIDGE_PLUGINS !== "string") {
@@ -21,7 +20,7 @@ export default async (server: Server): Promise<void | null> => {
 			continue
 		}
 
-		let Plugin = await import(pluginPath)
+		let Plugin = require(pluginPath)
 
 		if (typeof Plugin.default === "undefined") {
 			console.error(`Plugin ${pluginName} is not a valid plugin`)

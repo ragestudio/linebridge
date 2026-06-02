@@ -4,7 +4,8 @@ export default defineConfig([
 	{
 		entry: ["src/index.ts", "src/server.ts", "src/global.js"],
 		outDir: "./build/dist",
-		format: "cjs",
+		target: "node24",
+		format: "commonjs",
 		platform: "node",
 		dts: true,
 		clean: true,
@@ -18,9 +19,7 @@ export default defineConfig([
 			}
 		},
 		minify: {
-			mangle: {
-				keepNames: true,
-			},
+			mangle: false,
 		},
 	},
 ])

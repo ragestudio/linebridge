@@ -22,7 +22,7 @@ export default async (
 			relativePath = relativePath.split(".")[0]
 
 			const paths = relativePath.split("/")
-			let fileObj = await import(absolutePath)
+			let fileObj = require(absolutePath)
 
 			fileObj = fileObj.default ?? fileObj
 
@@ -30,9 +30,7 @@ export default async (
 
 			if (typeof fileObj !== "function") {
 				if (typeof fileObj.fn !== "function") {
-					console.warn(
-						`Missing fn handler in websocket file event [${route}]`,
-					)
+					console.warn(`Missing fn handler in websocket file event [${route}]`)
 					return false
 				}
 			}
