@@ -4,6 +4,12 @@ const Watcher = require("./libs/watcher.js")
 
 const bootloaderPath = path.resolve(__dirname, "boot.js")
 const mainModulePath = process.argv[2]
+
+if (!mainModulePath) {
+	console.error("[BOOT] No main script provided")
+	process.exit(1)
+}
+
 const mainModuleSrc = path.resolve(process.cwd(), path.dirname(mainModulePath))
 
 let childProcessInstance = null

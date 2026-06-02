@@ -1,6 +1,6 @@
 const InfisicalLib = require("./libs/infisical")
 
-module.exports = async function Boot(main) {
+async function Boot(main) {
 	if (!main) {
 		throw new Error("main class is not defined")
 	}
@@ -10,13 +10,11 @@ module.exports = async function Boot(main) {
 	)
 
 	if (
+		InfisicalLib.client &&
 		process.env.INFISICAL_CLIENT_ID &&
 		process.env.INFISICAL_CLIENT_SECRET &&
 		typeof InfisicalLib.LoadFromEnv === "function"
 	) {
-		console.log(
-			`[BOOT] INFISICAL Credentials found, loading ENV variables from INFISICAL...`,
-		)
 		await InfisicalLib.LoadFromEnv()
 	}
 
@@ -46,3 +44,5 @@ module.exports = async function Boot(main) {
 
 	return instance
 }
+
+module.exports = Boot

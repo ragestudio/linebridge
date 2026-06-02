@@ -1,6 +1,6 @@
-// use sucrase transcompiler
-require("sucrase/register")
-require("dotenv").config()
+require("dotenv").config({
+	quiet: true,
+})
 
 const path = require("node:path")
 const Module = require("node:module")
@@ -20,6 +20,7 @@ global["paths"] = {
 }
 
 global["aliases"] = {
+	linebridge: path.resolve(__dirname, "../", "src"),
 	// expose src
 	"@": global.paths.__src,
 
@@ -44,6 +45,8 @@ global["aliases"] = {
 try {
 	// apply global functions & patches
 	require("./globals.js")
+	// use sucrase transcompiler
+	require("sucrase/register")
 
 	// Apply aliases
 	Aliases.registerBase(global.paths.__src, global["aliases"])
