@@ -1,0 +1,17 @@
+{
+	"$schema": "http://json.schemastore.org/tsconfig",
+	"compilerOptions": {
+		"target": "ESNext",
+		"module": "ESNext",
+		"allowSyntheticDefaultImports": true,
+		"strict": false,
+		"noImplicitAny": false,
+		"skipLibCheck": true,
+		"paths": {
+			"linebridge": ["../src/*"],
+			"@/*": ["./*"],
+		},
+	},
+	"files": ["../src/global.d.ts"],
+	"include": ["**/*.ts", "types/**/*.d.ts"],
+}
