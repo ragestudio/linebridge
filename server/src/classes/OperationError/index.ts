@@ -1,4 +1,4 @@
-export default class OperationError extends Error {
+export class OperationError extends Error {
 	code: number
 
 	constructor(code: number = 500, message: string) {
@@ -6,3 +6,6 @@ export default class OperationError extends Error {
 		this.code = code
 	}
 }
+
+export type OperationErrorType = typeof OperationError
+export default OperationError

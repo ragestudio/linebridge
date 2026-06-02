@@ -29,12 +29,28 @@ export interface RouteObject<
 		: HttpHandlerFunction<Pick<Contexts<Child>, SelectedCtx>>
 }
 
-export const defineRoute = <
-	Child extends Server,
-	SelectedCtx extends ContextsKeys<Child> = ContextsKeys<Child>,
->(
-	route: RouteObject<Child, SelectedCtx>,
-) => route
+export function defineRoute<Child extends Server>() {
+	return <
+		UseContexts extends readonly ContextsKeys<Child>[] = readonly [],
+		Type extends RouteTypes = "http",
+	>(route: {
+		useMiddlewares?: MiddlewaresKeys<Child>[]
+		useContexts?: UseContexts
+		fn: Type extends "ws"
+			? WebsocketHandlerFunction<
+					UseContexts extends readonly [any, ...any[]]
+						? Pick<Contexts<Child>, UseContexts[number]>
+						: unknown
+				>
+			: HttpHandlerFunction<
+					UseContexts extends readonly [any, ...any[]]
+						? Pick<Contexts<Child>, UseContexts[number]>
+						: unknown
+				>
+	}): typeof route => route
+}
+
+export type DefineRoute = typeof defineRoute
 
 export class Route<
 	TServer extends Server,

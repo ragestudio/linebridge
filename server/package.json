@@ -1,6 +1,6 @@
 {
 	"name": "linebridge",
-	"version": "2.0.0-alpha14",
+	"version": "2.0.0-alpha15",
 	"license": "MIT",
 	"description": "Multiproposal framework to build fast, scalable, and secure servers.",
 	"author": "RageStudio <support@ragestudio.net>",
@@ -10,7 +10,7 @@
 	"publishConfig": {
 		"access": "public"
 	},
-	"types": "./dist/global.d.ts",
+	"types": "./dist/index.d.ts",
 	"main": "./dist/index.js",
 	"bin": {
 		"linebridge-boot": "./bootloader/bin"
