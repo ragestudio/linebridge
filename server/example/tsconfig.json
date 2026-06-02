@@ -11,6 +11,6 @@
 			"@/*": ["./*"],
 		},
 	},
-	"files": ["../src/global.d.ts"],
+	"files": ["../build/dist/global.d.ts"],
 	"include": ["**/*.ts", "types/**/*.d.ts"],
 }

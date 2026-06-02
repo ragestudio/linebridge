@@ -2,16 +2,19 @@ import { defineConfig } from "tsdown"
 
 export default defineConfig([
 	{
-		entry: ["src/index.ts", "src/server.ts", "src/global.js"],
+		entry: ["src/index.ts", "src/server.ts"],
 		outDir: "./build/dist",
 		target: "node24",
 		format: "commonjs",
 		platform: "node",
-		dts: true,
+		dts: {
+			cjsReexport: true,
+		},
 		clean: true,
+		cjsDefault: false,
 		sourcemap: false,
 		unbundle: true,
-		treeshake: true,
+		treeshake: false,
 		outExtensions({ format, pkgType }) {
 			return {
 				js: ".js",
