@@ -1,6 +1,6 @@
 {
 	"name": "linebridge",
-	"version": "2.0.0-alpha15",
+	"version": "2.0.0-alpha16",
 	"license": "MIT",
 	"description": "Multiproposal framework to build fast, scalable, and secure servers.",
 	"author": "RageStudio <support@ragestudio.net>",
@@ -33,6 +33,7 @@
 		"cookie-signature": "^1.2.2",
 		"dotenv": "^17.4.2",
 		"fast-json-stringify": "^6.4.0",
+		"fast-querystring": "^1.1.2",
 		"mime-types": "^3.0.2",
 		"minimatch": "^10.2.5",
 		"module-alias": "^2.3.4",
@@ -41,7 +42,6 @@
 		"uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.68.0"
 	},
 	"devDependencies": {
-		"@ragestudio/hermes": "^1.0.1",
 		"@types/busboy": "^1.5.4",
 		"@types/cookie-signature": "^1.1.2",
 		"@types/express": "^5.0.6",
