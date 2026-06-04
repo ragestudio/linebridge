@@ -75,7 +75,7 @@ export interface ServerLike {
 export type ConstructorParams = Partial<ServerParams>
 export type ExtendedServer<T extends Server> = Server & T
 
-export class Server {
+export class Server<EngineType extends EngineAdaptor = EngineAdaptor> {
 	// static properties that subclasses can override
 	static refName?: string
 	static useEngine?: string
@@ -105,7 +105,7 @@ export class Server {
 	eventBus = new EventEmitter()
 	headers: Record<string, string> = {}
 	events: Record<string, (...args: any[]) => void> = {}
-	engine!: EngineAdaptor
+	engine!: EngineType
 	nats: any = null
 	ipc: any = null
 	plugins: Map<string, ServerPlugin> = new Map()
@@ -223,8 +223,6 @@ export class Server {
 
 		// resolve current local private address of the host
 		this.localAddress = getHostAddress()
-
-		this.contexts["server"] = this
 
 		// register declared events to eventBus
 		for (const [eventName, eventHandler] of Object.entries(this.events)) {
