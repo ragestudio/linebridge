@@ -2,8 +2,7 @@ import type { MiddlewareHandlerFunction } from "../../classes/Handler/middleware
 
 const isProduction = process.env.NODE_ENV === "production"
 
-const noop: MiddlewareHandlerFunction<any, any> = async (req, res, next) =>
-	next()
+const noop: MiddlewareHandlerFunction<any, any> = (req, res, next) => next()
 
 function humanFormatTime(ms: number): string {
 	if (ms < 1) {
@@ -28,6 +27,9 @@ const loggerImpl: MiddlewareHandlerFunction<any, any> = async (
 	res,
 	next,
 ) => {
+	const startDate = new Date().toISOString()
+	const startTime = performance.now()
+
 	res.on("finish", () => {
 		let url = req.url
 
@@ -36,10 +38,13 @@ const loggerImpl: MiddlewareHandlerFunction<any, any> = async (
 		}
 
 		const status = res._status_code ?? res.statusCode ?? 200
+		const elapsed = performance.now() - startTime
 
-		process.stdout.write(
-			`[${req._start_time}] ${req.method} ${status} ${url} ${humanFormatTime(performance.now() - req._start_time_hr)}\n`,
-		)
+		setImmediate(() => {
+			process.stdout.write(
+				`[${startDate}] ${req.method} ${status} ${url} ${humanFormatTime(elapsed)}\n`,
+			)
+		})
 	})
 
 	next()
