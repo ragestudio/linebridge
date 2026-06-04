@@ -30,7 +30,7 @@ export interface RouteObject<
 }
 
 export function defineRoute<Child extends Server>() {
-	return <
+	const define = <
 		UseContexts extends readonly ContextsKeys<Child>[] = readonly [],
 		Type extends RouteTypes = "http",
 	>(route: {
@@ -48,15 +48,19 @@ export function defineRoute<Child extends Server>() {
 						: unknown
 				>
 	}): typeof route => route
+
+	return define
 }
 
 export type DefineRoute = typeof defineRoute
 
 export class Route<
-	TServer extends Server,
+	TServer extends Server = Server,
 	TContextKeys extends MiddlewaresKeys<TServer>[] =
 		MiddlewaresKeys<TServer>[],
 > {
+	_constructed: boolean = false
+
 	server!: TServer
 
 	kind: HandlerKind = HandlerKind.http
@@ -74,6 +78,8 @@ export class Route<
 	get engine() {
 		return this.server.engine
 	}
+
+	constructor() {}
 
 	_initialize = (
 		server: TServer,
