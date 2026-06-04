@@ -12,7 +12,11 @@ export class EngineAdaptor {
 	ws!: any
 
 	registers: Set<Record<string, string>> = new Set()
-	register!: (route: Route<typeof this.server>) => void
+	register!: (
+		route:
+			| Route<typeof this.server>
+			| (new () => Route<typeof this.server>),
+	) => void
 	register_middleware!: (middleware: MiddlewareHandlerFunction) => void
 
 	initialize!: () => Promise<void>
