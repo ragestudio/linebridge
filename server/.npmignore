@@ -1,3 +1,4 @@
 .experimental
 .npmrc
 build
+.log
