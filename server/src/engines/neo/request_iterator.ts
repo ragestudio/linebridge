@@ -4,6 +4,8 @@ import type Response from "./response"
 import type { Route } from "../../classes/Route"
 import type { Handler } from "../../classes/Handler"
 
+const BODYLESS_METHODS = new Set(["GET", "HEAD", "OPTIONS", "TRACE"])
+
 export default async function (
 	this: Engine,
 	request: Request<any>,
@@ -17,20 +19,15 @@ export default async function (
 	const middleware = allMiddlewares[cursor]
 
 	try {
-		if (
-			cursor == 0 &&
-			request._body_parser_run(response, this.options.max_body_length)
-		) {
+		if (cursor == 0) {
 			response._cork = true
 
-			if (
-				request._body_expected_bytes > -1 ||
-				request._body_chunked_transfer
-			) {
+			if (!BODYLESS_METHODS.has(request._method)) {
+				request._body_parser_run(response, this.options.max_body_length)
 				await request.parseBody()
-			}
 
-			if (response.completed) return
+				if (response.completed) return
+			}
 		}
 
 		if (middleware) {
@@ -52,14 +49,11 @@ export default async function (
 
 			await middleware.execute(request, response, next)
 
-			// auto-continue if middleware did not call next()
-			// and the response has not been sent yet
 			if (!nextCalled && !response.completed) {
 				await next()
 			}
 		} else {
 			await route.handler.execute(request, response)
-			if (!response.completed) response._cork = true
 		}
 	} catch (error: any) {
 		console.error("Unhandled error:", error)

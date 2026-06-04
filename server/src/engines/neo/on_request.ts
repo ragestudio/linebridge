@@ -9,42 +9,42 @@ import type {
 import type { Route } from "../../classes/Route"
 import type Engine from "."
 
-export default async function (
+const BODYLESS_METHODS = new Set(["GET", "HEAD", "OPTIONS", "TRACE"])
+const EMPTY_NEXT = () => {}
+
+export default function (
 	this: Engine,
 	native_req: HttpRequest,
 	native_res: HttpResponse,
-	route: Route<typeof this.server>,
+	route: Route<any>,
 	socket?: us_socket_context_t | null,
-): Promise<any> {
+): any {
 	try {
-		// construct the request
-		const request = new Request(route, native_req, native_res)
+		const request = Request.create(route, native_req, native_res)
+		const response = Response.create(native_res, route, request, socket)
 
-		// construct the response
-		const response = new Response(native_res)
-		response.route = route
-		response._wrapped_request = request
-		response._upgrade_socket = socket || null
-
-		// If we are in the process of gracefully shutting down, we must immediately close the request
 		if (this.pending_requests_zero_handler) return response.close()
 
-		// if no valid handler, just treat as 404 but emit a warning
 		if (!route.handler) {
 			console.warn(
-				`Route [${route.path}] is registered, but does not have a valid handler. Maybe is not properly initialized with a "Route" class.`,
+				`Route [${route.path}] is registered, but does not have a valid handler.`,
 			)
-
 			this.defaultResponse(request, response)
 			return null
 		}
 
-		// Increment the pending request count
 		this.pending_requests_count++
 
-		const allMiddlewares = [...this.middlewares, ...route.middlewares]
+		if (this.middlewares.length <= 1 && route.middlewares.length === 0) {
+			return _fastPath.call(this, request, response, route)
+		}
 
-		await this.request_iterator(request, response, route, allMiddlewares)
+		const allMiddlewares =
+			route.middlewares.length > 0
+				? [...this.middlewares, ...route.middlewares]
+				: this.middlewares
+
+		return this.request_iterator(request, response, route, allMiddlewares)
 	} catch (exception: any) {
 		console.error("Internal fatal error:", exception)
 
@@ -52,5 +52,91 @@ export default async function (
 		native_res.end(
 			JSON.stringify({ fatal: true, error: exception.message }),
 		)
+	}
+}
+
+function _fastPath(
+	this: Engine,
+	request: Request<any>,
+	response: Response<any>,
+	route: Route<any>,
+): any {
+	if (this.middlewares.length === 1) {
+		const mwResult = this.middlewares[0].fn(request, response, EMPTY_NEXT)
+
+		if (mwResult instanceof Promise) {
+			return mwResult.then(() => {
+				if (response.completed) return
+				return _executeHandler.call(this, request, response, route)
+			})
+		}
+
+		if (response.completed) return
+	}
+
+	return _executeHandler.call(this, request, response, route)
+}
+
+function _executeHandler(
+	this: Engine,
+	request: Request<any>,
+	response: Response<any>,
+	route: Route<any>,
+): any {
+	response._cork = true
+
+	if (!BODYLESS_METHODS.has(request._method)) {
+		//response._cork = true
+		request._body_parser_run(response, this.options.max_body_length)
+
+		return request.parseBody().then(() => {
+			if (response.completed) {
+				return
+			}
+
+			return _invokeHandler(request, response, route)
+		})
+	}
+
+	return _invokeHandler(request, response, route)
+}
+
+function _invokeHandler(
+	request: Request<any>,
+	response: Response<any>,
+	route: Route<any>,
+): any {
+	try {
+		const result = route.handler.fn(request, response, request.ctx)
+
+		if (result instanceof Promise) {
+			return result.then(
+				(r: any) => {
+					console.log(r)
+					if (r && !response.completed) {
+						response._headers["content-type"] = "application/json"
+						response._sendFast(JSON.stringify(r))
+					}
+				},
+				(error: any) => {
+					if (!response.completed) {
+						response.status(500).json({
+							error: error.message,
+						})
+					}
+				},
+			)
+		}
+
+		if (result && !response.completed) {
+			response._headers["content-type"] = "application/json"
+			const body =
+				typeof result === "string" ? result : JSON.stringify(result)
+			response._sendFast(body)
+		}
+	} catch (error: any) {
+		if (!response.completed) {
+			response.status(500).json({ error: error.message })
+		}
 	}
 }

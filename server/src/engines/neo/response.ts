@@ -2,7 +2,6 @@ import cookie from "cookie"
 import signature from "cookie-signature"
 import { STATUS_CODES } from "http"
 import mime_types from "mime-types"
-import stream from "stream"
 
 import LiveFile from "./LiveFile"
 import SSEventStream from "./SSEventStream"
@@ -23,52 +22,112 @@ for (const code in STATUS_CODES) {
 	STATUS_CACHE[code as unknown as number] = `${code} ${STATUS_CODES[code]}`
 }
 
-export default class Response<TServer extends Server>
-	extends stream.Writable
-	implements BaseHttpResponse
-{
-	_sse: SSEventStream | null = null
-	_locals: any = null
-	route: Route<TServer> | null = null
-	_corked: boolean = false
-	_streaming: boolean = false
-	_middleware_cursor: number = -1
-	_wrapped_request: any = null
-	_upgrade_socket: any = null
-	_raw_response: HttpResponse | null = null
-	_status_code: number = 200
-	_status_message: string | null = null
+type EventHandler = (...args: any[]) => void
 
-	_headers: Record<string, string | string[]> = Object.create(null)
-	_cookies: Record<string, string> | null = null
-
-	_cork: boolean = false
-	completed: boolean = false
-	initiated: boolean = false
+export default class Response<
+	TServer extends Server,
+> implements BaseHttpResponse {
+	_sse!: SSEventStream | null
+	_locals!: any
+	route!: Route<TServer> | null
+	_streaming!: boolean
+	_middleware_cursor!: number
+	_wrapped_request!: any
+	_upgrade_socket!: any
+	_raw_response!: HttpResponse | null
+	_status_code!: number
+	_status_message!: string | null
+	_headers!: Record<string, string | string[]>
+	_cookies!: Record<string, string> | null
+	completed!: boolean
+	initiated!: boolean
+	_cork!: boolean
+	_corked!: boolean
+	_drain_handler!: ((offset: number) => boolean) | null
+	_events!: Record<string, EventHandler[]> | null
 
 	get engine(): EngineAdaptor | null {
 		return this.route?.engine ?? null
 	}
 
-	constructor(raw_response: HttpResponse) {
-		super()
-		this._raw_response = raw_response
+	constructor() {}
+
+	static create<TServer extends Server>(
+		raw_response: HttpResponse,
+		route: Route<TServer>,
+		request: any,
+		socket: any,
+	): Response<TServer> {
+		const res = new Response<TServer>()
+
+		res._raw_response = raw_response
+		res.route = route
+		res._wrapped_request = request
+		res._upgrade_socket = socket || null
+		res._headers = {}
+		res._status_code = 200
+		res._middleware_cursor = -1
 
 		raw_response.onAborted(() => {
-			if (this.completed) return
-			this.completed = true
+			if (res.completed) return
+			res.completed = true
 
-			this.route?.server.engine._resolve_pending_request()
-			this._wrapped_request._body_parser_stop()
+			res.route?.server.engine._resolve_pending_request()
+			res._wrapped_request._body_parser_stop()
 
-			if (this.listenerCount("abort") > 0) {
-				this.emit("abort", this._wrapped_request, this)
+			if (res._events?.abort) {
+				for (let i = 0; i < res._events.abort.length; i++) {
+					res._events.abort[i](res._wrapped_request, res)
+				}
 			}
 
-			if (this.listenerCount("close") > 0) {
-				this.emit("close", this._wrapped_request, this)
+			if (res._events?.close) {
+				for (let i = 0; i < res._events.close.length; i++) {
+					res._events.close[i](res._wrapped_request, res)
+				}
 			}
 		})
+
+		return res
+	}
+
+	on(event: string, handler: EventHandler): this {
+		if (!this._events) {
+			this._events = {}
+		}
+		if (!this._events[event]) {
+			this._events[event] = []
+		}
+
+		this._events[event].push(handler)
+
+		return this
+	}
+
+	once(event: string, handler: EventHandler): this {
+		const wrapper = (...args: any[]) => {
+			this.off(event, wrapper)
+			handler(...args)
+		}
+
+		return this.on(event, wrapper)
+	}
+
+	off(event: string, handler: EventHandler): this {
+		const arr = this._events?.[event]
+
+		if (arr) {
+			const idx = arr.indexOf(handler)
+			if (idx !== -1) {
+				arr.splice(idx, 1)
+			}
+		}
+
+		return this
+	}
+
+	listenerCount(event: string): number {
+		return this._events?.[event]?.length ?? 0
 	}
 
 	_track_middleware_cursor(position: number) {
@@ -167,11 +226,9 @@ export default class Response<TServer extends Server>
 
 		if (this._upgrade_socket == null) {
 			throw new Error(
-				"HyperExpress: You cannot upgrade a request that does not come from an upgrade handler. No upgrade socket was found.",
+				"Cannot upgrade a request that does not come from an upgrade handler. No upgrade socket was found.",
 			)
 		}
-
-		this._wrapped_request.resume()
 
 		if (this._cork && !this._corked) {
 			this._corked = true
@@ -196,25 +253,36 @@ export default class Response<TServer extends Server>
 		if (this.initiated) return false
 
 		this.initiated = true
-		this._wrapped_request.resume()
 
 		const raw = this._raw_response!
 
 		if (this._status_message) {
 			raw.writeStatus(`${this._status_code} ${this._status_message}`)
-		} else if (
-			this._status_code !== 200 ||
-			STATUS_CACHE[this._status_code]
-		) {
+		} else if (this._status_code !== 200) {
 			raw.writeStatus(
 				STATUS_CACHE[this._status_code] || `${this._status_code} OK`,
 			)
 		}
 
-		for (const name in this._headers) {
-			if (name === "content-length") continue
+		// TODO: write base headers stored on the engine
+		// const baseHeaders = this.engine?.baseHeaders
+		// if (baseHeaders) {
+		// 	for (let i = 0; i < baseHeaders.length; i++) {
+		// 		raw.writeHeader(baseHeaders[i][0], baseHeaders[i][1])
+		// 	}
+		// }
+
+		const headerKeys = Object.keys(this._headers)
+
+		for (let i = 0; i < headerKeys.length; i++) {
+			const name = headerKeys[i]
+
+			if (name === "content-length") {
+				continue
+			}
 
 			const values = this._headers[name]
+
 			if (Array.isArray(values)) {
 				for (let j = 0; j < values.length; j++) {
 					raw.writeHeader(name, values[j])
@@ -225,15 +293,15 @@ export default class Response<TServer extends Server>
 		}
 
 		if (this._cookies) {
-			for (const name in this._cookies) {
-				raw.writeHeader("set-cookie", this._cookies[name])
+			const cookieKeys = Object.keys(this._cookies)
+
+			for (let i = 0; i < cookieKeys.length; i++) {
+				raw.writeHeader("set-cookie", this._cookies[cookieKeys[i]])
 			}
 		}
 
 		return true
 	}
-
-	_drain_handler: ((offset: number) => boolean) | null = null
 
 	drain(handler: (offset: number) => boolean) {
 		const is_first_time = this._drain_handler === null
@@ -245,7 +313,7 @@ export default class Response<TServer extends Server>
 
 				if (typeof output !== "boolean") {
 					throw new Error(
-						"HyperExpress: Response.drain(handler) -> handler must return a boolean value stating if the write was successful or not.",
+						"Response.drain(handler) -> handler must return a boolean value stating if the write was successful or not.",
 					)
 				}
 				return output
@@ -253,114 +321,86 @@ export default class Response<TServer extends Server>
 		}
 	}
 
-	_write(
-		chunk: any,
-		encoding: BufferEncoding,
-		callback: (error?: Error | null) => void,
-	) {
-		if (chunk.chunk && chunk.encoding) {
-			const temp = chunk
-			chunk = temp.chunk
-			encoding = temp.encoding
-
-			if (!callback) {
-				callback = temp.callback
-			}
-		}
-
-		if (!this.completed) {
-			if (!this._streaming) {
-				this._streaming = true
-				this.once("finish", () => this.send())
-			}
-
-			this._stream_chunk(chunk)
-				.then(() => callback())
-				.catch((error) => callback(error))
-		} else {
-			callback()
-		}
-	}
-
-	_writev(
-		chunks: Array<{ chunk: any; encoding: BufferEncoding }>,
-		callback: (error?: Error | null) => void,
-		index: number = 0,
-	) {
-		this._write(chunks[index], null as any, (error) => {
-			if (error) return callback(error)
-
-			if (typeof (chunks[index] as any).callback === "function") {
-				;(chunks[index] as any).callback()
-			}
-
-			if (index < chunks.length - 1) {
-				this._writev(chunks, callback, index + 1)
-			} else {
-				callback()
-			}
-		})
-	}
-
 	send(body?: any, close_connection?: boolean): this {
 		if (this.completed) return this
 
-		if (this.writableLength) {
-			if (body) {
-				this.write(body)
-			}
-
-			if (!this._streaming) {
-				this._streaming = true
-				this.once("finish", () => this.send())
-			}
-
-			super.end()
-			return this
-		}
-
 		if (this._cork && !this._corked) {
 			this._corked = true
-			return this.atomic(() => this.send(body, close_connection))
-		}
+			this._raw_response!.cork(() => {
+				this._initiate_response()
 
-		this._initiate_response()
+				if (body !== undefined || this._streaming) {
+					this._raw_response!.end(body, close_connection)
+				} else {
+					const custom_length = this._headers["content-length"]
 
-		if (!this._wrapped_request.received) {
-			this._wrapped_request._body_parser_stop()
-			return this._wrapped_request.once("received", () =>
-				this.atomic(() => this.send(body, close_connection)),
-			) as this
-		}
+					if (custom_length) {
+						const content_length =
+							typeof custom_length === "string"
+								? custom_length
+								: custom_length[custom_length.length - 1]
 
-		const raw = this._raw_response!
-
-		if (body !== undefined || this._streaming) {
-			raw.end(body, close_connection)
+						this._raw_response!.endWithoutBody(
+							content_length as any,
+							close_connection,
+						)
+					} else {
+						this._raw_response!.end(body, close_connection)
+					}
+				}
+			})
 		} else {
-			const custom_length = this._headers["content-length"]
+			this._initiate_response()
 
-			if (custom_length) {
-				const content_length =
-					typeof custom_length === "string"
-						? custom_length
-						: custom_length[custom_length.length - 1]
+			if (!this._wrapped_request._received) {
+				this._wrapped_request._body_parser_stop()
+				this._wrapped_request._onDone = () => {
+					this._raw_response!.cork(() => {
+						this._initiate_response()
+						this._raw_response!.end(body, close_connection)
+					})
+					this.completed = true
+					this.engine?._resolve_pending_request()
+				}
+				return this
+			}
 
-				raw.endWithoutBody(content_length as any, close_connection)
-			} else {
+			const raw = this._raw_response!
+
+			if (body !== undefined || this._streaming) {
 				raw.end(body, close_connection)
+			} else {
+				const custom_length = this._headers["content-length"]
+
+				if (custom_length) {
+					const content_length =
+						typeof custom_length === "string"
+							? custom_length
+							: custom_length[custom_length.length - 1]
+
+					raw.endWithoutBody(content_length as any, close_connection)
+				} else {
+					raw.end(body, close_connection)
+				}
 			}
 		}
 
 		if (!this._streaming && this.listenerCount("finish") > 0) {
-			this.emit("finish", this._wrapped_request, this)
+			const handlers = this._events!.finish
+
+			for (let i = 0; i < handlers.length; i++) {
+				handlers[i](this._wrapped_request, this)
+			}
 		}
 
 		this.completed = true
 		this.engine?._resolve_pending_request()
 
 		if (this.listenerCount("close") > 0) {
-			this.emit("close", this._wrapped_request, this)
+			const handlers = this._events!.close
+			for (let i = 0; i < handlers.length; i++) {
+				handlers[i](this._wrapped_request, this)
+			}
 		}
 
 		return this
@@ -406,13 +446,7 @@ export default class Response<TServer extends Server>
 		)
 	}
 
-	async stream(readable: stream.Readable, total_size?: number) {
-		if (!(readable instanceof stream.Readable)) {
-			throw new Error(
-				"HyperExpress: Response.stream(readable, total_size) -> readable must be a Readable stream.",
-			)
-		}
-
+	async stream(readable: any, total_size?: number) {
 		if (this.completed) return
 
 		const destroyReadable = () => !readable.destroyed && readable.destroy()
@@ -450,7 +484,6 @@ export default class Response<TServer extends Server>
 		this.completed = true
 		this.engine?._resolve_pending_request()
 		this._wrapped_request._body_parser_stop()
-		this._wrapped_request.resume()
 		this._raw_response!.close()
 	}
 
@@ -462,6 +495,27 @@ export default class Response<TServer extends Server>
 	json(body: any): this {
 		this._headers["content-type"] = "application/json"
 		return this.send(stringify(body))
+	}
+
+	// internal fast-send: skips cork/streaming checks, called when _cork is already true
+	_sendFast(body: any): void {
+		this._corked = true
+		this._initiate_response()
+		this._raw_response!.end(body)
+		this.completed = true
+		this.engine?._resolve_pending_request()
+
+		if (this._events?.finish) {
+			for (let i = 0; i < this._events.finish.length; i++) {
+				this._events.finish[i](this._wrapped_request, this)
+			}
+		}
+
+		if (this._events?.close) {
+			for (let i = 0; i < this._events.close.length; i++) {
+				this._events.close[i](this._wrapped_request, this)
+			}
+		}
 	}
 
 	jsonp(body: any, name?: string): this {
@@ -654,7 +708,7 @@ export default class Response<TServer extends Server>
 
 	_throw_unsupported(name: string) {
 		throw new Error(
-			`ERR_INCOMPATIBLE_CALL: One of your middlewares or route logic tried to call Response.${name} which is unsupported with HyperExpress.`,
+			`ERR_INCOMPATIBLE_CALL: One of your middlewares or route logic tried to call Response.${name} which is unsupported.`,
 		)
 	}
 }

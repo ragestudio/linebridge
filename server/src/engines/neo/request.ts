@@ -1,14 +1,10 @@
 import util from "util"
 import cookie from "cookie"
-import stream from "stream"
 import busboy from "busboy"
-import querystring from "querystring"
+import querystring from "fast-querystring"
 import signature from "cookie-signature"
 
-import {
-	array_buffer_to_string,
-	copy_array_buffer_to_uint8array,
-} from "./utils"
+import { array_buffer_to_string } from "./utils"
 import MultipartField from "./MultipartField"
 
 import type { HttpRequest, HttpResponse } from "uWebSockets.js"
@@ -20,121 +16,100 @@ import type Response from "./response"
 
 const utf8Decoder = new util.TextDecoder("utf-8")
 
-export default class Request<TServer extends Server>
-	extends stream.Readable
-	implements BaseHttpRequest
-{
-	_locals: any = null
-	_paused: boolean = false
-	_request_ended: boolean = false
+export default class Request<
+	TServer extends Server,
+> implements BaseHttpRequest {
+	_locals!: any
+	_paused!: boolean
+	_request_ended!: boolean
+	_method!: string
+	_url!: string
+	_path!: string
+	_query_str!: string
+	_remote_ip!: string
+	_remote_proxy_ip!: string
+	_cookies!: any
+	_path_parameters!: any
+	_query_parameters!: any
+	_raw_request!: HttpRequest
+	_raw_response!: HttpResponse
+	ctx!: Record<string, any>
+	_headers!: Record<string, string> | null
+	route!: Route<TServer> | null
+	_received!: boolean
+	_body_received_bytes!: number
+	_body_expected_bytes!: number
+	_body_chunked_transfer!: boolean
+	_body_parser_buffered!: Buffer[] | null
+	_body_parser_on_data_registered!: boolean
+	_body!: any
+	_body_type!: string | null
+	_body_raw!: Buffer | null
+	_received_data_promise!: Promise<Buffer> | null
+	_buffer_promise!: Promise<Buffer> | null
+	_text_promise!: Promise<string> | null
+	_json_promise!: Promise<any> | null
+	_urlencoded_promise!: Promise<any> | null
+	_multipart_promise!: Promise<void> | null
+	_onDone!: (() => void) | null
 
-	_method: string = ""
-	_url: string = ""
-	_path: string = ""
-	_query: string = ""
-	_remote_ip: string = ""
-	_remote_proxy_ip: string = ""
-	_cookies: any = null
-	_path_parameters: any = null
-	_query_parameters: any = null
+	constructor() {}
 
-	_start_time: string = ""
-	_start_time_hr: number = 0
+	static create<TServer extends Server>(
+		route: Route<TServer>,
+		raw_request: HttpRequest,
+		raw_response: HttpResponse,
+	): Request<TServer> {
+		const req = new Request<TServer>()
 
-	_raw_request: HttpRequest
-	_raw_response: HttpResponse
+		req._raw_request = raw_request
+		req._raw_response = raw_response
+		req.route = route
+		req.ctx = route.ctx || Object.create(null)
+		req._query_str = raw_request.getQuery()
+		req._path = raw_request.getUrl()
+		req._received = true
 
-	ctx: Record<string, any> = Object.create(null)
-	headers: Record<string, string> = Object.create(null)
-	route: Route<TServer> | null = null
-	received: boolean = true
+		const rawMethod = raw_request.getMethod()
+		req._method = rawMethod === "del" ? "DELETE" : rawMethod.toUpperCase()
 
-	_body_parser_mode: number = 0
-	_body_limit_bytes: number = 0
-	_body_received_bytes: number = 0
-	_body_expected_bytes: number = -1
-	_body_parser_flushing: boolean = false
-	_body_chunked_transfer: boolean = false
-	_body_parser_buffered: any[] | null = null
-	_body_parser_passthrough: any = null
+		const keys = route.pathParametersKey
 
-	_body: any = null
-	_body_type: string | null = null
-	_body_raw: Buffer | null = null
+		if (keys.length > 0) {
+			const params = Object.create(null)
 
-	_received_data_promise: Promise<Buffer> | null = null
-	_buffer_promise: Promise<Buffer> | null = null
-	_text_promise: Promise<string> | null = null
-	_json_promise: Promise<any> | null = null
-	_urlencoded_promise: Promise<any> | null = null
-	_multipart_promise: Promise<void> | null = null
+			for (let i = 0; i < keys.length; i++) {
+				params[keys[i][0]] = raw_request.getParameter(keys[i][1])
+			}
 
-	_read() {
-		if (this._body_parser_mode === 0) {
-			this._body_parser_mode = 2
-			this._body_parser_flush_buffered()
+			req._path_parameters = params
 		}
 
-		this.resume()
+		return req
 	}
 
 	get engine(): EngineAdaptor | null {
 		return this.route?.engine || null
 	}
 
-	constructor(
-		route: Route<TServer>,
-		raw_request: HttpRequest,
-		raw_response: HttpResponse,
-	) {
-		super(route.streaming?.readable || {})
-
-		this._start_time = new Date().toISOString()
-		this._start_time_hr = performance.now()
-
-		this.route = route
-		this._raw_request = raw_request
-		this._raw_response = raw_response
-
-		this.ctx = route.ctx || Object.create(null)
-
-		this._query = raw_request.getQuery()
-		this._path = raw_request.getUrl()
-
-		const raw_method = raw_request.getMethod()
-		this._method =
-			raw_method === "del" ? "DELETE" : raw_method.toUpperCase()
-
-		raw_request.forEach((key, value) => {
-			this.headers[key] = value
-		})
-
-		const num_path_parameters = route.pathParametersKey.length
-
-		if (num_path_parameters > 0) {
-			this._path_parameters = Object.create(null)
-
-			for (let i = 0; i < num_path_parameters; i++) {
-				const parts = route.pathParametersKey[i]
-
-				this._path_parameters[parts[0]] = raw_request.getParameter(
-					parts[1],
-				)
-			}
-		}
-	}
-
 	get raw(): HttpRequest {
 		return this._raw_request
+	}
+
+	get headers(): Record<string, string> {
+		if (this._headers) return this._headers
+		this._headers = {}
+		this._raw_request.forEach((key: string, value: string) => {
+			this._headers![key] = value
+		})
+		return this._headers
 	}
 
 	pause(): this {
 		if (!this._paused) {
 			this._paused = true
 			this._raw_response.pause()
-			super.pause()
 		}
-
 		return this
 	}
 
@@ -143,28 +118,65 @@ export default class Request<TServer extends Server>
 			this._paused = false
 			this._raw_response.resume()
 		}
-
-		super.resume()
-
 		return this
 	}
 
-	// @ts-ignore
-	pipe<T extends NodeJS.WritableStream>(
-		destination: T,
-		options?: stream.PipeOptions,
-	): this {
-		super.pipe(destination, options)
-		super.resume()
-		return this
-	}
+	// TODO: properly implement pipe
+	// pipe(target: Writable): this {
+	// 	// write any chunks the body parser already buffered
+	// 	if (this._body_parser_buffered) {
+	// 		for (let i = 0; i < this._body_parser_buffered.length; i++) {
+	// 			target.write(this._body_parser_buffered[i])
+	// 		}
+
+	// 		this._body_parser_buffered = null
+	// 	}
+
+	// 	// resolve any pending body promise before overriding onData
+	// 	if (this._onDone) {
+	// 		this._onDone()
+	// 		this._onDone = null
+	// 	}
+
+	// 	// body parser is no longer active — pipe takes over
+	// 	this._body_parser_on_data_registered = false
+
+	// 	// if the complete body was already buffered, just end the target
+	// 	if (this._received) {
+	// 		target.end()
+	// 		return this
+	// 	}
+
+	// 	// body is still arriving — register onData for the remaining chunks
+	// 	this._raw_response.onData((chunk: ArrayBuffer, is_last: boolean) => {
+	// 		if (!chunk.byteLength && !is_last) {
+	// 			return
+	// 		}
+
+	// 		// uWS reuses the underlying ArrayBuffer, so we must copy
+	// 		// the data explicitly before writing to the target stream
+	// 		const chunkCopy = Buffer.allocUnsafe(chunk.byteLength)
+	// 		Buffer.from(chunk).copy(chunkCopy)
+
+	// 		const canContinue = target.write(chunkCopy)
+
+	// 		if (is_last) {
+	// 			target.end()
+	// 		} else if (!canContinue) {
+	// 			this.pause()
+	// 			target.once("drain", () => this.resume())
+	// 		}
+	// 	})
+
+	// 	this.resume()
+	// 	return this
+	// }
 
 	sign(string: string, secret: string) {
 		return signature.sign(string, secret)
 	}
 	unsign(signed_value: string, secret: string) {
 		const unsigned_value = signature.unsign(signed_value, secret)
-
 		return unsigned_value !== false ? unsigned_value : undefined
 	}
 
@@ -173,63 +185,25 @@ export default class Request<TServer extends Server>
 		const is_chunked_transfer =
 			this.headers["transfer-encoding"] === "chunked"
 
-		if (content_length > 0 || is_chunked_transfer) {
-			const is_first_run = this._body_expected_bytes === -1
+		this._body_expected_bytes = is_chunked_transfer ? 0 : content_length
+		this._body_chunked_transfer = is_chunked_transfer
 
-			this._body_limit_bytes = limit_bytes
-			this._body_expected_bytes = is_chunked_transfer ? 0 : content_length
-			this._body_chunked_transfer = is_chunked_transfer
+		if (!this._body_parser_on_data_registered) {
+			this._received = false
+			this._body_received_bytes = 0
+			this._body_parser_buffered = []
+			this._body_parser_on_data_registered = true
 
-			if (is_first_run) {
-				this.received = false
-				this._body_received_bytes = 0
-				this._body_parser_buffered = []
-				this._raw_response.onData((chunk, is_last) =>
-					this._body_parser_on_chunk(response, chunk, is_last),
-				)
-			}
-
-			this._body_parser_enforce_limit(response)
+			this._raw_response.onData((chunk: ArrayBuffer, is_last: boolean) =>
+				this._body_parser_on_chunk(response, chunk, is_last),
+			)
 		}
 
-		return !this._body_parser_flushing
+		return true
 	}
 
 	_body_parser_stop() {
-		if (this._body_expected_bytes === -1 || this._body_parser_flushing)
-			return
-
-		this._body_parser_flushing = true
-
-		// resolve any pending passthrough promise so parseBody does not hang
-		if (this._body_parser_mode === 1 && this._body_parser_passthrough) {
-			this._body_parser_passthrough(new Uint8Array(0), true)
-			this._body_parser_passthrough = null
-		}
-
-		this.push(null)
-		this.resume()
-	}
-
-	_body_parser_enforce_limit(response: Response<TServer>) {
-		const incoming_bytes = Math.max(
-			this._body_received_bytes,
-			this._body_expected_bytes,
-		)
-
-		if (incoming_bytes > this._body_limit_bytes) {
-			this._body_parser_stop()
-
-			if (this.engine?.options.fast_abort) {
-				response.close()
-			} else if (response.initiated) {
-				response.close()
-			} else {
-				response.status(413).send()
-			}
-			return true
-		}
-		return false
+		this._body_parser_flush_buffered()
 	}
 
 	_body_parser_on_chunk(
@@ -237,161 +211,123 @@ export default class Request<TServer extends Server>
 		chunk: ArrayBuffer,
 		is_last: boolean,
 	) {
+		// console.log(
+		// 	`[DEBUG] _body_parser_on_chunk called. chunk_len: ${chunk.byteLength}, is_last: ${is_last}, _onDone_exists: ${!!this._onDone}`,
+		// )
+		// response already sent — ignore remaining body chunks
+		if (response.completed) return
+
 		if (!chunk.byteLength && !is_last) return
 
 		this._body_received_bytes += chunk.byteLength
 
-		if (!this._body_parser_flushing) {
-			const limited = this._body_parser_enforce_limit(response)
+		if (this._body_parser_buffered) {
+			const chunkCopy = Buffer.allocUnsafe(chunk.byteLength)
+			Buffer.from(chunk).copy(chunkCopy)
+			this._body_parser_buffered.push(chunkCopy)
 
-			if (!limited) {
-				switch (this._body_parser_mode) {
-					case 0:
-						this._body_parser_buffered!.push(
-							copy_array_buffer_to_uint8array(chunk),
-						)
-						if (
-							this._body_received_bytes >
-							(this.engine?.options.max_body_buffer ?? Infinity)
-						)
-							this.pause()
-						break
-					case 1:
-						this._body_parser_passthrough(
-							this._body_chunked_transfer
-								? copy_array_buffer_to_uint8array(chunk)
-								: new Uint8Array(chunk),
-							is_last,
-						)
-						break
-					case 2:
-						if (!this.push(copy_array_buffer_to_uint8array(chunk)))
-							this.pause()
-						if (is_last) this.push(null)
-						break
+			if (
+				this._body_received_bytes >
+				(this.engine?.options.max_body_buffer ?? Infinity)
+			) {
+				// Prevent hanging when buffering large requests in memory directly
+				// by avoiding pause() if we are actively reading the entire body.
+				if (
+					!this._received_data_promise &&
+					!this._buffer_promise &&
+					!this._text_promise &&
+					!this._json_promise &&
+					!this._urlencoded_promise
+				) {
+					this.pause()
 				}
 			}
 		}
 
 		if (is_last) {
-			this.received = true
+			this._received = true
 
-			this.emit("received", this._body_received_bytes)
-
-			if (this._body_parser_flushing) {
-				if (
-					this._body_parser_mode === 1 &&
-					this._body_parser_passthrough
-				) {
-					this._body_parser_passthrough(new Uint8Array(0), true)
-				}
-
-				this._body_parser_enforce_limit(response)
+			if (this._onDone) {
+				this._onDone()
+				this._onDone = null
 			}
 		}
 	}
 
 	_body_parser_flush_buffered() {
 		if (this._body_parser_buffered) {
-			switch (this._body_parser_mode) {
-				case 1:
-					for (
-						let i = 0;
-						i < this._body_parser_buffered.length;
-						i++
-					) {
-						this._body_parser_passthrough(
-							this._body_parser_buffered[i],
-							i === this._body_parser_buffered.length - 1
-								? this.received
-								: false,
-						)
-					}
-					break
-				case 2:
-					for (
-						let i = 0;
-						i < this._body_parser_buffered.length;
-						i++
-					) {
-						this.push(Buffer.from(this._body_parser_buffered[i]))
-					}
-					if (this.received) this.push(null)
-					break
-			}
+			this._body_parser_buffered = null
 		}
-
-		this._body_parser_buffered = null
 		this.resume()
 	}
 
-	_body_parser_get_received_data() {
+	_body_parser_get_received_data(): Promise<Buffer> {
+		// console.log(
+		// 	`[DEBUG] _body_parser_get_received_data called. _received: ${this._received}`,
+		// )
 		if (this._received_data_promise) return this._received_data_promise
 
 		if (!this._body_chunked_transfer && this._body_expected_bytes <= 0) {
 			return Promise.resolve(Buffer.allocUnsafe(0))
 		}
 
-		this._received_data_promise = new Promise<Buffer>((resolve) => {
-			if (this._body_chunked_transfer) {
-				const chunks: any[] = []
+		// data already fully received
+		if (this._received && this._body_parser_buffered) {
+			const result = Buffer.concat(this._body_parser_buffered)
+			this._body_raw = result
+			this._body_parser_buffered = null
+			return Promise.resolve(result)
+		}
 
-				this._body_parser_passthrough = (
-					chunk: any,
-					is_last: boolean,
-				) => {
-					chunks.push(chunk)
+		// data already received but buffer was flushed (e.g. after handler sent response)
+		if (this._received && !this._body_parser_buffered) {
+			return Promise.resolve(this._body_raw || Buffer.allocUnsafe(0))
+		}
 
-					if (is_last) {
-						let offset = 0
-
-						const buffer = Buffer.allocUnsafe(
-							this._body_received_bytes,
-						)
-
-						for (let i = 0; i < chunks.length; i++) {
-							buffer.set(chunks[i], offset)
-							offset += chunks[i].byteLength
-						}
-
-						resolve(buffer)
-					}
-				}
-			} else {
-				const buffer = Buffer.allocUnsafe(this._body_expected_bytes)
-				let offset = 0
-
-				this._body_parser_passthrough = (
-					chunk: any,
-					is_last: boolean,
-				) => {
-					buffer.set(chunk, offset)
-					offset += chunk.byteLength
-					if (is_last) resolve(buffer)
-				}
+		this._received_data_promise = new Promise<Buffer>((resolve, reject) => {
+			if (this._received && this._body_parser_buffered) {
+				const result = Buffer.concat(this._body_parser_buffered)
+				this._body_raw = result
+				this._body_parser_buffered = null
+				resolve(result)
+				return
 			}
-			this._body_parser_mode = 1
-			this._body_parser_flush_buffered()
 
-			// ensure passthrough resolves if all data was already received
-			// but the buffer was empty (e.g. data consumed by stream reader before parseBody)
-			if (this.received && this._body_parser_passthrough) {
-				this._body_parser_passthrough(new Uint8Array(0), true)
+			const timeout = setTimeout(() => {
+				console.log("[DEBUG] Promise timed out!")
+				reject(new Error("Timeout waiting for body"))
+			}, 3000)
+
+			// store the resolver for when body data arrives
+			this._onDone = () => {
+				clearTimeout(timeout)
+
+				if (this._body_parser_buffered) {
+					const result = Buffer.concat(this._body_parser_buffered)
+
+					this._body_raw = result
+					this._body_parser_buffered = null
+					resolve(result)
+				} else {
+					resolve(Buffer.allocUnsafe(0))
+				}
+				this._onDone = null
 			}
 		})
+
 		return this._received_data_promise
 	}
 
 	async _resolve_raw_body(): Promise<Buffer> {
 		if (this._body_raw) return this._body_raw
-
 		this._body_raw = await this._body_parser_get_received_data()
-
 		return this._body_raw
 	}
 
-	buffer() {
-		if (this._buffer_promise) return this._buffer_promise
+	buffer(): any {
+		if (this._buffer_promise) {
+			return this._buffer_promise
+		}
 
 		this._buffer_promise = this._resolve_raw_body().then((raw) => {
 			this._body = raw
@@ -450,8 +386,10 @@ export default class Request<TServer extends Server>
 
 		this._urlencoded_promise = this._resolve_raw_body().then((raw) => {
 			const text = this._uint8_to_string(raw)
+
 			this._body = querystring.parse(text)
 			this._body_type = "urlencoded"
+
 			return this._body
 		})
 
@@ -461,7 +399,7 @@ export default class Request<TServer extends Server>
 	async _on_multipart_field(
 		handler: Function,
 		name: string,
-		value: stream.Readable | string,
+		value: any,
 		info: any,
 	) {
 		const field = new MultipartField(name, value, info)
@@ -483,84 +421,86 @@ export default class Request<TServer extends Server>
 			field.file.stream.resume()
 	}
 
-	multipart(options: any, handler: any) {
-		if (typeof options === "function") {
-			handler = options
-			options = {}
-		}
+	// TODO: properly implement multipart
+	// multipart(options: any, handler: any) {
+	// 	if (typeof options === "function") {
+	// 		handler = options
+	// 		options = {}
+	// 	}
 
-		options = Object.assign({}, options)
-		if (!options.headers) options.headers = this.headers
+	// 	options = Object.assign({}, options)
+	// 	if (!options.headers) options.headers = this.headers
 
-		if (typeof handler !== "function") {
-			throw new Error(
-				"HyperExpress: Request.multipart(handler) -> handler must be a Function.",
-			)
-		}
-		if (this.readableEnded) {
-			return Promise.resolve()
-		}
+	// 	if (typeof handler !== "function") {
+	// 		throw new Error(
+	// 			"Request.multipart(handler) -> handler must be a Function.",
+	// 		)
+	// 	}
 
-		const content_type = this.headers["content-type"]
-		if (!content_type || !/^(multipart\/.+);(.*)$/i.test(content_type)) {
-			return Promise.resolve()
-		}
+	// 	const content_type = this.headers["content-type"]
+	// 	if (!content_type || !/^(multipart\/.+);(.*)$/i.test(content_type)) {
+	// 		return Promise.resolve()
+	// 	}
 
-		return new Promise((resolve, reject) => {
-			const uploader = busboy(options)
-			let finished = false
+	// 	return new Promise((resolve, reject) => {
+	// 		const uploader = busboy(options)
+	// 		let finished = false
 
-			const finish = async (error?: string | Error | null) => {
-				if (finished) return
-				finished = true
+	// 		const finish = async (error?: string | Error | null) => {
+	// 			if (finished) return
+	// 			finished = true
 
-				let silent_error = false
-				if (
-					error instanceof Error &&
-					error.message === "Unexpected end of form"
-				)
-					silent_error = true
+	// 			let silent_error = false
+	// 			if (
+	// 				error instanceof Error &&
+	// 				error.message === "Unexpected end of form"
+	// 			)
+	// 				silent_error = true
 
-				if (error && !silent_error) {
-					reject(error)
-				} else {
-					if (this._multipart_promise) await this._multipart_promise
-					resolve(null)
-				}
+	// 			if (error && !silent_error) {
+	// 				reject(error)
+	// 			} else {
+	// 				if (this._multipart_promise) await this._multipart_promise
+	// 				resolve(null)
+	// 			}
 
-				this._body_parser_stop()
-				uploader.destroy()
-			}
+	// 			this._body_parser_stop()
+	// 			uploader.destroy()
+	// 		}
 
-			uploader.once("error", finish)
-			uploader.once("partsLimit", () => finish("PARTS_LIMIT_REACHED"))
-			uploader.once("filesLimit", () => finish("FILES_LIMIT_REACHED"))
-			uploader.once("fieldsLimit", () => finish("FIELDS_LIMIT_REACHED"))
+	// 		uploader.once("error", finish)
+	// 		uploader.once("partsLimit", () => finish("PARTS_LIMIT_REACHED"))
+	// 		uploader.once("filesLimit", () => finish("FILES_LIMIT_REACHED"))
+	// 		uploader.once("fieldsLimit", () => finish("FIELDS_LIMIT_REACHED"))
 
-			const on_field = (name: any, value: any, info: any) => {
-				if (value instanceof stream.Readable) {
-					value.once("error", finish)
-				}
+	// 		const on_field = (name: any, value: any, info: any) => {
+	// 			if (
+	// 				value &&
+	// 				typeof value === "object" &&
+	// 				typeof value.once === "function"
+	// 			) {
+	// 				value.once("error", finish)
+	// 			}
 
-				this._on_multipart_field(handler, name, value, info).catch(
-					finish,
-				)
-			}
+	// 			this._on_multipart_field(handler, name, value, info).catch(
+	// 				finish,
+	// 			)
+	// 		}
 
-			uploader.on("field", on_field)
-			uploader.on("file", on_field)
+	// 		uploader.on("field", on_field)
+	// 		uploader.on("file", on_field)
 
-			uploader.once("close", () => {
-				if (this._multipart_promise) {
-					this._multipart_promise.then(() => finish()).catch(finish)
-				} else {
-					finish()
-				}
-			})
+	// 		uploader.once("close", () => {
+	// 			if (this._multipart_promise) {
+	// 				this._multipart_promise.then(() => finish()).catch(finish)
+	// 			} else {
+	// 				finish()
+	// 			}
+	// 		})
 
-			this.pipe(uploader)
-		})
-	}
+	// 		this.pipe(uploader)
+	// 	})
+	// }
 
 	get locals() {
 		if (!this._locals) this._locals = Object.create(null)
@@ -575,9 +515,7 @@ export default class Request<TServer extends Server>
 	}
 	get url() {
 		if (this._url) return this._url
-
-		this._url = this._path + (this._query ? "?" + this._query : "")
-
+		this._url = this._path + (this._query_str ? "?" + this._query_str : "")
 		return this._url
 	}
 	get path() {
@@ -592,10 +530,8 @@ export default class Request<TServer extends Server>
 
 	get cookies() {
 		if (this._cookies) return this._cookies
-
 		const header = this.headers["cookie"]
 		this._cookies = header ? cookie.parse(header) : Object.create(null)
-
 		return this._cookies
 	}
 
@@ -605,9 +541,7 @@ export default class Request<TServer extends Server>
 
 	get query_parameters() {
 		if (this._query_parameters) return this._query_parameters
-
-		this._query_parameters = querystring.parse(this._query)
-
+		this._query_parameters = querystring.parse(this._query_str)
 		return this._query_parameters
 	}
 
@@ -616,13 +550,14 @@ export default class Request<TServer extends Server>
 	}
 
 	async parseBody(): Promise<any> {
-		if (this._body !== null) return this._body
+		if (this._body !== undefined && this._body !== null) return this._body
 
 		const contentType = (this.headers["content-type"] || "").toLowerCase()
 
 		if (contentType.includes("application/json")) {
 			return this.json()
 		}
+
 		if (contentType.includes("application/x-www-form-urlencoded")) {
 			return this.urlencoded()
 		}
@@ -647,9 +582,10 @@ export default class Request<TServer extends Server>
 		if (this._remote_ip) {
 			return this._remote_ip
 		}
+
 		if (this._request_ended) {
 			throw new Error(
-				"HyperExpress.Request.ip cannot be consumed after the Request/Response has ended.",
+				"Request.ip cannot be consumed after the Request/Response has ended.",
 			)
 		}
 
@@ -658,7 +594,6 @@ export default class Request<TServer extends Server>
 
 		if (trust_proxy && x_forwarded_for) {
 			const commaIdx = x_forwarded_for.indexOf(",")
-
 			this._remote_ip =
 				commaIdx === -1
 					? x_forwarded_for.trim()
@@ -678,7 +613,7 @@ export default class Request<TServer extends Server>
 		}
 		if (this._request_ended) {
 			throw new Error(
-				"HyperExpress.Request.proxy_ip cannot be consumed after the Request/Response has ended.",
+				"Request.proxy_ip cannot be consumed after the Request/Response has ended.",
 			)
 		}
 
@@ -690,7 +625,7 @@ export default class Request<TServer extends Server>
 
 	_throw_unsupported(name: string) {
 		throw new Error(
-			`ERR_INCOMPATIBLE_CALL: One of your middlewares or route logic tried to call Request.${name} which is unsupported with HyperExpress.`,
+			`ERR_INCOMPATIBLE_CALL: One of your middlewares or route logic tried to call Request.${name} which is unsupported.`,
 		)
 	}
 }
