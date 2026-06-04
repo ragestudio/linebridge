@@ -1,18 +1,24 @@
 export interface Request {
 	url: string
-	method: string
 	path: string
+	method: string
+
 	cookies: string
 	ip: string
+
 	headers: Record<string, any>
+
+	ctx: Record<string, any>
 	body: Record<string, any>
 	params: Record<string, any>
 	query: Record<string, any>
-	ctx: Record<string, any>
+
 	raw: any
+	buffer: () => Promise<Buffer>
 	text: () => Promise<string>
 	json: () => Promise<Record<any, any>>
 	urlencoded: () => Promise<Record<any, any>>
+
 	[key: string]: any
 }
 
@@ -20,16 +26,17 @@ export interface Response {
 	end: (data?: any) => this
 	send: (data?: any) => this
 	json: (data: any) => void
+
+	completed: boolean
 	status: (code: number) => Response
+	_status_code?: number
+
 	header: (
 		name: string,
 		value: string | string[],
 		overwrite?: boolean,
 	) => this
 	setHeader: (key: string, value: string) => this
-	completed: boolean
-	_status_code?: number
-	_responseTimeMs?: number
 }
 
 export type HttpHandlerFunction<TCtx = Record<string, any>> = (
