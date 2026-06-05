@@ -22,6 +22,7 @@ export interface RouteObject<
 	SelectedCtx extends ContextsKeys<Child> = ContextsKeys<Child>,
 	Type extends RouteTypes = "http",
 > {
+	method?: RouteHttpMethods
 	useMiddlewares?: MiddlewaresKeys<Child>[]
 	useContexts?: readonly SelectedCtx[]
 	fn: Type extends "ws"
@@ -36,6 +37,7 @@ export function defineRoute<
 	const define = <
 		UseContexts extends readonly ContextsKeys<Child>[] = readonly [],
 	>(route: {
+		method?: RouteHttpMethods
 		useMiddlewares?: MiddlewaresKeys<Child>[]
 		useContexts?: UseContexts
 		fn: Type extends "ws"
@@ -54,22 +56,24 @@ export function defineRoute<
 	return define
 }
 
-export type DefineRoute = typeof defineRoute
+// routealike trys to match a RouteObject or a non-constructed Route or a constructed Route
+export type RouteAlike<TServer extends Server = Server> =
+	| Route<TServer>
+	| (new () => Route<TServer>)
+	| RouteObject
 
 export class Route<
 	TServer extends Server = Server,
 	TContextKeys extends MiddlewaresKeys<TServer>[] =
 		MiddlewaresKeys<TServer>[],
 > {
-	_constructed: boolean = false
-
 	server!: TServer
 
 	kind: HandlerKind = HandlerKind.http
 	path: string = "/"
 	method: RouteHttpMethods = "get"
-	useContexts: ContextsKeys<TServer>[] = []
-	useMiddlewares: [] = []
+	useContexts: readonly ContextsKeys<TServer>[] = []
+	useMiddlewares: readonly MiddlewaresKeys[] = []
 	pathParametersKey: any
 	streaming?: any
 
@@ -134,7 +138,7 @@ export class Route<
 		)
 
 		// resolve contexts from server
-		if (Array.isArray(this.useContexts)) {
+		if (this.useContexts && Array.isArray(this.useContexts)) {
 			for (const key of this.useContexts) {
 				if (key in allContexts) {
 					this.ctx[key] = allContexts[key]
@@ -143,7 +147,7 @@ export class Route<
 		}
 
 		// register middlewares
-		if (Array.isArray(this.useMiddlewares)) {
+		if (this.useMiddlewares && Array.isArray(this.useMiddlewares)) {
 			for (let key of this.useMiddlewares) {
 				if (typeof key !== "string" && typeof key !== "function") {
 					console.warn(`invalid typeof use middleware:`, key)

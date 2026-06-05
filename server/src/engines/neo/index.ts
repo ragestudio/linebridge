@@ -1,3 +1,13 @@
+/**
+ * @fileoverview Neo engine — the uWebSockets.js engine adaptor for Linebridge.
+ *
+ * This engine creates a uWS app (plain or SSL), optionally attaches a WebSocket
+ * server via RTEngine, and manages the HTTP request/response lifecycle.
+ *
+ * It is the default and only built-in engine; other engines can be added by
+ * implementing the EngineAdaptor interface and registering them in `engines/index.ts`.
+ */
+
 import uWebsockets, { RecognizedString } from "uWebSockets.js"
 import fs from "node:fs"
 import fs_promises from "node:fs/promises"
@@ -19,6 +29,9 @@ import type Request from "./request"
 import type Response from "./response"
 import type { Server } from "../../server"
 
+/**
+ * Options that control the engine's behaviour.
+ */
 export type EngineOptions = {
 	is_ssl: boolean
 	auto_close: boolean
@@ -28,25 +41,50 @@ export type EngineOptions = {
 	streaming?: any
 }
 
+/**
+ * Augmented uWS TemplatedApp that supports dynamic method dispatch.
+ * We wrap the typed interface so we can call `uws.get(...)`, `uws.post(...)`
+ * etc. via bracket notation — needed because uWS itself uses dynamic methods
+ * for route registration.
+ */
 type uwsEngine = uWebsockets.TemplatedApp & {
 	[K in keyof uWebsockets.TemplatedApp]?: uWebsockets.TemplatedApp[K]
 } & {
 	[key: string]: (...args: any[]) => any
 }
 
+/**
+ * The Neo engine is the uWebSockets.js adaptor.
+ *
+ * It handles app construction (plain or SSL), WebSocket setup, route registration,
+ * middleware registration, and the request/response pipeline.
+ */
 export default class Engine extends EngineAdaptor {
+	/** WebSocket engine instance, set when websockets are enabled. */
 	declare ws: RTEngine | null
+	/** The underlying uWS listen socket handle. */
 	declare listen_socket: uWebsockets.us_listen_socket | null
+	/** The uWS app instance (plain or SSL). */
 	declare uws: uwsEngine | null
 
+	/** Number of in-flight HTTP requests. Tracked so the server knows when it is idle. */
 	protected pending_requests_count: number = 0
+	/** Callback fired when the pending request count reaches zero. */
 	protected pending_requests_zero_handler: any = null
 
+	/** Base headers to include in all responses. */
+	base_headers: Record<string, string> = {}
+
+	/** Set of registered {method, path} objects to avoid duplicate registrations. */
 	registers: Set<Record<string, string>> = new Set()
+	/** Global middleware stack applied to every request before route handlers run. */
 	middlewares: Handler<HandlerKind.middleware>[] = []
 
+	/** Listening port, defaults to 3000. */
 	port: number = 3000
+	/** Listening host, defaults to "0.0.0.0". */
 	host: string = "0.0.0.0"
+	/** Engine-level options merged with uWS constructor options. */
 	options: EngineOptions & uWebsockets.AppOptions = {
 		is_ssl: false,
 		auto_close: true,
@@ -55,12 +93,18 @@ export default class Engine extends EngineAdaptor {
 		max_body_length: 250 * 1024,
 	}
 
+	/**
+	 * Initializes the engine: creates the uWS app, configures SSL if needed,
+	 * attaches WebSocket support, and registers the default catch-all route.
+	 */
 	initialize = async () => {
+		// raise uWS limits to handle apps with many headers (e.g. large cookie payloads)
 		//@ts-ignore
 		process.env["UWS_HTTP_MAX_HEADERS_COUNT"] = 512
 		//@ts-ignore
 		process.env["UWS_HTTP_MAX_HEADERS_SIZE"] = 650000
 
+		// unless explicitly kept, hide the internal uWS Server header
 		if (!process.env["KEEP_UWS_HEADER"]) {
 			try {
 				//@ts-ignore
@@ -74,6 +118,7 @@ export default class Engine extends EngineAdaptor {
 		this.port = this.server.params.listenPort ?? this.port
 		this.host = this.server.params.listenIp ?? this.host
 
+		// validate and enable SSL when key/cert paths are provided
 		if (this.server.ssl) {
 			if (this.server.ssl.key && this.server.ssl.cert) {
 				try {
@@ -172,10 +217,14 @@ export default class Engine extends EngineAdaptor {
 		this.register(defaultRoute)
 	}
 
+	/** Starts the server. Bound to the engine instance. */
 	public listen = listen.bind(this)
+	/** Gracefully shuts down the server. Bound to the engine instance. */
 	public close = close.bind(this)
 
+	/** Registers a route (HTTP method + path + handler). */
 	public register = route_register.bind(this)
+	/** Registers a global middleware that runs before every route handler. */
 	public register_middleware = middleware_register.bind(this)
 
 	/**
@@ -198,9 +247,15 @@ export default class Engine extends EngineAdaptor {
 		return this.uws?.numSubscribers(topic)
 	}
 
+	/** Incoming HTTP request handler. Bound to the engine instance. */
 	protected on_request = on_request.bind(this)
+	/** Middleware/route iteration loop. Bound to the engine instance. */
 	protected request_iterator = request_iterator.bind(this)
 
+	/**
+	 * Decrements the pending request counter and fires the zero-handler
+	 * when no requests remain in flight.
+	 */
 	_resolve_pending_request() {
 		if (this.pending_requests_count < 1) return
 
@@ -214,6 +269,9 @@ export default class Engine extends EngineAdaptor {
 		}
 	}
 
+	/**
+	 * Default handler for unmatched routes. Responds with a 404 JSON body.
+	 */
 	protected _defaultResponse(req: Request<Server>, res: Response<Server>) {
 		res.status(404).json({ error: "Not found" })
 	}

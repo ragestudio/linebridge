@@ -1,3 +1,11 @@
+/**
+ * @fileoverview Full HTTP response wrapper for the Neo engine.
+ *
+ * Wraps a uWS HttpResponse and provides Express-style methods for status codes,
+ * headers, cookies (with signed cookie support), streaming, file serving,
+ * Server-Sent Events, redirects, and JSON/HTML shortcuts.
+ */
+
 import cookie from "cookie"
 import signature from "cookie-signature"
 import { STATUS_CODES } from "http"
@@ -12,10 +20,12 @@ import type { Route } from "../../classes/Route"
 import type { Server } from "../../server"
 import type { Response as BaseHttpResponse } from "../../classes/Handler/http"
 
+/** In-memory cache for file responses (LiveFile instances keyed by path). */
 const FilePool: Record<string, any> = Object.create(null)
 
 const stringify = JSON.stringify
 
+/** Pre-built status-line cache so we don't concatenate strings on every response. */
 const STATUS_CACHE: Record<number, string> = Object.create(null)
 
 for (const code in STATUS_CODES) {
@@ -24,34 +34,70 @@ for (const code in STATUS_CODES) {
 
 type EventHandler = (...args: any[]) => void
 
+/**
+ * HTTP Response class wrapping a uWS HttpResponse.
+ *
+ * Provides methods for status codes, headers, cookies, streaming, file serving,
+ * event listeners (abort, close, finish), and SSE.
+ *
+ * @typeParam TServer - The server type this response belongs to.
+ */
 export default class Response<
 	TServer extends Server,
 > implements BaseHttpResponse {
 	constructor() {}
 
+	/** Active SSE stream, if the client requested it. */
 	_sse!: SSEventStream | null
+	/** Per-response local storage for middleware communication. */
 	_locals!: any
+	/** The matched route. */
 	route!: Route<TServer> | null
+	/** Whether the response is in streaming mode. */
 	_streaming!: boolean
+	/** Tracks the furthest middleware index executed to prevent double-next(). */
 	_middleware_cursor!: number
+	/** The paired Request instance. */
 	_wrapped_request!: any
+	/** The uWS upgrade socket (WebSocket upgrade requests only). */
 	_upgrade_socket!: any
+	/** The raw uWS HttpResponse object. */
 	_raw_response!: HttpResponse | null
+	/** HTTP status code (defaults to 200). */
 	_status_code!: number
+	/** Custom status message (overrides the default from STATUS_CODES). */
 	_status_message!: string | null
+	/** Response headers (key → value or key → string[]). */
 	_headers!: Record<string, string | string[]>
+	/** Set-Cookie headers (name → serialized cookie string). */
 	_cookies!: Record<string, string> | null
+	/** Whether the response has been sent. */
 	completed!: boolean
+	/** Whether headers have been written to the wire. */
 	initiated!: boolean
+	/** If true, the response body is wrapped in uWS `cork()` for batching. */
 	_cork!: boolean
+	/** Has `cork()` already been applied? Prevents double-corking. */
 	_corked!: boolean
+	/** The drain handler registered for backpressure-aware streaming. */
 	_drain_handler!: ((offset: number) => boolean) | null
+	/** Event listeners (abort, close, finish). */
 	_events!: Record<string, EventHandler[]> | null
 
+	/**
+	 * The engine that owns this response.
+	 */
 	get engine(): EngineAdaptor | null {
 		return this.route?.engine ?? null
 	}
 
+	/**
+	 * Creates a Response instance and registers the uWS `onAborted` callback.
+	 *
+	 * The `onAborted` handler marks the response as completed, cleans up the
+	 * pending request counter, stops body parsing on the paired request, and
+	 * fires abort/close event listeners.
+	 */
 	static create<TServer extends Server>(
 		raw_response: HttpResponse,
 		route: Route<TServer>,
@@ -68,6 +114,7 @@ export default class Response<
 		res._status_code = 200
 		res._middleware_cursor = -1
 
+		// handle uWS abort (client disconnects before response is sent)
 		raw_response.onAborted(() => {
 			if (res.completed) return
 			res.completed = true
@@ -91,6 +138,10 @@ export default class Response<
 		return res
 	}
 
+	/**
+	 * Registers an event listener on the response.
+	 * Supported events: `"abort"`, `"close"`, `"finish"`.
+	 */
 	on(event: string, handler: EventHandler): this {
 		if (!this._events) {
 			this._events = {}
@@ -104,6 +155,9 @@ export default class Response<
 		return this
 	}
 
+	/**
+	 * Registers an event listener that fires only once.
+	 */
 	once(event: string, handler: EventHandler): this {
 		const wrapper = (...args: any[]) => {
 			this.off(event, wrapper)
@@ -113,6 +167,9 @@ export default class Response<
 		return this.on(event, wrapper)
 	}
 
+	/**
+	 * Removes an event listener.
+	 */
 	off(event: string, handler: EventHandler): this {
 		const arr = this._events?.[event]
 
@@ -126,10 +183,20 @@ export default class Response<
 		return this
 	}
 
+	/**
+	 * Returns the number of listeners for an event.
+	 */
 	listenerCount(event: string): number {
 		return this._events?.[event]?.length ?? 0
 	}
 
+	/**
+	 * Tracks the current middleware cursor position.
+	 *
+	 * Throws if a middleware tries to advance backwards (i.e. double-next detection).
+	 *
+	 * @returns The new cursor position.
+	 */
 	_track_middleware_cursor(position: number) {
 		if (
 			this._middleware_cursor === -1 ||
@@ -144,17 +211,28 @@ export default class Response<
 		)
 	}
 
+	/**
+	 * Wraps a handler in uWS `cork()` for batched writes.
+	 * All writes inside the handler are sent in a single TCP segment.
+	 */
 	atomic(handler: Function): this {
 		if (!this.completed) this._raw_response!.cork(handler as any)
 		return this
 	}
 
+	/**
+	 * Sets the HTTP status code. Optionally sets a custom status message.
+	 */
 	status(code: number, message?: string): this {
 		this._status_code = code
 		if (message !== undefined) this._status_message = message
 		return this
 	}
 
+	/**
+	 * Sets the `Content-Type` header from a file extension or MIME string.
+	 * Prefix the value with a dot to indicate a file extension (e.g. `".html"`).
+	 */
 	type(mime_type: string): this {
 		if (mime_type.charCodeAt(0) === 46) {
 			mime_type = mime_type.slice(1)
@@ -166,6 +244,10 @@ export default class Response<
 		return this
 	}
 
+	/**
+	 * Sets a response header. If the header already exists and `overwrite` is false,
+	 * the values are accumulated as an array.
+	 */
 	header(name: string, value: string | string[], overwrite?: boolean): this {
 		name = name.toLowerCase()
 
@@ -191,6 +273,15 @@ export default class Response<
 		return this
 	}
 
+	/**
+	 * Sets a `Set-Cookie` header.
+	 *
+	 * @param name - Cookie name.
+	 * @param value - Cookie value. Pass `null` to delete the cookie.
+	 * @param expiry - Expiry time in milliseconds from now.
+	 * @param options - Cookie options (secure, sameSite, path, etc.).
+	 * @param sign_cookie - If true and `options.secret` is set, signs the cookie value.
+	 */
 	cookie(
 		name: string,
 		value: string | null,
@@ -198,6 +289,7 @@ export default class Response<
 		options?: any,
 		sign_cookie: boolean = true,
 	): this {
+		// passing null value deletes the cookie (maxAge = 0)
 		if (name && value === null)
 			return this.cookie(name, "", null, { maxAge: 0 } as any)
 
@@ -221,6 +313,11 @@ export default class Response<
 		return this
 	}
 
+	/**
+	 * Upgrades the HTTP connection to a WebSocket.
+	 *
+	 * @param context - User data to attach to the WebSocket context.
+	 */
 	upgrade(context?: any) {
 		if (this.completed) return
 
@@ -230,6 +327,7 @@ export default class Response<
 			)
 		}
 
+		// if cork is requested, defer upgrade into a corked callback
 		if (this._cork && !this._corked) {
 			this._corked = true
 			return this.atomic(() => this.upgrade(context))
@@ -237,6 +335,7 @@ export default class Response<
 
 		const headers = this._wrapped_request.headers
 
+		// perform the uWS upgrade with the stored socket handle
 		this._raw_response!.upgrade(
 			{ context },
 			headers["sec-websocket-key"],
@@ -249,6 +348,11 @@ export default class Response<
 		this.engine?._resolve_pending_request()
 	}
 
+	/**
+	 * Writes the status line and all accumulated headers to the uWS response.
+	 *
+	 * Returns `false` if headers were already initiated (idempotent).
+	 */
 	_initiate_response(): boolean {
 		if (this.initiated) return false
 
@@ -256,6 +360,7 @@ export default class Response<
 
 		const raw = this._raw_response!
 
+		// write status line (only if non-200 or custom message)
 		if (this._status_message) {
 			raw.writeStatus(`${this._status_code} ${this._status_message}`)
 		} else if (this._status_code !== 200) {
@@ -264,14 +369,7 @@ export default class Response<
 			)
 		}
 
-		// TODO: write base headers stored on the engine
-		// const baseHeaders = this.engine?.baseHeaders
-		// if (baseHeaders) {
-		// 	for (let i = 0; i < baseHeaders.length; i++) {
-		// 		raw.writeHeader(baseHeaders[i][0], baseHeaders[i][1])
-		// 	}
-		// }
-
+		// write all response headers (skip content-length — uWS handles it)
 		const headerKeys = Object.keys(this._headers)
 
 		for (let i = 0; i < headerKeys.length; i++) {
@@ -292,6 +390,7 @@ export default class Response<
 			}
 		}
 
+		// write set-cookie headers
 		if (this._cookies) {
 			const cookieKeys = Object.keys(this._cookies)
 
@@ -303,6 +402,12 @@ export default class Response<
 		return true
 	}
 
+	/**
+	 * Registers a drain handler for streaming responses.
+	 *
+	 * @param handler - Called when uWS signals the socket is writable.
+	 *   Must return `true` if the chunk was successfully written.
+	 */
 	drain(handler: (offset: number) => boolean) {
 		const is_first_time = this._drain_handler === null
 		this._drain_handler = handler
@@ -321,9 +426,18 @@ export default class Response<
 		}
 	}
 
+	/**
+	 * Sends the response body and marks the response as completed.
+	 *
+	 * Supports corked (batched) and uncorked paths, streaming mode, and
+	 * `endWithoutBody` when a custom `content-length` header is set.
+	 *
+	 * Fires `finish` and `close` event listeners.
+	 */
 	send(body?: any, close_connection?: boolean): this {
 		if (this.completed) return this
 
+		// corked path: batch all writes into a single uWS cork callback
 		if (this._cork && !this._corked) {
 			this._corked = true
 			this._raw_response!.cork(() => {
@@ -350,8 +464,10 @@ export default class Response<
 				}
 			})
 		} else {
+			// uncorked path
 			this._initiate_response()
 
+			// body hasn't fully arrived yet — defer sending until it does
 			if (!this._wrapped_request._received) {
 				this._wrapped_request._body_parser_stop()
 				this._wrapped_request._onDone = () => {
@@ -385,6 +501,7 @@ export default class Response<
 			}
 		}
 
+		// fire finish listeners (unless streaming, where finish is handled differently)
 		if (!this._streaming && this.listenerCount("finish") > 0) {
 			const handlers = this._events!.finish
 
@@ -396,6 +513,7 @@ export default class Response<
 		this.completed = true
 		this.engine?._resolve_pending_request()
 
+		// fire close listeners
 		if (this.listenerCount("close") > 0) {
 			const handlers = this._events!.close
 			for (let i = 0; i < handlers.length; i++) {
@@ -406,6 +524,10 @@ export default class Response<
 		return this
 	}
 
+	/**
+	 * Writes a single chunk to uWS. Returns `[wasSent, false]` or
+	 * `[wasSent, wasFinished]` when a total_size is provided.
+	 */
 	_uws_write_chunk(chunk: any, total_size?: number): [boolean, boolean] {
 		if (total_size) {
 			return this._raw_response!.tryEnd(chunk, total_size)
@@ -414,6 +536,10 @@ export default class Response<
 		return [this._raw_response!.write(chunk), false]
 	}
 
+	/**
+	 * Streams a single chunk with backpressure support.
+	 * If the chunk doesn't fit in the uWS send buffer, it registers a drain handler.
+	 */
 	_stream_chunk(chunk: any, total_size?: number): Promise<void> {
 		if (this.completed) return Promise.resolve()
 
@@ -427,6 +553,7 @@ export default class Response<
 				const [sent] = this._uws_write_chunk(chunk, total_size)
 				if (sent) return resolve()
 
+				// chunk didn't fit — register drain handler to retry
 				this.drain((offset) => {
 					if (this.completed || !total_size) {
 						resolve()
@@ -446,6 +573,12 @@ export default class Response<
 		)
 	}
 
+	/**
+	 * Streams a Readable to the client chunk by chunk.
+	 *
+	 * @param readable - A Node.js Readable stream.
+	 * @param total_size - Total size hint for uWS `tryEnd`.
+	 */
 	async stream(readable: any, total_size?: number) {
 		if (this.completed) return
 
@@ -459,6 +592,7 @@ export default class Response<
 		) {
 			let chunk = readable.read()
 			if (!chunk) {
+				// wait for more data
 				await new Promise<void>((resolve) => {
 					readable.once("end", resolve)
 					readable.once("readable", () => {
@@ -478,6 +612,9 @@ export default class Response<
 		}
 	}
 
+	/**
+	 * Immediately closes the response (hard abort).
+	 */
 	close() {
 		if (this.completed) return
 
@@ -487,11 +624,18 @@ export default class Response<
 		this._raw_response!.close()
 	}
 
+	/**
+	 * Sends a 302 redirect response.
+	 */
 	redirect(url: string): boolean {
 		if (this.completed) return false
 		return this.status(302).header("location", url).send() as any
 	}
 
+	/**
+	 * Fast-path send used by the `_invokeHandler` in on_request.ts.
+	 * Skips cork/uncork logic and writes directly.
+	 */
 	_sendFast(body: any): void {
 		this._corked = true
 		this._initiate_response()
@@ -512,16 +656,26 @@ export default class Response<
 		}
 	}
 
+	/**
+	 * Sends a JSON response. Sets `Content-Type: application/json` and
+	 * serializes the body with `JSON.stringify`.
+	 */
 	json(body: any): this {
 		this._headers["content-type"] = "application/json"
 		return this.send(stringify(body))
 	}
 
+	/**
+	 * Sends an HTML response. Sets `Content-Type: text/html`.
+	 */
 	html(body: any): this {
 		this._headers["content-type"] = "text/html"
 		return this.send(body)
 	}
 
+	/**
+	 * Serves a file from the in-memory LiveFile cache.
+	 */
 	async _send_file(live_file: any, callback?: Function) {
 		if (!live_file.is_ready) await live_file.ready()
 
@@ -531,6 +685,12 @@ export default class Response<
 		if (callback) setImmediate(() => callback(FilePool))
 	}
 
+	/**
+	 * Serves a file from disk. Files are cached in memory via LiveFile.
+	 *
+	 * @param path - Filesystem path to the file.
+	 * @param callback - Optional callback after the file is served.
+	 */
 	file(path: string, callback?: Function): this {
 		if (FilePool[path])
 			return this._send_file(FilePool[path], callback) as any
@@ -544,21 +704,40 @@ export default class Response<
 		return this
 	}
 
+	/**
+	 * Per-response local storage for middleware communication.
+	 */
 	get locals(): Record<string, any> {
 		if (!this._locals) this._locals = Object.create(null)
 		return this._locals
 	}
 
+	/**
+	 * The raw uWS HttpResponse.
+	 */
 	get raw(): HttpResponse | null {
 		return this._raw_response
 	}
+
+	/**
+	 * Whether the response has been aborted by the client.
+	 */
 	get aborted(): boolean {
 		return this.completed
 	}
+
+	/**
+	 * The uWS upgrade socket handle (WebSocket upgrade requests only).
+	 */
 	get upgrade_socket(): any {
 		return this._upgrade_socket
 	}
 
+	/**
+	 * Accessor for Server-Sent Events.
+	 *
+	 * Only available on GET requests. Creates a lazy SSEventStream on first access.
+	 */
 	get sse(): SSEventStream | undefined {
 		if (this._wrapped_request.method === "GET") {
 			if (this._sse === null) {
@@ -569,66 +748,134 @@ export default class Response<
 		}
 	}
 
+	/**
+	 * The current uWS write offset. Returns `-1` if the response is completed.
+	 */
 	get write_offset(): number {
 		return this.completed ? -1 : this._raw_response!.getWriteOffset()
 	}
 
+	/**
+	 * The HTTP status code.
+	 */
 	get statusCode() {
 		return this._status_code
 	}
 	set statusCode(value) {
 		this._status_code = value
 	}
+
+	/**
+	 * The HTTP status message.
+	 */
 	get statusMessage() {
 		return this._status_message
 	}
 	set statusMessage(value) {
 		this._status_message = value
 	}
+
+	/**
+	 * Whether response headers have been sent.
+	 */
 	get headersSent() {
 		return this.initiated
 	}
 
+	/**
+	 * Appends values to a header (alias for `header()`).
+	 */
 	append(name: string, values: any) {
 		return this.header(name, values)
 	}
+
+	/**
+	 * Sets a header value (alias for `header()` with overwrite behaviour).
+	 */
 	setHeader(name: string, values: any) {
 		return this.header(name, values)
 	}
+
+	/**
+	 * Writes multiple headers at once from an object.
+	 */
 	writeHeaders(headers: any) {
 		for (const key in headers) this.header(key, headers[key])
 	}
+
+	/**
+	 * Alias for `writeHeaders()`.
+	 */
 	setHeaders(headers: any) {
 		this.writeHeaders(headers)
 	}
+
+	/**
+	 * Writes multiple values for a single header.
+	 */
 	writeHeaderValues(name: string, values: any) {
 		for (let i = 0; i < values.length; i++) this.header(name, values[i])
 	}
+
+	/**
+	 * Returns the value(s) of a header.
+	 */
 	getHeader(name: string) {
 		return this._headers[name]
 	}
+
+	/**
+	 * Removes a header.
+	 */
 	removeHeader(name: string) {
 		delete this._headers[name]
 	}
+
+	/**
+	 * Sets a cookie (shorthand for `cookie()`).
+	 */
 	setCookie(name: string, value: any, options: any) {
 		return this.cookie(name, value, null, options)
 	}
+
+	/**
+	 * Checks if a cookie has been queued.
+	 */
 	hasCookie(name: string) {
 		return this._cookies !== null && this._cookies[name] !== undefined
 	}
+
+	/**
+	 * Removes a cookie by setting it to null.
+	 */
 	removeCookie(name: string) {
 		return this.cookie(name, null)
 	}
+
+	/**
+	 * Alias for `removeCookie()`.
+	 */
 	clearCookie(name: string) {
 		return this.cookie(name, null)
 	}
+
+	/**
+	 * Alias for `send()`.
+	 */
 	end(data?: any) {
 		return this.send(data)
 	}
+
+	/**
+	 * Content negotiation by Accept header. Not implemented in this engine.
+	 */
 	format() {
 		this._throw_unsupported("format()")
 	}
 
+	/**
+	 * Returns the header value(s) for a given name.
+	 */
 	get(name: string) {
 		const values = this._headers[name]
 		if (values)
@@ -639,6 +886,9 @@ export default class Response<
 					: values
 	}
 
+	/**
+	 * Sets the `Link` header from an object mapping rel → URL.
+	 */
 	links(links: any) {
 		const chunks: string[] = []
 		for (const rel in links) {
@@ -647,22 +897,39 @@ export default class Response<
 		this.header("link", chunks.join(", "))
 	}
 
+	/**
+	 * Sets the `Location` header, used for redirects.
+	 */
 	location(path: string) {
 		this._headers["location"] = path as any
 		return this
 	}
 
+	/**
+	 * Template rendering. Not implemented in this engine.
+	 */
 	render() {
 		this._throw_unsupported("render()")
 	}
+
+	/**
+	 * Serves a file (alias for `file()`).
+	 */
 	sendFile(path: string) {
 		return this.file(path)
 	}
+
+	/**
+	 * Sends a response with only a status code and no body.
+	 */
 	sendStatus(status_code: number) {
 		this._status_code = status_code
 		return this.send()
 	}
 
+	/**
+	 * Sets headers using either `(key, value)` or `({ key: value })`.
+	 */
 	set(field: any, value: any) {
 		if (typeof field === "object") {
 			for (const key in field) this.header(key, field[key])
@@ -671,11 +938,17 @@ export default class Response<
 		}
 	}
 
+	/**
+	 * Sets the `Vary` header.
+	 */
 	vary(name: string) {
 		this._headers["vary"] = name as any
 		return this
 	}
 
+	/**
+	 * Throws an error indicating a method is not supported by this engine.
+	 */
 	_throw_unsupported(name: string) {
 		throw new Error(
 			`ERR_INCOMPATIBLE_CALL: One of your middlewares or route logic tried to call Response.${name} which is unsupported.`,

@@ -1,3 +1,12 @@
+/**
+ * The Handler class wraps a user-provided function (route handler,
+ * middleware, or WebSocket event handler) and provides a unified
+ * execution interface with automatic error handling.
+ *
+ * Each handler knows its "kind" (http, ws, or middleware), which
+ * determines how arguments are passed and how errors are converted
+ * to responses.
+ */
 import { EngineAdaptor } from "../EngineAdaptor"
 import OperationError from "../OperationError"
 import { Client } from "../RtEngine/classes/client"
@@ -68,6 +77,11 @@ export class Handler<K extends HandlerKind = HandlerKind> {
 		this._constructed = true
 	}
 
+	/**
+	 * Dispatches to the correct executor based on handler kind.
+	 * Catches all errors to prevent crashes in user code from
+	 * bringing down the server.
+	 */
 	async execute(...args: any) {
 		try {
 			switch (this.kind) {
@@ -88,12 +102,19 @@ export class Handler<K extends HandlerKind = HandlerKind> {
 		}
 	}
 
+	/**
+	 * Executes an HTTP route handler.
+	 * If a non-void result is returned and the response hasn't been sent
+	 * yet, it is automatically serialized as JSON.
+	 * OperationErrors are converted to the appropriate HTTP status code.
+	 */
 	private async executeAsHttp(req: Request, res: Response): Promise<void> {
 		const fn = this.fn as HttpHandlerFunction
 
 		try {
 			const result = await fn(req, res, req.ctx)
 
+			// Auto-JSON: if handler returned data and didn't manually end the response.
 			if (result && !res.completed) {
 				return res.json(result)
 			}
@@ -111,6 +132,11 @@ export class Handler<K extends HandlerKind = HandlerKind> {
 		}
 	}
 
+	/**
+	 * Executes a middleware function.
+	 * Middlewares receive (req, res, next). If next() is never called,
+	 * the request pipeline stops at this middleware.
+	 */
 	private async executeAsMiddleware(
 		req: Request,
 		res: Response,
@@ -134,6 +160,11 @@ export class Handler<K extends HandlerKind = HandlerKind> {
 		}
 	}
 
+	/**
+	 * Executes a WebSocket event handler.
+	 * WebSocket errors are logged but don't send HTTP responses —
+	 * the client is notified via its error/ack channel instead.
+	 */
 	private async executeAsWebsocket(
 		client: Client,
 		data?: any,
