@@ -29,10 +29,12 @@ export interface RouteObject<
 		: HttpHandlerFunction<Pick<Contexts<Child>, SelectedCtx>>
 }
 
-export function defineRoute<Child extends Server>() {
+export function defineRoute<
+	Child extends Server,
+	Type extends RouteTypes = "http",
+>() {
 	const define = <
 		UseContexts extends readonly ContextsKeys<Child>[] = readonly [],
-		Type extends RouteTypes = "http",
 	>(route: {
 		useMiddlewares?: MiddlewaresKeys<Child>[]
 		useContexts?: UseContexts

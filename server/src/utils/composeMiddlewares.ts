@@ -1,11 +1,8 @@
 import type { MiddlewareHandlerFunction } from "../classes/Handler"
 
-type MiddlewareRecord = Record<string, MiddlewareHandlerFunction>
-type MiddlewareSelector = MiddlewareHandlerFunction[]
-
 export default (
-	middlewares: MiddlewareRecord,
-	selectors: MiddlewareSelector,
+	middlewares: Record<string, MiddlewareHandlerFunction>,
+	selectors: Array<MiddlewareHandlerFunction | string>,
 ): MiddlewareHandlerFunction[] => {
 	if (!middlewares || !selectors) {
 		return []

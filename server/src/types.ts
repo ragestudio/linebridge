@@ -1,6 +1,6 @@
 import type { Server } from "./server"
 
-export type KnownKeys<T> = keyof {
+export type KnownKeys<T = any> = keyof {
 	[K in keyof T as string extends K
 		? never
 		: number extends K

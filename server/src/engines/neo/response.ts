@@ -27,6 +27,8 @@ type EventHandler = (...args: any[]) => void
 export default class Response<
 	TServer extends Server,
 > implements BaseHttpResponse {
+	constructor() {}
+
 	_sse!: SSEventStream | null
 	_locals!: any
 	route!: Route<TServer> | null
@@ -49,8 +51,6 @@ export default class Response<
 	get engine(): EngineAdaptor | null {
 		return this.route?.engine ?? null
 	}
-
-	constructor() {}
 
 	static create<TServer extends Server>(
 		raw_response: HttpResponse,
@@ -492,12 +492,6 @@ export default class Response<
 		return this.status(302).header("location", url).send() as any
 	}
 
-	json(body: any): this {
-		this._headers["content-type"] = "application/json"
-		return this.send(stringify(body))
-	}
-
-	// internal fast-send: skips cork/streaming checks, called when _cork is already true
 	_sendFast(body: any): void {
 		this._corked = true
 		this._initiate_response()
@@ -518,12 +512,9 @@ export default class Response<
 		}
 	}
 
-	jsonp(body: any, name?: string): this {
-		const query_parameters = this._wrapped_request.query_parameters
-		const method_name = query_parameters["callback"] || name
-
-		this._headers["content-type"] = "application/javascript"
-		return this.send(`${method_name}(${stringify(body)})`)
+	json(body: any): this {
+		this._headers["content-type"] = "application/json"
+		return this.send(stringify(body))
 	}
 
 	html(body: any): this {
@@ -551,27 +542,6 @@ export default class Response<
 
 		this._send_file(FilePool[path], callback) as any
 		return this
-	}
-
-	attachment(path?: string, name?: string): this {
-		if (path === undefined)
-			return this.header("content-disposition", "attachment")
-
-		const lastSlash = path.lastIndexOf("/")
-		const final_name =
-			name || (lastSlash !== -1 ? path.slice(lastSlash + 1) : path)
-
-		const lastDot = final_name.lastIndexOf(".")
-		const extension = lastDot !== -1 ? final_name.slice(lastDot + 1) : ""
-
-		return this.header(
-			"content-disposition",
-			`attachment; filename="${final_name}"`,
-		).type(extension)
-	}
-
-	download(path: string, filename?: string): this {
-		return this.attachment(path, filename).file(path)
 	}
 
 	get locals(): Record<string, any> {

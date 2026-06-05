@@ -16,7 +16,7 @@ export default async (server: Server): Promise<void | null> => {
 
 	for (let routes of Object.values(http)) {
 		let routeList = routes.map((key) => {
-			return key.route
+			return key.path
 		})
 
 		routeList = routeList.filter((key) => {

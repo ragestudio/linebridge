@@ -38,6 +38,7 @@ export default async function message(
 			)
 		}
 
+		//@ts-ignore
 		const [result, error] = await handler.execute(client, payload)
 
 		if (payload.ack === true) {

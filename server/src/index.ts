@@ -1,11 +1,16 @@
 import Server from "./server"
 import Route from "./classes/Route"
 import registerBaseAliases from "./utils/registerAliases"
-import { OperationError } from "./classes/OperationError"
 import type { OperationErrorType } from "./classes/OperationError"
-import { defineRoute as _defineRoute } from "./classes/Route"
-import type { RouteTypes, DefineRoute } from "./classes/Route"
-import type { ContextsKeys } from "./types"
+import type {
+	RouteTypes as _RouteTypes,
+	defineRoute as _defineRoute,
+} from "./classes/Route"
+import type {
+	KnownKeys as _KnownKeys,
+	ContextsKeys as _ContextsKeys,
+	MiddlewaresKeys as _MiddlewaresKeys,
+} from "./types"
 
 const version: string = require("../package.json").version
 
@@ -18,7 +23,12 @@ declare global {
 	var ipc: any
 	var __linebridge: any
 
-	var defineRoute: DefineRoute
+	var defineRoute: typeof _defineRoute
+
+	type RouteTypes = _RouteTypes
+	type KnownKeys<T> = _KnownKeys<T>
+	type MiddlewaresKeys<T extends Server> = _MiddlewaresKeys<T>
+	type ContextsKeys<T extends Server> = _ContextsKeys<T>
 
 	/*
  	  Boots the linebridge server with the provided class
