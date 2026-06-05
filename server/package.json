@@ -1,6 +1,6 @@
 {
 	"name": "linebridge",
-	"version": "2.0.0-alpha16",
+	"version": "2.0.0-alpha17",
 	"license": "MIT",
 	"description": "Multiproposal framework to build fast, scalable, and secure servers.",
 	"author": "RageStudio <support@ragestudio.net>",
@@ -19,7 +19,7 @@
 		"node": ">24.0.0"
 	},
 	"scripts": {
-		"build": "tsdown && cp -r bootloader build && cp package.json build && cp README.md build"
+		"build": "tsgo && cp -r bootloader build && cp package.json build && cp README.md build"
 	},
 	"optionalDependencies": {
 		"@infisical/sdk": "^5.0.2",
@@ -47,6 +47,6 @@
 		"@types/express": "^5.0.6",
 		"@types/mime-types": "^3.0.1",
 		"@types/node": "^25.9.1",
-		"tsdown": "^0.22.1"
+		"@typescript/native-preview": "7.0.0-dev.20260604.1"
 	}
 }
