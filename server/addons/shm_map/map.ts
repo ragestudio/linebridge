@@ -206,7 +206,7 @@ export class SharedMap {
 
 		// Scratch buffers live in regular heap memory, not shared memory.
 		// This means encoding/decoding never touches the shared segment
-		// without holding the lock — no partial writes visible to others.
+		// without holding the lock - no partial writes visible to others.
 		const keyBuffer = new ArrayBuffer(KEY_SIZE)
 		this.keyScratch32 = new Int32Array(keyBuffer)
 		this.keyScratch8 = new Uint8Array(keyBuffer)
@@ -233,7 +233,7 @@ export class SharedMap {
 		while (Atomics.compareExchange(this.lockArray, 0, 0, 1) !== 0) {
 			// Deadlock safety valve: after too many spins, assume the
 			// lock holder crashed. Force-unlock and restart the counter.
-			// Two contending processes may both reset it, but that's fine —
+			// Two contending processes may both reset it, but that's fine -
 			// the next compareExchange will still only let one through.
 			if (++spins > DEADLOCK_SPIN_LIMIT) {
 				Atomics.store(this.lockArray, 0, 0)
@@ -248,7 +248,7 @@ export class SharedMap {
 	 * @private
 	 */
 	private _unlock(): void {
-		// Plain store is enough — only the lock holder calls unlock,
+		// Plain store is enough - only the lock holder calls unlock,
 		// so there is no race on the write.
 		Atomics.store(this.lockArray, 0, 0)
 	}
@@ -326,7 +326,7 @@ export class SharedMap {
 				const offset32 = idx * ENTRY_I32_LEN
 
 				if (this.memory32[offset32] === 0) {
-					// Empty slot — write a new entry.
+					// Empty slot - write a new entry.
 					// Layout: [status=1, valLen, key[0..7], value[0..N]].
 					this.memory32[offset32] = 1
 					this.memory32[offset32 + 1] = valLen
@@ -344,7 +344,7 @@ export class SharedMap {
 					return
 				}
 
-				// Occupied slot — compare the full 32-byte key to see if it matches.
+				// Occupied slot - compare the full 32-byte key to see if it matches.
 				// We bail out on the first differing word (short-circuit).
 				let match = true
 
@@ -358,7 +358,7 @@ export class SharedMap {
 				}
 
 				if (match) {
-					// Key exists — update the value in place.
+					// Key exists - update the value in place.
 					// Only the length and value words are overwritten; the key stays.
 					this.memory32[offset32 + 1] = valLen
 
@@ -369,7 +369,7 @@ export class SharedMap {
 					return
 				}
 
-				// Key doesn't match — continue probing the next slot.
+				// Key doesn't match - continue probing the next slot.
 			}
 
 			// Table is full. The caller must use a larger maxEntries or
@@ -414,7 +414,7 @@ export class SharedMap {
 				const idx = (startIdx + i) % this.maxEntries
 				const offset32 = idx * ENTRY_I32_LEN
 
-				// Empty slot means the key is definitely not in the map —
+				// Empty slot means the key is definitely not in the map -
 				// if it were, it would have been placed here or probed past here.
 				if (this.memory32[offset32] === 0) return -1
 
@@ -430,7 +430,7 @@ export class SharedMap {
 				}
 
 				if (match) {
-					// Key found — read the value length and copy bytes out.
+					// Key found - read the value length and copy bytes out.
 					const valLen = this.memory32[offset32 + 1]
 
 					// Convert Int32 offset to byte offset: value starts at
@@ -446,7 +446,7 @@ export class SharedMap {
 					return valLen
 				}
 
-				// Key doesn't match — keep probing.
+				// Key doesn't match - keep probing.
 			}
 
 			// Scanned the whole table, key not found.
@@ -534,7 +534,7 @@ export class SharedMap {
 		this.valScratch32.fill(0)
 
 		// encodeInto writes UTF-8 bytes directly into the scratch buffer.
-		// It returns { read, written } — we only need 'written' for the value.
+		// It returns { read, written } - we only need 'written' for the value.
 		this.encoder.encodeInto(key, this.keyScratch8)
 
 		const { written: valLen } = this.encoder.encodeInto(
@@ -568,7 +568,7 @@ export class SharedMap {
 		if (len === -1) return undefined
 
 		// Decode only the valid portion of the buffer (0..len).
-		// subarray creates a view without copying — efficient.
+		// subarray creates a view without copying - efficient.
 		return this.decoder.decode(this.valScratch8.subarray(0, len))
 	}
 

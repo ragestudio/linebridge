@@ -23,7 +23,7 @@ struct ShmHint {
 
 /**
  * Called by V8 when the SharedArrayBuffer's BackingStore is destroyed.
- * This is the only safe time to release the physical memory — doing it
+ * This is the only safe time to release the physical memory - doing it
  * earlier would leave other processes with dangling pointers.
  *
  * @param data         The raw pointer (unused here, we use deleter_data).
@@ -36,7 +36,7 @@ void BackingStoreDeleter(void *data, size_t length, void *deleter_data) {
 	// Release the virtual address space mapping
 	munmap(h->ptr, h->size);
 
-	// Close the file descriptor — if this is the last reference
+	// Close the file descriptor - if this is the last reference
 	// the kernel will reclaim the shared memory segment
 	close(h->fd);
 
@@ -53,7 +53,7 @@ void BackingStoreDeleter(void *data, size_t length, void *deleter_data) {
  *
  * Steps:
  * 1. Validate and extract the name and size from JS arguments.
- * 2. Call shm_open() — creates the segment if it doesn't exist, or
+ * 2. Call shm_open() - creates the segment if it doesn't exist, or
  *    opens the existing one. The name is prefixed with "/" as required
  *    by POSIX.
  * 3. Call ftruncate() to set the segment size.
@@ -120,7 +120,7 @@ void Connect(const FunctionCallbackInfo<Value> &args) {
 	// --- 4. wrap the raw pointer in a V8 BackingStore ---
 	// Instead of letting V8 allocate memory, we inject our mmap'd pointer.
 	// The custom deleter ensures OS resources are freed when the JS buffer
-	// is garbage-collected — not before (other processes may still need it).
+	// is garbage-collected - not before (other processes may still need it).
 	std::shared_ptr<BackingStore> backing = SharedArrayBuffer::NewBackingStore(
 		ptr,
 		size,
