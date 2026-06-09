@@ -1,0 +1,81 @@
+# Getting Started
+
+Linebridge is a multiproposal server framework designed to build fast, scalable, and secure backend services. It uses [uWebSockets.js](https://github.com/uNetworking/uWebSockets.js) as its default engine, providing bare-metal HTTP/HTTPS/WebSocket performance.
+
+## Requirements
+
+- **Node.js** >= 24.0.0
+- **npm** (Yarn may have installation issues with native addons)
+
+## Installation
+
+```bash
+npm install linebridge
+```
+
+## Your First Server
+
+Create an `index.ts` file:
+
+```ts
+import { Server } from "linebridge"
+
+export default class MyAPI extends Server {
+  static refName = "my-api"
+  static listenPort = 3000
+}
+
+Boot(MyAPI)
+```
+
+Then boot it:
+
+```bash
+npx linebridge-boot index.ts
+```
+
+Your server will start on `http://0.0.0.0:3000`. The root endpoint `GET /` returns server metadata, and `GET /_map` returns the full route map.
+
+## Project Structure
+
+A typical Linebridge project follows this layout:
+
+```
+my-project/
+├── index.ts              # entry point, defines Server subclass
+├── routes/               # file-based HTTP route definitions
+│   └── users/
+│       └── get.ts
+├── ws_routes/            # file-based WebSocket event definitions
+│   └── chat:message.ts
+├── middlewares/          # custom middleware modules
+├── classes/              # custom classes and utilities
+├── lb-plugins/           # linebridge plugins directory
+├── package.json
+└── tsconfig.json
+```
+
+## Bootloader
+
+The bootloader (`linebridge-boot`) does several things before running your code:
+
+1. Loads `.env` via dotenv
+2. Sets up path aliases (`@`, `@classes`, `@middlewares`, `@models`, `@utils`, `@lib`, etc.)
+3. Registers the Sucrase transpiler for TypeScript support
+4. Applies global utilities (`nanoid`, `ToBoolean`, `b64Encode`, `b64Decode`)
+5. Executes your entry file
+
+### Path Aliases
+
+The bootloader automatically registers these aliases:
+
+| Alias | Resolves to |
+|-------|------------|
+| `@` | `src/` directory |
+| `@classes` | `src/classes/` |
+| `@middlewares` | `src/middlewares/` |
+| `@models` | `src/models/` |
+| `@utils` | `src/utils/` |
+| `@lib` | `src/lib/` |
+
+You can also use `registerBaseAliases()` manually if not using the bootloader.
