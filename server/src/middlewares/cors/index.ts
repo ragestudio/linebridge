@@ -22,7 +22,7 @@ import type { MiddlewareHandlerFunction } from "../../classes/Handler/middleware
  * On all other requests: calls `next()` to continue the middleware chain.
  */
 const cors: MiddlewareHandlerFunction = async (req, res, next) => {
-	// preflight request — respond immediately with CORS headers
+	// preflight request - respond immediately with CORS headers
 	if (req.method === "OPTIONS") {
 		res.header("Access-Control-Allow-Origin", "*")
 		res.header("Access-Control-Allow-Methods", "*")
@@ -32,7 +32,7 @@ const cors: MiddlewareHandlerFunction = async (req, res, next) => {
 		return res.status(204).end()
 	}
 
-	// regular request — pass through to the next middleware/route
+	// regular request - pass through to the next middleware/route
 	next()
 }
 

@@ -11,7 +11,7 @@ import type { MiddlewareHandlerFunction } from "../../classes/Handler/middleware
 /** When true, logging is disabled entirely. */
 const isProduction = process.env.NODE_ENV === "production"
 
-/** No-op middleware — used as the export in production. */
+/** No-op middleware - used as the export in production. */
 const noop: MiddlewareHandlerFunction<any, any> = (req, res, next) => next()
 
 /**

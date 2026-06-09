@@ -170,7 +170,7 @@ export class Server<EngineType = "neo"> {
 	// ---- user-defined routes & events ----
 
 	/** HTTP route definitions (class-based, registered at boot). */
-	routes!: Record<string, RouteObject>
+	routes!: Record<string, RouteObject<this>>
 
 	/** WebSocket event handler map. */
 	wsEvents?: Record<string, WebsocketHandlerFunction>
@@ -178,7 +178,7 @@ export class Server<EngineType = "neo"> {
 	/** IPC event handler map (used with NATS). */
 	ipcEvents?: IPCEvents
 
-	/** WebSocket upgrade hook — validate tokens, attach user data. */
+	/** WebSocket upgrade hook - validate tokens, attach user data. */
 	handleWsUpgrade?: (context: any, token: string, res: any) => Promise<void>
 
 	/** WebSocket connection established hook. */

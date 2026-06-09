@@ -6,7 +6,7 @@
  * it possible to swap in alternatives later.
  *
  * Engine implementations are plain objects/classes with these methods,
- * not instances of EngineAdaptor — the adaptor exists for TypeScript typing.
+ * not instances of EngineAdaptor - the adaptor exists for TypeScript typing.
  */
 import type LinebridgeServer from "../../server"
 import type { MiddlewareHandlerFunction } from "../Handler"
@@ -35,7 +35,7 @@ export class EngineAdaptor {
 	/** Registers a global middleware. */
 	register_middleware!: (middleware: MiddlewareHandlerFunction) => void
 
-	/** Async init — sets up SSL, creates the underlying server app, etc. */
+	/** Async init - sets up SSL, creates the underlying server app, etc. */
 	initialize!: () => Promise<void>
 
 	/** Starts accepting connections. */

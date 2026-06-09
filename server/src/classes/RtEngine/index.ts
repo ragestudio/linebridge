@@ -1,5 +1,5 @@
 /**
- * RTEngine — Real-Time Engine (WebSocket subsystem) for Linebridge.
+ * RTEngine - Real-Time Engine (WebSocket subsystem) for Linebridge.
  *
  * Built on top of uWebSockets.js, RTEngine manages WebSocket connections,
  * event dispatching, topic-based pub/sub, and optional NATS federation.
@@ -109,7 +109,7 @@ class RTEngine {
 			}
 		}
 
-		// Register built-in events (ping, etc.) — these can be overridden by user events above
+		// Register built-in events (ping, etc.) - these can be overridden by user events above
 		for (const [event, handler] of Object.entries(BuiltInEvents)) {
 			this.events.set(
 				event,
@@ -128,16 +128,16 @@ class RTEngine {
 		this.onDisconnect = config.onDisconnect || null
 	}
 
-	/** Bound message handler — dispatches incoming WebSocket messages */
+	/** Bound message handler - dispatches incoming WebSocket messages */
 	handleMessage = handleMessage.bind(this)
 
-	/** Bound connection handler — called when a new WebSocket connects */
+	/** Bound connection handler - called when a new WebSocket connects */
 	handleConnection = handleConnection.bind(this)
 
-	/** Bound disconnect handler — called when a WebSocket closes */
+	/** Bound disconnect handler - called when a WebSocket closes */
 	handleDisconnect = handleDisconnect.bind(this)
 
-	/** Bound upgrade handler — validates and upgrades HTTP to WebSocket */
+	/** Bound upgrade handler - validates and upgrades HTTP to WebSocket */
 	handleUpgrade = handleUpgrade.bind(this)
 
 	/**

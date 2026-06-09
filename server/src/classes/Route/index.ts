@@ -4,7 +4,13 @@ import parsePathParameters from "../../utils/parsePathParameters"
 import type { Server } from "../../server"
 import type { HttpHandlerFunction } from "../Handler/http"
 import type { WebsocketHandlerFunction } from "../Handler/websocket"
-import type { ContextsKeys, MiddlewaresKeys, Contexts } from "../../types"
+import type {
+	ContextsKeys,
+	MiddlewaresKeys,
+	Contexts,
+	ServerRequest,
+	ServerResponse,
+} from "../../types"
 
 export type RouteTypes = "http" | "ws"
 export type RouteHttpMethods =
@@ -27,13 +33,20 @@ export interface RouteObject<
 	useContexts?: readonly SelectedCtx[]
 	fn: Type extends "ws"
 		? WebsocketHandlerFunction<Pick<Contexts<Child>, SelectedCtx>>
-		: HttpHandlerFunction<Pick<Contexts<Child>, SelectedCtx>>
+		: HttpHandlerFunction<
+				Pick<Contexts<Child>, SelectedCtx>,
+				ServerRequest<Child>,
+				ServerResponse<Child>
+			>
 }
 
 export function defineRoute<
-	Child extends Server,
+	Child extends Server = Server,
 	Type extends RouteTypes = "http",
 >() {
+	type Req = ServerRequest<Child>
+	type Res = ServerResponse<Child>
+
 	const define = <
 		UseContexts extends readonly ContextsKeys<Child>[] = readonly [],
 	>(route: {
@@ -49,7 +62,9 @@ export function defineRoute<
 			: HttpHandlerFunction<
 					UseContexts extends readonly [any, ...any[]]
 						? Pick<Contexts<Child>, UseContexts[number]>
-						: unknown
+						: unknown,
+					Req,
+					Res
 				>
 	}): typeof route => route
 

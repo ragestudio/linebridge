@@ -27,7 +27,6 @@ import type RTEngine from "../index"
  */
 export default async function upgrade(this: RTEngine, req: any, res: any) {
 	try {
-		// Build the context that will be attached to the upgraded WebSocket
 		const context = {
 			id: nanoid(),
 			token: req.query.token,
@@ -35,16 +34,13 @@ export default async function upgrade(this: RTEngine, req: any, res: any) {
 			httpHeaders: req.headers,
 		}
 
-		// Let the user-provided hook handle authentication and upgrade
 		if (typeof this.onUpgrade === "function") {
 			await this.onUpgrade(context, req.query.token, res)
 		} else {
-			// No custom hook — upgrade immediately
 			res.upgrade(context)
 		}
 	} catch (error) {
 		console.error("Error upgrading connection:", error)
-		// Reject the upgrade with a 401 status
 		res.status(401).end()
 	}
 }

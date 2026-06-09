@@ -18,8 +18,6 @@ export interface Request {
 	text: () => Promise<string>
 	json: () => Promise<Record<any, any>>
 	urlencoded: () => Promise<Record<any, any>>
-
-	[key: string]: any
 }
 
 export interface Response {
@@ -39,8 +37,8 @@ export interface Response {
 	setHeader: (key: string, value: string) => this
 }
 
-export type HttpHandlerFunction<TCtx = Record<string, any>> = (
-	req: Request & { [key: string]: any },
-	res: Response,
-	ctx: TCtx,
-) => any
+export type HttpHandlerFunction<
+	TCtx = Record<string, any>,
+	TReq extends Request = Request,
+	TRes extends Response = Response,
+> = (req: TReq, res: TRes, ctx: TCtx) => any

@@ -162,7 +162,7 @@ export class Handler<K extends HandlerKind = HandlerKind> {
 
 	/**
 	 * Executes a WebSocket event handler.
-	 * WebSocket errors are logged but don't send HTTP responses —
+	 * WebSocket errors are logged but don't send HTTP responses -
 	 * the client is notified via its error/ack channel instead.
 	 */
 	private async executeAsWebsocket(
