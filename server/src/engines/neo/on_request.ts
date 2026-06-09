@@ -165,7 +165,6 @@ function _invokeHandler(
 			)
 		}
 
-		// sync handler returned a truthy value — treat it as JSON response body
 		if (result && !response.completed) {
 			response._headers["content-type"] = "application/json"
 			const body =

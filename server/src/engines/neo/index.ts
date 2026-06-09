@@ -1,5 +1,5 @@
 /**
- * @fileoverview Neo engine — the uWebSockets.js engine adaptor for Linebridge.
+ * @fileoverview Neo engine - the uWebSockets.js engine adaptor for Linebridge.
  *
  * This engine creates a uWS app (plain or SSL), optionally attaches a WebSocket
  * server via RTEngine, and manages the HTTP request/response lifecycle.
@@ -44,7 +44,7 @@ export type EngineOptions = {
 /**
  * Augmented uWS TemplatedApp that supports dynamic method dispatch.
  * We wrap the typed interface so we can call `uws.get(...)`, `uws.post(...)`
- * etc. via bracket notation — needed because uWS itself uses dynamic methods
+ * etc. via bracket notation - needed because uWS itself uses dynamic methods
  * for route registration.
  */
 type uwsEngine = uWebsockets.TemplatedApp & {

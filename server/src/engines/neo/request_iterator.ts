@@ -77,7 +77,7 @@ export default async function (
 				await next()
 			}
 		} else {
-			// no more middlewares — execute the route handler
+			// no more middlewares - execute the route handler
 			await route.handler.execute(request, response)
 		}
 	} catch (error: any) {

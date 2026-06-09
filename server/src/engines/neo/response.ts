@@ -43,12 +43,12 @@ type EventHandler = (...args: any[]) => void
  * @typeParam TServer - The server type this response belongs to.
  */
 export default class Response<
-	TServer extends Server,
+	TServer extends Server = Server,
 > implements BaseHttpResponse {
 	constructor() {}
 
 	/** Active SSE stream, if the client requested it. */
-	_sse!: SSEventStream | null
+	_sse: SSEventStream | null = null
 	/** Per-response local storage for middleware communication. */
 	_locals!: any
 	/** The matched route. */
@@ -360,16 +360,15 @@ export default class Response<
 
 		const raw = this._raw_response!
 
-		// write status line (only if non-200 or custom message)
+		// write status line
 		if (this._status_message) {
 			raw.writeStatus(`${this._status_code} ${this._status_message}`)
-		} else if (this._status_code !== 200) {
+		} else {
 			raw.writeStatus(
 				STATUS_CACHE[this._status_code] || `${this._status_code} OK`,
 			)
 		}
 
-		// write all response headers (skip content-length — uWS handles it)
 		const headerKeys = Object.keys(this._headers)
 
 		for (let i = 0; i < headerKeys.length; i++) {
@@ -467,7 +466,6 @@ export default class Response<
 			// uncorked path
 			this._initiate_response()
 
-			// body hasn't fully arrived yet — defer sending until it does
 			if (!this._wrapped_request._received) {
 				this._wrapped_request._body_parser_stop()
 				this._wrapped_request._onDone = () => {
@@ -537,6 +535,28 @@ export default class Response<
 	}
 
 	/**
+	 * Writes a chunk to the response body.
+	 * Initiates headers if not yet sent. Returns false under backpressure.
+	 */
+	write(chunk: string): boolean {
+		if (this._cork && !this._corked) {
+			this._corked = true
+
+			let ok = false
+
+			this._raw_response!.cork(() => {
+				this._initiate_response()
+				ok = this._raw_response!.write(chunk)
+			})
+
+			return ok
+		}
+
+		this._initiate_response()
+		return this._raw_response!.write(chunk)
+	}
+
+	/**
 	 * Streams a single chunk with backpressure support.
 	 * If the chunk doesn't fit in the uWS send buffer, it registers a drain handler.
 	 */
@@ -553,7 +573,6 @@ export default class Response<
 				const [sent] = this._uws_write_chunk(chunk, total_size)
 				if (sent) return resolve()
 
-				// chunk didn't fit — register drain handler to retry
 				this.drain((offset) => {
 					if (this.completed || !total_size) {
 						resolve()

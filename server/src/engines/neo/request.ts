@@ -5,7 +5,7 @@
  * body parsing (JSON, text, urlencoded, buffer), cookies, IP resolution,
  * and path/query parameters.
  *
- * All body parsing is lazy and cached — calling `.json()` a second time returns a
+ * All body parsing is lazy and cached - calling `.json()` a second time returns a
  * cached promise.
  */
 
@@ -25,7 +25,6 @@ import type { Route } from "../../classes/Route"
 import type { Server } from "../../server"
 import type Response from "./response"
 
-/** Reusable UTF-8 decoder for body/header parsing. */
 const utf8Decoder = new util.TextDecoder("utf-8")
 
 /**
@@ -37,13 +36,8 @@ const utf8Decoder = new util.TextDecoder("utf-8")
  * @typeParam TServer - The server type this request belongs to.
  */
 export default class Request<
-	TServer extends Server,
+	TServer extends Server = Server,
 > implements BaseHttpRequest {
-	/**
-	 * ─── Internal (private) state ───
-	 * Declared with `!` because they are set by `Request.create()` before any accessor is used.
-	 */
-
 	/** Per-request local storage for middleware communication. */
 	_locals!: any
 	/** Whether the response stream is paused. */
@@ -134,7 +128,7 @@ export default class Request<
 		req._path = raw_request.getUrl()
 		req._received = true
 
-		// normalize method — uWS uses "del" internally, we want "DELETE"
+		// normalize method - uWS uses "del" internally, we want "DELETE"
 		const rawMethod = raw_request.getMethod()
 		req._method = rawMethod === "del" ? "DELETE" : rawMethod.toUpperCase()
 
@@ -221,7 +215,7 @@ export default class Request<
 	// 		this._onDone = null
 	// 	}
 
-	// 	// body parser is no longer active — pipe takes over
+	// 	// body parser is no longer active - pipe takes over
 	// 	this._body_parser_on_data_registered = false
 
 	// 	// if the complete body was already buffered, just end the target
@@ -230,7 +224,7 @@ export default class Request<
 	// 		return this
 	// 	}
 
-	// 	// body is still arriving — register onData for the remaining chunks
+	// 	// body is still arriving - register onData for the remaining chunks
 	// 	this._raw_response.onData((chunk: ArrayBuffer, is_last: boolean) => {
 	// 		if (!chunk.byteLength && !is_last) {
 	// 			return
@@ -290,7 +284,7 @@ export default class Request<
 			this._body_parser_buffered = []
 			this._body_parser_on_data_registered = true
 
-			// register the uWS body listener — fires for every chunk
+			// register the uWS body listener - fires for every chunk
 			this._raw_response.onData((chunk: ArrayBuffer, is_last: boolean) =>
 				this._body_parser_on_chunk(response, chunk, is_last),
 			)
@@ -318,7 +312,7 @@ export default class Request<
 		chunk: ArrayBuffer,
 		is_last: boolean,
 	) {
-		// response already sent — ignore remaining body chunks
+		// response already sent - ignore remaining body chunks
 		if (response.completed) return
 
 		if (!chunk.byteLength && !is_last) return
@@ -349,7 +343,7 @@ export default class Request<
 			}
 		}
 
-		// last chunk received — mark body as complete and fire the done callback
+		// last chunk received - mark body as complete and fire the done callback
 		if (is_last) {
 			this._received = true
 
@@ -397,7 +391,7 @@ export default class Request<
 			return Promise.resolve(this._body_raw || Buffer.allocUnsafe(0))
 		}
 
-		// body has not arrived yet — create a promise that resolves when it does
+		// body has not arrived yet - create a promise that resolves when it does
 		this._received_data_promise = new Promise<Buffer>((resolve, reject) => {
 			if (this._received && this._body_parser_buffered) {
 				const result = Buffer.concat(this._body_parser_buffered)
@@ -444,7 +438,7 @@ export default class Request<
 
 	/**
 	 * Returns the entire request body as a Buffer.
-	 * Cached — calling it multiple times returns the same promise.
+	 * Cached - calling it multiple times returns the same promise.
 	 */
 	buffer(): any {
 		if (this._buffer_promise) {
@@ -473,7 +467,7 @@ export default class Request<
 
 	/**
 	 * Returns the entire request body as a string.
-	 * Cached — calling it multiple times returns the same promise.
+	 * Cached - calling it multiple times returns the same promise.
 	 */
 	text() {
 		if (this._text_promise) return this._text_promise
@@ -490,7 +484,7 @@ export default class Request<
 
 	/**
 	 * Parses the request body as JSON.
-	 * Cached — calling it multiple times returns the same promise.
+	 * Cached - calling it multiple times returns the same promise.
 	 *
 	 * @param default_value - Value to return if JSON parsing fails (default: `{}`).
 	 */
@@ -518,7 +512,7 @@ export default class Request<
 
 	/**
 	 * Parses the request body as URL-encoded form data.
-	 * Cached — calling it multiple times returns the same promise.
+	 * Cached - calling it multiple times returns the same promise.
 	 */
 	urlencoded() {
 		if (this._urlencoded_promise) return this._urlencoded_promise

@@ -70,7 +70,6 @@ export default function (this: Engine, route: RouteAlike) {
 		path: routeInstance.path,
 	})
 
-	// register the route with uWS — every matching request goes through on_request
 	this.uws[routeInstance.method](
 		routeInstance.path,
 		(res: HttpResponse, req: HttpRequest) =>
