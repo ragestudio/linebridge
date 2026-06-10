@@ -58,7 +58,7 @@ Engines are the transport layer. Linebridge ships with one engine:
 
 ### Neo Engine (default)
 
-Based on **uWebSockets.js v20.68.0**, the Neo engine provides:
+Based on **uWebSockets.js**, the Neo engine provides:
 
 - HTTP/HTTPS server with automatic SSL detection
 - WebSocket support with pub/sub via MQTT-style topics

@@ -62,25 +62,14 @@ my-project/
 
 ## Bootloader
 
-The bootloader (`linebridge-boot`) does several things before running your code:
-
-1. Loads `.env` via dotenv
-2. Sets up path aliases (`@`, `@classes`, `@middlewares`, `@models`, `@utils`, `@lib`, etc.)
-3. Registers the Sucrase transpiler for TypeScript support
-4. Applies global utilities (`nanoid`, `ToBoolean`, `b64Encode`, `b64Decode`)
-5. Executes your entry file
+The bootloader (`linebridge-boot`) handles `.env` loading, TypeScript/ESM JIT transpilation via Sucrase, path aliases (`@`, `@classes`, etc.), and global utilities (`Boot()`, `ToBoolean()`, `nanoid()`). See the [Bootloader guide](./bootloader) for the full reference.
 
 ### Path Aliases
 
-The bootloader automatically registers these aliases:
+The bootloader automatically registers these aliases. See the [Bootloader guide](./bootloader#path-aliases) for the complete list.
 
 | Alias | Resolves to |
 |-------|------------|
 | `@` | `src/` directory |
-| `@classes` | `src/classes/` |
-| `@middlewares` | `src/middlewares/` |
-| `@models` | `src/models/` |
-| `@utils` | `src/utils/` |
-| `@lib` | `src/lib/` |
 
 You can also use `registerBaseAliases()` manually if not using the bootloader.

@@ -11,6 +11,7 @@ export default {
 					link: "/guide/getting-started",
 				},
 				{ text: "Core Concepts", link: "/guide/core-concepts" },
+				{ text: "Bootloader", link: "/guide/bootloader" },
 			],
 		},
 		{

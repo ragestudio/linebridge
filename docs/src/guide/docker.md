@@ -2,40 +2,51 @@
 
 Linebridge applications can be packaged as Docker containers for both standalone and gateway-based deployments.
 
+> **glibc required**: uWebSockets.js (the Neo engine) links against glibc and is **not compatible with musl libc**. Alpine-based images (`node:*-alpine`) will fail at runtime. Always use Debian-based images (`node:24`, `node:24-slim`, or `ragestudio/ultragateway`). The `ragestudio/ultragateway` image is based on Debian Trixie Slim and includes Node.js + ultragateway pre-installed.
+
+> **Bootloader in containers**: Define an npm script (`"prod": "linebridge-boot index.ts"`) and use `CMD ["npm", "run", "prod"]`. The bootloader (should be at `node_modules/.bin/linebridge-boot`) handles `.env` loading, TypeScript/ESM JIT transpilation via Sucrase, and path aliases — your TypeScript source runs without a build step. See the [Bootloader guide](./bootloader).
+
 ## Base Images
 
-| Image | Registry | Description |
-|-------|----------|-------------|
-| `node:24` | Docker Hub | Base for standalone Linebridge services |
-| `ragestudio/ultragateway:latest` | Docker Hub | Linebridge Gateway + Node.js 24 runtime |
+| Image | libc | Description |
+|-------|------|-------------|
+| `node:24` | glibc | Debian-based, full Node.js image |
+| `node:24-slim` | glibc | Smaller Debian variant (recommended for standalone) |
+| `ragestudio/ultragateway:latest` | glibc | Debian Trixie Slim + ultragateway + Node.js 24 |
 
-The `ragestudio/ultragateway` image includes:
-- The `ultragateway` binary at `/usr/local/bin/ultragateway`
-- Node.js 24 for running Linebridge services
-- Essential tools: `curl`, `bash`, `nscd`
+### Why Not Alpine?
+
+| libc | Image | uWebSockets.js | Status |
+|------|-------|---------------|--------|
+| musl | `node:24-alpine` | ❌ Fails at runtime | Do not use |
+| glibc | `node:24-slim` | ✅ Works | Use this |
+
+uWebSockets.js ships prebuilt native binaries linked against glibc. The musl-based Alpine libc is ABI-incompatible, causing immediate crashes on startup. If you need a minimal image, use `node:24-slim` (~70 MB) which is glibc-based.
 
 ## Standalone Deployment
 
-A single Linebridge service without the gateway.
+A single Linebridge service without the gateway. Uses `linebridge-boot` to start the service with JIT transpilation — no build step needed.
 
 ### Dockerfile
 
 ```dockerfile
-FROM node:24-alpine
+FROM node:24-slim
 
 WORKDIR /app
 
-# Install dependencies
+# Install dependencies (linebridge includes the bootloader)
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 
-# Copy source
+# Copy source (TypeScript, no compilation needed — bootloader handles it)
 COPY . .
 
-# The bootloader is installed via the linebridge package
+# Required: define "prod" script in package.json:
+#   "scripts": { "prod": "linebridge-boot index.ts" }
+
 EXPOSE 3000
 
-CMD ["npx", "linebridge-boot", "index.ts"]
+CMD ["npm", "run", "prod"]
 ```
 
 ### compose.yml
@@ -151,11 +162,11 @@ volumes:
 
 ## Multi-Stage Build (Optimized)
 
-Separate build and runtime stages for smaller images:
+Uses a build stage for `npm ci` + prune, then copies to the glibc-based runtime:
 
 ```dockerfile
 # ── Build stage ──────────────────────────────────────────
-FROM node:24-alpine AS build
+FROM node:24-slim AS build
 
 WORKDIR /build
 
@@ -163,9 +174,6 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
-
-# If using TypeScript, compile here
-# RUN npm run build
 
 # Prune dev dependencies
 RUN npm prune --omit=dev
@@ -244,15 +252,13 @@ volumes:
   nats-data:
 ```
 
-> **Note**: The embedded NATS server is recommended for simplicity. An external NATS is only needed if you want to share the NATS cluster across multiple gateway instances or use NATS persistence features beyond the embedded defaults.
+> **Note**: The embedded NATS server is recommended for simplicity. An external NATS is only needed if you want to share the NATS cluster across multiple gateway instances. NATS itself (Go binary) works fine on Alpine.
 
 ---
 
 ## Docker Compose: TLS / HTTPS
 
 ```yaml
-version: "3.8"
-
 services:
   gateway:
     build: .
@@ -318,10 +324,12 @@ services:
 
 ## Production Checklist
 
+- [ ] Use a **glibc-based image** (`node:24-slim` or `ragestudio/ultragateway`), never Alpine
 - [ ] Set `NODE_ENV=production`
 - [ ] Set `mode: "prod"` in `gateway.config.json` (disables file watchers)
 - [ ] Mount `gateway.config.json` as read-only
 - [ ] Mount service code as read-only in production
+- [ ] Define an npm `"prod"` script: `"prod": "linebridge-boot index.ts"` and use `CMD ["npm", "run", "prod"]`
 - [ ] Use a volume for `nats-data` to persist across restarts
 - [ ] Configure health checks
 - [ ] Set resource limits (`deploy.resources.limits`)
