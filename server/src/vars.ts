@@ -38,7 +38,7 @@ const Vars: VarsType = {
 	defaultParams: {
 		refName: "linebridge",
 		listenIp: "0.0.0.0",
-		listenPort: 3000,
+		listenPort: process.env.LB_PORT ? parseInt(process.env.LB_PORT) : 3000,
 		useEngine: "neo",
 		websockets: false,
 		nats: null,
