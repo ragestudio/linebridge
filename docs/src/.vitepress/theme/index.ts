@@ -8,7 +8,7 @@ import Layout from "./layout.vue"
 
 // @ts-ignore
 import "@shikijs/vitepress-twoslash/style.css"
-
+// @ts-ignore
 import "../../style.less"
 
 export default {

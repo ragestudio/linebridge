@@ -2,8 +2,8 @@ import { defineConfig } from "vitepress"
 import { transformerTwoslash } from "@shikijs/vitepress-twoslash"
 import lightbox from "vitepress-plugin-lightbox"
 
-import sidebar from "./sidebar"
 import nav from "./nav"
+import sidebar from "./sidebar"
 
 export default defineConfig({
 	title: "Linebridge",
