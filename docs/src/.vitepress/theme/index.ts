@@ -20,4 +20,5 @@ export default {
 		app.use(pinia)
 		app.use(TwoslashFloatingVue)
 	},
+	setup() {},
 } satisfies Theme

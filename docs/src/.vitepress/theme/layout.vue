@@ -19,15 +19,9 @@ const onNewPage = () => {
 		document.querySelector(".VPDoc > .container")?.classList.remove("-wide")
 		document.querySelector(".vp-doc > div")?.classList.remove("-wide")
 	}
-
-	console.log("page")
 }
 
 onMounted(onNewPage)
-</script>
-
-<script lang="ts">
-console.log("layout", document.querySelector(".VPDoc > .container"))
 </script>
 
 <template>
