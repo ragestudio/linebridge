@@ -24,18 +24,20 @@ Linebridge supports distributed architectures through NATS-based inter-process c
 
 ## Enabling Gateway Mode
 
-Set the `LB_GATEWAY_SOCKET` environment variable:
+When running behind the [Linebridge Gateway](./gateway), set the `LB_GATEWAY_SOCKET` environment variable:
 
 ```bash
 LB_GATEWAY_SOCKET=/tmp/lb-gateway.sock npx linebridge-boot index.ts
 ```
 
+The gateway injects this automatically when it starts your service. See the [Linebridge Gateway guide](./gateway) for the full gateway setup.
+
 When this variable is set:
 
-1. The server connects to NATS using the configured `nats` params
+1. The service connects to NATS using the configured `nats` params
 2. A `NatsAdapter` instance is created and exposed as `server.nats`
 3. An `IPC` client is created and exposed as `server.ipc`
-4. The service registers itself with the gateway
+4. The service registers itself with the gateway via Unix socket IPC
 
 ## Configuration
 
@@ -191,31 +193,4 @@ NATS messages use `fast-json-stringify` for efficient serialization:
 
 ## Gateway Registration
 
-When gateway mode is active, the service announces itself to the gateway via a Unix socket:
-
-```ts
-const registerObj = {
-  event: "service:register",
-  data: {
-    namespace: "user-service",
-    secure: false,
-    http: {
-      enabled: true,
-      proto: "http",
-      paths: ["/users", "/users/:id", ...],
-    },
-    websocket: {
-      enabled: true,
-      proto: "ws",
-      path: "/user-service",
-      events: ["chat:message", "chat:join", ...],
-    },
-    listen: {
-      ip: "0.0.0.0",
-      port: 3000,
-    },
-  },
-}
-```
-
-The gateway uses this information to route incoming requests to the appropriate service instance.
+When gateway mode is active, the service announces itself to the gateway via a Unix socket. See the [Linebridge Gateway guide](./gateway) for the registration payload format and how the gateway builds its routing table from it.

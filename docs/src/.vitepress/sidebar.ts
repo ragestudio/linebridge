@@ -22,19 +22,42 @@ export default {
 				{ text: "WebSockets", link: "/guide/websockets" },
 				{ text: "Middlewares", link: "/guide/middlewares" },
 				{ text: "Context System", link: "/guide/contexts" },
-			],
-		},
-		{
-			text: "Advanced",
-			collapsed: true,
-			items: [
-				{ text: "Plugins", link: "/guide/plugins" },
-				{ text: "IPC & NATS", link: "/guide/ipc-nats" },
-				{ text: "Gateway Mode", link: "/guide/gateway" },
 				{
 					text: "File-Based Routing",
 					link: "/guide/file-based-routing",
 				},
+			],
+		},
+		{
+			text: "Advanced",
+			collapsed: false,
+			items: [
+				{ text: "Docker & Deployment", link: "/guide/docker" },
+				{ text: "Linebridge Gateway", link: "/guide/gateway" },
+				{ text: "IPC & NATS", link: "/guide/ipc-nats" },
+				{ text: "Plugins", link: "/guide/plugins" },
+			],
+		},
+	] as DefaultTheme.SidebarItem[],
+
+	"/ultragateway/": [
+		{
+			text: "Ultragateway",
+			items: [
+				{ text: "Overview", link: "/ultragateway/" },
+				{ text: "Installation", link: "/ultragateway/installation" },
+				{ text: "Configuration", link: "/ultragateway/configuration" },
+			],
+		},
+		{
+			text: "Internals",
+			items: [
+				{ text: "Architecture", link: "/ultragateway/architecture" },
+				{ text: "HTTP Routing", link: "/ultragateway/http-routing" },
+				{ text: "WebSocket", link: "/ultragateway/websocket" },
+				{ text: "IPC Protocol", link: "/ultragateway/ipc-protocol" },
+				{ text: "Services", link: "/ultragateway/services" },
+				{ text: "NATS Internals", link: "/ultragateway/nats" },
 			],
 		},
 	] as DefaultTheme.SidebarItem[],
@@ -76,6 +99,7 @@ export default {
 				{ text: "IPC", link: "/api/ipc" },
 				{ text: "NATS Adapter", link: "/api/nats-adapter" },
 				{ text: "NATS Client", link: "/api/nats-client" },
+				{ text: "Gateway Config", link: "/api/gateway-config" },
 			],
 		},
 		{
