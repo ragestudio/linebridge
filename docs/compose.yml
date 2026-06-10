@@ -2,4 +2,4 @@ services:
   docs:
     build: .
     ports:
-      - "3000:3000"
+      - "${LISTEN_PORT:-3000}:3000"
