@@ -1,65 +1,136 @@
 # Routes & Handlers
 
-Routes map HTTP methods and URL patterns to handler functions. Linebridge provides a class-based `Route` system with type-safe definition helpers.
+Routes map HTTP methods and URL patterns to handler functions. Linebridge offers three ways to define routes, ordered from most idiomatic to most manual.
 
-## Defining Routes
+## 1. File-Based Routes (recommended)
 
-### Using `defineRoute()` (Recommended)
+The convention-over-configuration approach: drop `.ts, .js` files in the `routes/` directory and the framework discovers them automatically.
 
-The `defineRoute()` function provides full TypeScript type inference:
+```
+routes/
+├── users/
+│   ├── get.ts          → GET    /users
+│   ├── post.ts         → POST   /users
+│   └── [id]/
+│       ├── get.ts      → GET    /users/:id
+│       └── put.ts      → PUT    /users/:id
+├── sse/
+│   └── get.ts          → GET    /sse
+└── health/
+    └── get.ts          → GET    /health
+```
+
+Directory names in `[brackets]` become path parameters. `[$]` becomes a catch-all wildcard.
 
 ```ts
-import { defineRoute } from "linebridge"
+// routes/users/get.ts
 import type MyAPI from "@/index"
 
 export default defineRoute<MyAPI>()({
   useMiddlewares: ["auth"],
-  useContexts: ["db", "config"] as const,
+  useContexts: ["db"] as const,
   fn: async (req, res, ctx) => {
-    // req, res → fully typed with engine-specific methods
-    // ctx → narrowed to { db, config }
     const users = await ctx.db.users.find()
     return { users }
   },
 })
 ```
 
-The generic `<MyAPI>` enables:
-- **Engine-specific types**: `req` and `res` get methods from the active engine (e.g. `res.sse`, `req.sign()` with Neo)
-- **Autocompletion**: `useMiddlewares` and `useContexts` based on your server's declarations
-- **Context narrowing**: `ctx` is narrowed to only the selected contexts
+Or simpler, export a plain function:
 
-### Using the `Route` Class Directly
+```ts
+// routes/health/get.ts
+export default async (req, res) => {
+  return { status: "ok" }
+}
+```
+
+See the [File-Based Routing guide](./file-based-routing) for full details on directory structure, path parameters, wildcards, and WebSocket event files.
+
+## 2. Class-Based Routes (inline)
+
+Define routes directly on the Server subclass using `defineRoute()`. Useful for small APIs or routes that need to reference server properties.
+
+```ts
+import { Server } from "linebridge"
+
+export default class MyAPI extends Server {
+  routes = {
+    "/hi": defineRoute<MyAPI>()({
+      method: "get",
+      fn: async () => ({ message: "hello" }),
+    }),
+    "/events": defineRoute<MyAPI>()({
+      method: "get",
+      fn: (req, res) => {
+        const stream = res.sse
+        if (!stream) return
+        stream.open()
+        // keep-alive with stream.send(...)
+      },
+    }),
+  }
+}
+```
+
+## 3. Dynamic Routes (manual)
+
+Instantiate the `Route` class directly and register it with `server.register.http()`. Useful for programmatic route generation (e.g. from a database or config file).
 
 ```ts
 import { Route } from "linebridge"
 
-const route = new Route()
-route.path = "/users"
-route.method = "get"
-route.useMiddlewares = ["auth"]
-route.useContexts = ["db"]
-route.handler = async (req, res, ctx) => {
-  return { users: await ctx.db.users.find() }
+// Define the route on onInitialize() or whatever can reach main server:
+async onInitialize() {
+  const route = new Route()
+  route.path = "/users"
+  route.method = "get"
+  route.useMiddlewares = ["auth"]
+  route.useContexts = ["db"]
+  route.handler = async (req, res, ctx) => {
+    return { users: await ctx.db.users.find() }
+  }
+
+  // Register the route with the engine
+  this.engine.register(route)
 }
 ```
 
-## Route Object Shape
+or creating a extended `Route` class:
 
 ```ts
-interface RouteObject<Child extends Server, SelectedCtx, Type> {
-  method?: RouteHttpMethods
-  useMiddlewares?: MiddlewaresKeys<Child>[]
-  useContexts?: readonly SelectedCtx[]
-  fn: Type extends "ws"
-    ? WebsocketHandlerFunction<Pick<Contexts<Child>, SelectedCtx>>
-    : HttpHandlerFunction<
-        Pick<Contexts<Child>, SelectedCtx>,
-        ServerRequest<Child>,
-        ServerResponse<Child>
-      >
+class MyRoute extends Route {
+  path = "/users"
+  method = "get"
+  useMiddlewares = ["auth"]
+  useContexts = ["db"]
+  
+  handler = async (req, res, ctx) => {
+    return { users: await ctx.db.users.find() }
+  }
+}
+
+this.engine.register(MyRoute)
+```
+
+When building routes dynamically from external data:
+
+```ts
+async onInitialize() {
+  const endpoints = await loadEndpointsFromConfig()
+
+  for (const ep of endpoints) {
+    const route = new Route()
+    route.path = ep.path
+    route.method = ep.method
+    route.handler = ep.handler
+    route._initialize(this)
+    this.engine.register(route)
+  }
 }
 ```
+
+---
 
 ## HTTP Methods
 
@@ -122,7 +193,7 @@ type HttpHandlerFunction<
 
 When using `defineRoute<MyAPI>()`, `req` and `res` are automatically resolved to the engine-specific types (e.g. Neo engine methods like `res.sse`, `req.sign()`).
 
-The return value is automatically serialized as JSON if the response hasn't been sent yet:
+### Return Value Behavior
 
 ```ts
 fn: async (req, res, ctx) => {
@@ -143,22 +214,29 @@ fn: (req, res) => {
 }
 ```
 
-## Route Initialization
+## Route Object Shape
 
-When a route is registered, `Route._initialize()` performs:
-
-1. Copies `path`, `method`, `useContexts`, `useMiddlewares` from definitions
-2. Parses path parameters from the route pattern
-3. Resolves contexts from the server's `contexts` and `base_contexts`
-4. Resolves middlewares from the server's `middlewares` and `base_middlewares`
-5. Wraps the handler function in a `Handler` instance
+```ts
+interface RouteObject<Child extends Server, SelectedCtx, Type> {
+  method?: RouteHttpMethods
+  useMiddlewares?: MiddlewaresKeys<Child>[]
+  useContexts?: readonly SelectedCtx[]
+  fn: Type extends "ws"
+    ? WebsocketHandlerFunction<Pick<Contexts<Child>, SelectedCtx>>
+    : HttpHandlerFunction<
+        Pick<Contexts<Child>, SelectedCtx>,
+        ServerRequest<Child>,
+        ServerResponse<Child>
+      >
+}
+```
 
 ## Middleware Resolution
 
 Middlewares can be specified by:
 
-- **String name** - looked up in server's combined middlewares (`server.middlewares` + `server.base_middlewares`)
-- **Function reference** - used directly
+- **String name** — looked up in server's combined middlewares (`server.middlewares` + `server.base_middlewares`)
+- **Function reference** — used directly
 
 ```ts
 route.useMiddlewares = [

@@ -53,7 +53,6 @@ routes/posts/[$].ts       →  GET /posts/*   (wildcard)
 ```ts
 // routes/users/get.ts
 import type MyAPI from "@/index"
-import { defineRoute } from "linebridge"
 
 export default defineRoute<MyAPI>()({
   useMiddlewares: ["auth"],
