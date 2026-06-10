@@ -2,6 +2,7 @@ import { defineConfig } from "vitepress"
 import { transformerTwoslash } from "@shikijs/vitepress-twoslash"
 import lightbox from "vitepress-plugin-lightbox"
 import tailwindcss from "@tailwindcss/vite"
+import vue from "@vitejs/plugin-vue"
 
 import sidebar from "./sidebar"
 import nav from "./nav"
@@ -18,7 +19,7 @@ export default defineConfig({
 			{
 				rel: "icon",
 				type: "image/svg+xml",
-				href: "/logo_color.svg",
+				href: "/logo_alt.svg",
 			},
 		],
 	],
@@ -67,7 +68,7 @@ export default defineConfig({
 	},
 
 	themeConfig: {
-		logo: "/logo_color.svg",
+		logo: "/logo_alt.svg",
 
 		nav: nav,
 		sidebar: sidebar,

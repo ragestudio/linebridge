@@ -6,7 +6,7 @@ hero:
   text: "Multiproposal Server Framework"
   tagline: Build fast, scalable, and secure servers with a modular architecture
   image:
-    src: /logo_color.svg
+    src: /logo_alt.svg
     alt: Linebridge
   actions:
     - theme: brand
