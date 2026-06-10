@@ -1,7 +1,9 @@
 {
 	"name": "linebridge-client",
-	"version": "1.4.0",
-	"main": "./dist/index.js",
+	"version": "1.6.0",
+	"type": "module",
+	"module": "./dist/index.js",
+	"main": "./dist/index.umd.cjs",
 	"author": "RageStudio <support@ragestudio.net>",
 	"license": "MIT",
 	"files": [
@@ -13,9 +15,11 @@
 		"access": "public"
 	},
 	"scripts": {
-		"build": "hermes build --parallel --clean"
+		"build:hermes": "hermes build --parallel --clean",
+		"build": "vite build"
 	},
 	"devDependencies": {
-		"@ragestudio/hermes": "^1.0.0"
+		"@ragestudio/hermes": "^1.0.0",
+		"vite": "^8.0.1"
 	}
 }

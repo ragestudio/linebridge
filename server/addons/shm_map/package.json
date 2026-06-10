@@ -1,0 +1,14 @@
+{
+	"name": "shm_map",
+	"version": "1.0.0",
+	"scripts": {
+		"install": "node-gyp configure && node-gyp rebuild",
+		"build": "node-gyp build"
+	},
+	"gypfile": true,
+	"dependencies": {
+		"node-addon-api": "^8.8.0",
+		"node-api-headers": "^1.9.0",
+		"node-gyp": "^12.3.0"
+	}
+}
