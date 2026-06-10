@@ -33,5 +33,5 @@ npm install linebridge
 linebridge-boot index.js
 ```
 
-### Examples & docs
-[create-http-server-example](../docs/server/create-http-server-example.md)
+### Documentation
+See the [docs](https://linebridge.ragestudio.net)

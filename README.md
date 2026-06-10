@@ -9,12 +9,13 @@ A multiproposal framework to build fast, scalable, and secure servers.
 Currently used on RageStudio's services backends, like [Comty](https://github.com/ragestudio/comty)
 
 ## 🔎 Project Navigation
-The project is organized into two main components:
+The project is organized into packages:
 
 - [server](https://github.com/ragestudio/linebridge/tree/master/server)
-
-- [client](https://github.com/ragestudio/linebridge/tree/master/client) (Experimental)
+- [client](https://github.com/ragestudio/linebridge/tree/master/client) 
+- [gateway](https://git.ragestudio.net/RageStudio/linebridge-gateway)
+- [documentation](https://github.com/ragestudio/linebridge/tree/master/docs)
 
 ## 📓 Documentation
-> The official documentation is on its way. Stay tuned for detailed guides and API references to help you unlock the full potential of Linebridge.
-<!-- For more information, please visit the [documentation](https://docs.linebridge.com). -->
+> The official documentation is not completed yet (WIP).
+For more information, please visit the [documentation](https://linebridge.ragestudio.net).
