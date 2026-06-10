@@ -2,6 +2,8 @@
 
 Gateway mode enables Linebridge to run as part of a distributed service mesh. A central gateway routes incoming HTTP and WebSocket traffic to the appropriate backend service.
 
+> **Platform**: Gateway mode uses Unix sockets for IPC and is designed for Linux and macOS. Windows users should use [WSL](https://learn.microsoft.com/en-us/windows/wsl/).
+
 ## How It Works
 
 ```

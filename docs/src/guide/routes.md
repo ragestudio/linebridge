@@ -20,7 +20,7 @@ routes/
     └── get.ts          → GET    /health
 ```
 
-Directory names in `[brackets]` become path parameters. `[$]` becomes a catch-all wildcard.
+Directory names in `[brackets]` become path parameters (`[id]` → `:id`). Use `[$]` or a literal `*` directory for wildcards (`[$]` / `*` → `*`).
 
 ```ts
 // routes/users/get.ts
@@ -151,7 +151,13 @@ The special `"any"` method creates a catch-all route. The framework automaticall
 
 ## Path Parameters
 
-Use colon-prefixed segments to capture URL parameters:
+**In file-based routes:** directory names wrapped in `[brackets]` become path parameters:
+
+```
+routes/users/[id]/get.ts  →  GET /users/:id
+```
+
+**In class-based or dynamic routes:** use colon-prefixed segments directly:
 
 ```
 /users/:userId/posts/:postId
@@ -168,11 +174,21 @@ fn: async (req, res) => {
 
 ## Wildcard Routes
 
-Use `*` in path definitions to match any segment:
+**In file-based routes:** use the `[$]` directory name, which the framework converts to `*`:
+
+```
+routes/posts/[$].ts       →  GET /posts/*
+routes/cdn/[$]/get.ts     →  GET /cdn/*
+```
+
+**In class-based or dynamic routes:** use `*` directly in the path string:
 
 ```ts
 route.path = "/files/*"
 // Matches: /files/photo.jpg, /files/docs/report.pdf, etc.
+
+route.path = "/api/*/status"
+// Matches: /api/users/status, /api/posts/status, etc.
 ```
 
 ## Handler Function

@@ -5,7 +5,12 @@ Linebridge is a multiproposal server framework designed to build fast, scalable,
 ## Requirements
 
 - **Node.js** >= 24.0.0
-- **npm** (Yarn may have installation issues with native addons)
+- **Operating System**: Linux or macOS (Windows only via WSL)
+- **npm**
+
+The `Neo` engine and Gateway rely on Linux-specific features (unix sockets, process signals, libc). Windows is not supported natively — use [WSL](https://learn.microsoft.com/en-us/windows/wsl/) if you develop on Windows.
+
+Also is needed to run on GLibc-based systems, MUSL-based systems (Alpine Linux...) are not supported.
 
 ## Installation
 

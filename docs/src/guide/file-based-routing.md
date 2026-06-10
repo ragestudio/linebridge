@@ -46,7 +46,20 @@ routes/posts/[$].ts       →  GET /posts/*   (wildcard)
 ```
 
 - `[paramName]` → `:paramName`
-- `[$]` → `*` (catch-all wildcard)
+- `[$]` → `*` (catch-all wildcard, matches any single segment)
+
+If your operating system allows `*` in directory names, you can also use it directly:
+
+```
+routes/files/*/get.ts      →  GET /files/*
+```
+
+In class-based or dynamic routes, use `*` directly in the path string:
+
+```ts
+route.path = "/files/*"          // matches /files/anything
+route.path = "/cdn/*/download"   // matches /cdn/123/download
+```
 
 ### Route File Format
 

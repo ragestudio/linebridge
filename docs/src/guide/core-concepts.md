@@ -62,12 +62,14 @@ Based on **uWebSockets.js v20.68.0**, the Neo engine provides:
 
 - HTTP/HTTPS server with automatic SSL detection
 - WebSocket support with pub/sub via MQTT-style topics
-- Unix socket mode for local IPC
+- Unix socket mode for local IPC (Linux / macOS only)
 - Body parsing (JSON, URL-encoded, multipart, raw Buffer, text)
 - Server-Sent Events (SSE) support
 - Streaming request/response bodies
 - Chunked transfer encoding
 - Automatic graceful shutdown on SIGINT/SIGTERM
+
+> **Platform note**: The Neo engine and Gateway are designed for Linux and macOS. Unix socket mode is not available on Windows. Use [WSL](https://learn.microsoft.com/en-us/windows/wsl/) for Windows development.
 
 To add a custom engine, implement the `EngineAdaptor` interface and register it in `src/engines/index.ts`.
 

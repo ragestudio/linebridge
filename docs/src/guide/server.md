@@ -2,6 +2,8 @@
 
 The `Server` class is the foundation of every Linebridge application. You extend it to create your API.
 
+> **Platform**: Linebridge is designed for Linux and macOS. Unix socket mode and Gateway features require a Unix-like OS. Windows users should use [WSL](https://learn.microsoft.com/en-us/windows/wsl/).
+
 ## Basic Usage
 
 ```ts
