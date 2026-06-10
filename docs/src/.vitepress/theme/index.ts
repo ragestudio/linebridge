@@ -9,6 +9,8 @@ import Layout from "./layout.vue"
 // @ts-ignore
 import "@shikijs/vitepress-twoslash/style.css"
 
+import "../../style.less"
+
 export default {
 	extends: DefaultTheme,
 	Layout: Layout,

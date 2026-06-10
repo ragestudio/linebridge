@@ -1,8 +1,6 @@
 import { defineConfig } from "vitepress"
 import { transformerTwoslash } from "@shikijs/vitepress-twoslash"
 import lightbox from "vitepress-plugin-lightbox"
-import tailwindcss from "@tailwindcss/vite"
-import vue from "@vitejs/plugin-vue"
 
 import sidebar from "./sidebar"
 import nav from "./nav"
@@ -22,11 +20,12 @@ export default defineConfig({
 				href: "/logo_alt.svg",
 			},
 		],
+		["script", {}, "document.documentElement.classList.add('dark')"],
 	],
 	markdown: {
 		theme: {
-			light: "github-light",
 			dark: "github-dark",
+			light: "github-light",
 		},
 		codeTransformers: [transformerTwoslash()],
 		languages: [
@@ -44,26 +43,6 @@ export default defineConfig({
 		],
 		config: (md) => {
 			md.use(lightbox, {})
-		},
-	},
-	buildEnd() {
-		process.exit(0)
-	},
-	vite: {
-		clearScreen: false,
-		plugins: [tailwindcss()] as any,
-		optimizeDeps: {
-			exclude: [
-				"@nolebase/vitepress-plugin-inline-link-preview/client",
-				".vitepress/cache",
-				"@rollup/browser",
-			],
-		},
-		ssr: {
-			noExternal: [
-				"@nolebase/vitepress-plugin-inline-link-preview",
-				"@nolebase/ui",
-			],
 		},
 	},
 
