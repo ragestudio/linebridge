@@ -674,7 +674,7 @@ export default class Request<
 
 	/** Parsed query string parameters. */
 	get query() {
-		return this._query_parameters || {}
+		return this.query_parameters || {}
 	}
 
 	/** Alias for `path_parameters`. */
