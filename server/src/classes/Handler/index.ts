@@ -32,16 +32,19 @@ export interface HandlerParamsByKind {
 		kind: HandlerKind.http
 		engine: EngineAdaptor
 		fn: HttpHandlerFunction
+		ctx?: Record<string, any>
 	}
 	[HandlerKind.ws]: {
 		kind: HandlerKind.ws
 		engine: EngineAdaptor
 		fn: WebsocketHandlerFunction
+		ctx?: Record<string, any>
 	}
 	[HandlerKind.middleware]: {
 		kind: HandlerKind.middleware
 		engine: EngineAdaptor
 		fn: MiddlewareHandlerFunction
+		ctx?: Record<string, any>
 	}
 }
 
@@ -54,6 +57,7 @@ export class Handler<K extends HandlerKind = HandlerKind> {
 	engine: EngineAdaptor
 	fn: HandlerParamsByKind[K]["fn"]
 	params: HandlerParamsByKind[K]
+	ctx?: Record<string, any>
 
 	constructor(params: HandlerParamsByKind[K]) {
 		if (!params.engine || !(params.engine instanceof EngineAdaptor)) {
@@ -70,6 +74,10 @@ export class Handler<K extends HandlerKind = HandlerKind> {
 
 		if (typeof params.fn !== "function") {
 			throw new Error("Missing or Invalid Handler function")
+		}
+
+		if (params.ctx) {
+			this.ctx = params.ctx
 		}
 
 		this.fn = params.fn
@@ -89,7 +97,9 @@ export class Handler<K extends HandlerKind = HandlerKind> {
 					return this.executeAsHttp(...(args as [Request, Response]))
 				}
 				case "ws": {
-					return this.executeAsWebsocket(...(args as [Client, any]))
+					return this.executeAsWebsocket(
+						...(args as [Client, any, typeof this.ctx]),
+					)
 				}
 				case "middleware": {
 					return this.executeAsMiddleware(
@@ -108,7 +118,7 @@ export class Handler<K extends HandlerKind = HandlerKind> {
 	 * yet, it is automatically serialized as JSON.
 	 * OperationErrors are converted to the appropriate HTTP status code.
 	 */
-	private async executeAsHttp(req: Request, res: Response): Promise<void> {
+	async executeAsHttp(req: Request, res: Response): Promise<void> {
 		const fn = this.fn as HttpHandlerFunction
 
 		try {
@@ -137,7 +147,7 @@ export class Handler<K extends HandlerKind = HandlerKind> {
 	 * Middlewares receive (req, res, next). If next() is never called,
 	 * the request pipeline stops at this middleware.
 	 */
-	private async executeAsMiddleware(
+	async executeAsMiddleware(
 		req: Request,
 		res: Response,
 		next: () => void,
@@ -165,24 +175,27 @@ export class Handler<K extends HandlerKind = HandlerKind> {
 	 * WebSocket errors are logged but don't send HTTP responses -
 	 * the client is notified via its error/ack channel instead.
 	 */
-	private async executeAsWebsocket(
+	async executeAsWebsocket(
 		client: Client,
 		data?: any,
-	): Promise<void> {
+		ctx?: typeof this.ctx,
+	): Promise<[any, null | Error]> {
+		let result = null
+		let error = null
+
 		const fn = this.fn as WebsocketHandlerFunction
 
 		try {
-			await fn(client, data)
+			result = await fn(client, data, ctx ?? this.ctx)
 		} catch (error: any) {
-			if (error instanceof OperationError) {
-				return
+			if (!(error instanceof OperationError)) {
+				console.debug(`[ws] 500 >`, error)
 			}
 
-			console.error({
-				message: "Unhandled websocket error:",
-				description: error.stack,
-			})
+			error = error
 		}
+
+		return [result, error]
 	}
 }
 
