@@ -107,7 +107,9 @@ function _fastPath(
 }
 
 /**
- * Parses the request body (if needed) then invokes the route handler.
+ * Parses the request body (if needed) then invokes the route handler
+ * through the standard Handler.execute path, which uses res.send()
+ * and properly corks writes to uWS.
  */
 function _executeHandler(
 	this: Engine,
@@ -118,7 +120,6 @@ function _executeHandler(
 	response._cork = true
 
 	if (!BODYLESS_METHODS.has(request._method)) {
-		// kick off the body parsing and wait for it to complete before calling the handler
 		request._body_parser_run(response, this.options.max_body_length)
 
 		return request.parseBody().then(() => {
@@ -126,54 +127,9 @@ function _executeHandler(
 				return
 			}
 
-			return _invokeHandler(request, response, route)
+			return route.handler.execute(request, response)
 		})
 	}
 
-	return _invokeHandler(request, response, route)
-}
-
-/**
- * Calls the route handler and handles its return value (sync or promise).
- *
- * If the handler returns a value and the response hasn't been sent yet,
- * the value is serialized to JSON and sent as the response body.
- */
-function _invokeHandler(
-	request: Request<any>,
-	response: Response<any>,
-	route: Route<any>,
-): any {
-	try {
-		const result = route.handler.fn(request, response, request.ctx)
-
-		if (result instanceof Promise) {
-			return result.then(
-				(r: any) => {
-					if (r && !response.completed) {
-						response._headers["content-type"] = "application/json"
-						response._sendFast(JSON.stringify(r))
-					}
-				},
-				(error: any) => {
-					if (!response.completed) {
-						response.status(500).json({
-							error: error.message,
-						})
-					}
-				},
-			)
-		}
-
-		if (result && !response.completed) {
-			response._headers["content-type"] = "application/json"
-			const body =
-				typeof result === "string" ? result : JSON.stringify(result)
-			response._sendFast(body)
-		}
-	} catch (error: any) {
-		if (!response.completed) {
-			response.status(500).json({ error: error.message })
-		}
-	}
+	return route.handler.execute(request, response)
 }
