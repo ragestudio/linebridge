@@ -21,7 +21,7 @@ export class Client {
 	engine: RTEngine
 
 	/** The raw uWebSockets.js socket wrapped by this client */
-	socket: RtEngineSocket
+	socket: RtEngineSocket | null
 
 	/** Unique identifier for this client (copied from the socket context) */
 	id: string
@@ -30,7 +30,7 @@ export class Client {
 	context: RtEngineSocket["context"]
 
 	/** User id extracted from the context (null when not authenticated) */
-	userId: string | null
+	userId: string | undefined
 
 	/** Whether this client has an active session (i.e. is authenticated) */
 	authenticated: boolean
@@ -44,7 +44,7 @@ export class Client {
 		this.context = socket.context
 
 		// Extract the user id if present
-		this.userId = socket.context.user?._id || null
+		this.userId = socket.context.user?._id || undefined
 		// A client is authenticated when a session exists
 		this.authenticated = !!socket.context.session
 	}
@@ -66,6 +66,8 @@ export class Client {
 		error?: any,
 		ack?: boolean,
 	): Promise<any> {
+		if (!this.socket) return null
+
 		return this.socket.send(
 			this.engine.encode({
 				event,
@@ -93,6 +95,8 @@ export class Client {
 		data?: any,
 		self: boolean = false,
 	): Promise<any> {
+		if (!this.socket) return null
+
 		// Build the JSON payload and publish to all topic subscribers
 		const payload = this.engine.encode({ topic, event, data })
 		this.socket.publish(topic, payload)
@@ -146,6 +150,8 @@ export class Client {
 	 * @param topic - The topic name to subscribe to
 	 */
 	async subscribe(topic: string): Promise<any> {
+		if (!this.socket) return null
+
 		// Register the subscription on the raw socket
 		this.socket.subscribe(topic)
 		// Confirm the subscription to the client
@@ -160,6 +166,8 @@ export class Client {
 	 * @param topic - The topic name to unsubscribe from
 	 */
 	async unsubscribe(topic: string): Promise<any> {
+		if (!this.socket) return null
+
 		// Remove the subscription from the raw socket
 		this.socket.unsubscribe(topic)
 		// Confirm the unsubscription to the client
@@ -172,6 +180,8 @@ export class Client {
 	 * Called during disconnect to clean up all topic subscriptions.
 	 */
 	async unsubscribeAll(): Promise<void> {
+		if (!this.socket) return
+
 		// Iterate over all topics and unsubscribe one by one
 		for (const topic of this.socket.topics) {
 			await this.unsubscribe(topic)

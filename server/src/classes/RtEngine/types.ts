@@ -35,6 +35,17 @@ export interface RtEngineConfig {
 	path?: string
 }
 
+export interface RtEngineContext {
+	/** Unique identifier for this socket connection */
+	id: string
+	/** Authenticated user object (null when not authenticated) */
+	user?: { _id: string; [key: string]: any } | null
+	/** Active session data */
+	session?: any
+	/** Additional context properties */
+	[key: string]: any
+}
+
 /**
  * Represents a raw uWebSockets.js socket as seen by the RTEngine layer.
  *
@@ -48,16 +59,7 @@ export interface RtEngineSocket {
 	 * Contains a unique id, optional authenticated user/session data,
 	 * and any extra user-defined properties.
 	 */
-	context: {
-		/** Unique identifier for this socket connection */
-		id: string
-		/** Authenticated user object (null when not authenticated) */
-		user?: { _id: string } | null
-		/** Active session data */
-		session?: any
-		/** Additional context properties */
-		[key: string]: any
-	}
+	context: RtEngineContext
 
 	/** Sends a string payload directly to this client */
 	send: (data: string) => any
@@ -76,4 +78,11 @@ export interface RtEngineSocket {
 
 	/** List of topics this socket is currently subscribed to */
 	topics: string[]
+}
+
+export interface RtEngineEventData {
+	event: string
+	data?: any
+	error?: any
+	ack?: boolean
 }

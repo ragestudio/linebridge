@@ -30,6 +30,7 @@ import sendToUserId from "./handlers/sendToUserId"
 
 import type Server from "../../server"
 import type { RtEngineConfig, RtEngineSocket } from "./types"
+import type EngineAdaptor from "../EngineAdaptor"
 
 class RTEngine {
 	/** The parent Linebridge Server instance */
@@ -39,7 +40,7 @@ class RTEngine {
 	config: RtEngineConfig
 
 	/** The uWebSockets.js app instance (populated by attach()) */
-	engine: any = null
+	engine: EngineAdaptor
 
 	/** Map of registered event handlers (built-in + user-defined) */
 	events: Map<string, Handler> = new Map()
@@ -90,6 +91,7 @@ class RTEngine {
 	 */
 	constructor(server: Server, config: RtEngineConfig = {}) {
 		this.server = server
+		this.engine = this.server.engine
 		this.config = config
 
 		this.events = new Map()
@@ -160,12 +162,29 @@ class RTEngine {
 			return
 		}
 
+		let ctx: Record<string, any> = {}
+
+		const allContexts = Object.assign(
+			{},
+			this.server.contexts,
+			this.server.base_contexts,
+		)
+
+		if (Array.isArray(handler.useContexts)) {
+			for (const key of handler.useContexts) {
+				if (key in allContexts) {
+					ctx[key] = allContexts[key]
+				}
+			}
+		}
+
 		// Wrap in a Handler instance for uniform dispatch
 		const wsHandler = new Handler({
 			kind: HandlerKind.ws,
 			engine: this.server.engine,
-			event,
+			event: event,
 			fn: handler.fn,
+			ctx: ctx,
 		} as any)
 
 		this.events.set(event, wsHandler)
