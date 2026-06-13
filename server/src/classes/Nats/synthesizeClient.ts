@@ -67,7 +67,7 @@ export default (client: ClientInput, adapter: NatsAdapter): NatsClient => {
 
 	// create the proxy using the adapter's shared resources
 	return new NatsClient({
-		nats: adapter.nats,
+		nats: adapter.connection,
 		engine: adapter.server.engine,
 		codec: adapter.codec,
 		headers: clientHeaders,

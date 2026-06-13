@@ -8,6 +8,8 @@
  */
 
 import * as Serializers from "./serializers"
+
+import type RTEClient from "../RtEngine/classes/client"
 import type { NatsClientContext } from "./types"
 
 /**
@@ -19,7 +21,7 @@ import type { NatsClientContext } from "./types"
  * "operations" subject, both with the client's headers attached so
  * the remote gateway can route them to the correct socket.
  */
-export default class NatsClient {
+export default class NatsClient implements RTEClient {
 	/** the server engine that owns this client proxy */
 	engine: any
 	/** the nats connection used for publishing and requesting */
@@ -30,6 +32,8 @@ export default class NatsClient {
 	codec: any
 	/** deserialized client context extracted from headers */
 	context: NatsClientContext
+
+	socket!: null
 
 	constructor({
 		engine,
@@ -168,6 +172,15 @@ export default class NatsClient {
 		if (!response.ok) return await this.error(response.error)
 
 		return await this.emit("topic:unsubscribed", topic)
+	}
+
+	/**
+	 * unsubscribes the remote client from all pubsub topics
+	 */
+	async unsubscribeAll(): Promise<void> {
+		for (const topic of this.engine.topics) {
+			await this.unsubscribe(topic)
+		}
 	}
 
 	/**

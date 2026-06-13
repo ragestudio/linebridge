@@ -28,7 +28,7 @@ export default async function sendToClientID(
 	event: string,
 	data?: any,
 ): Promise<void> {
-	if (!this.nats) {
+	if (!this.connection) {
 		throw new Error("NATS connection not initialized")
 	}
 

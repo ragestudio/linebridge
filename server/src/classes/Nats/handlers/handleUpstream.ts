@@ -7,8 +7,11 @@
  * delegates to the local engine's event system.
  */
 
+import type { JsMsg } from "@nats-io/jetstream"
 import type NatsAdapter from "../adapter"
 import NatsClient from "../client"
+import { Handler, HandlerKind } from "../../Handler"
+import { RtEngineEventData } from "../../RtEngine/types"
 
 /**
  * handles an incoming NATS message from the gateway
@@ -27,7 +30,10 @@ import NatsClient from "../client"
  *
  * @param message - the JetStream message containing headers and data
  */
-export default async function handleUpstream(this: NatsAdapter, message: any) {
+export default async function handleUpstream(
+	this: NatsAdapter,
+	message: JsMsg,
+) {
 	let event: string | null = null
 	let client: NatsClient | null = null
 
@@ -45,7 +51,7 @@ export default async function handleUpstream(this: NatsAdapter, message: any) {
 		// rebuild a NatsClient proxy from the message headers
 		client = new NatsClient({
 			engine: this.server.engine,
-			nats: this.nats,
+			nats: this.connection,
 			codec: this.codec,
 			headers: message.headers,
 		})
@@ -77,17 +83,21 @@ export default async function handleUpstream(this: NatsAdapter, message: any) {
 		}
 
 		// for custom events, look up the registered handler in the ws engine
-		const handler = (this.server.engine?.ws as any)?.events?.get(event)
+		const handler = (this.server.engine?.ws as any)?.events?.get(event) as
+			| undefined
+			| Handler<HandlerKind.ws>
 
 		if (!handler) {
 			await client.ack(event, null, `No handler for event [${event}]`)
 			return null
 		}
 
+		const decoded = this.codec.decode(message.data) as RtEngineEventData
+
 		// decode the message body and execute the handler
-		const [result, error] = await handler.execute(
+		const [result, error] = await handler.executeAsWebsocket(
 			client,
-			this.codec.decode(message.data),
+			decoded.data,
 		)
 
 		// ack back with the result (or error) so the gateway can relay it

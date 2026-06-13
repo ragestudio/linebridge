@@ -28,11 +28,11 @@ export default async function dispatchOperation(
 	operation: string,
 	data?: any,
 ): Promise<any> {
-	if (!this.nats) {
+	if (!this.connection) {
 		throw new Error("NATS connection not initialized")
 	}
 
-	const response = await this.nats.request(
+	const response = await this.connection.request(
 		"operations",
 		Buffer.from(Serializers.Operation({ type: operation, data })),
 	)

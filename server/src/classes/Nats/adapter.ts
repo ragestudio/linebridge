@@ -7,8 +7,8 @@
  * distributed cluster where clients can be connected to any instance.
  */
 
-import nats from "@nats-io/transport-node"
-import { jetstream } from "@nats-io/jetstream"
+import * as nats from "@nats-io/transport-node"
+import { jetstream, jetstreamManager } from "@nats-io/jetstream"
 import * as Serializers from "./serializers"
 
 import JSONCodec from "./codecs/json"
@@ -21,7 +21,7 @@ import sendToTopic from "./operations/sendToTopic"
 import sendToClientID from "./operations/sendToClientID"
 import sendToUserId from "./operations/sendToUserId"
 
-import type { JetStreamClient } from "@nats-io/jetstream"
+import type { JetStreamClient, JetStreamManager } from "@nats-io/jetstream"
 import type Server from "../../server"
 
 /**
@@ -48,11 +48,11 @@ export default class NatsAdapter {
 	codec = new JSONCodec()
 
 	/** underlying NATS connection instance */
-	nats: nats.NatsConnection | null = null
+	connection: nats.NatsConnection | null = null
 	/** JetStream client for durable messaging */
 	jetstream: JetStreamClient | null = null
-	/** JetStream subscription for ipc messages addressed to this refName */
-	ipcSub: any = null
+	/** JetStream consumer messages iterator for ipc messages */
+	ipcMessages: any = null
 
 	constructor(
 		server: Server,
@@ -76,31 +76,63 @@ export default class NatsAdapter {
 	 * through handleUpstream
 	 */
 	initialize = async (): Promise<void> => {
-		this.nats = await nats.connect({
+		this.connection = await nats.connect({
 			servers: `nats://${this.params.address ?? "localhost"}:${this.params.port ?? 4222}`,
 		})
 
-		console.log(`Connected to NATS server [${this.nats.getServer()}]`)
+		console.log(`Connected to NATS server [${this.connection.getServer()}]`)
 
-		this.jetstream = jetstream(this.nats)
+		this.jetstream = jetstream(this.connection)
 
-		// const opts = this.jetstream.consumerOpts()
+		const jsm: JetStreamManager = await jetstreamManager(this.connection)
 
-		// // durable name ensures messages survive restarts
-		// opts.durable(`${this.refName}-processor`)
-		// // queue group distributes messages across instances of the same service
-		// opts.queue(`${this.refName}-worker`)
-		// // explicit ack so we can ack after successful processing
-		// opts.ackExplicit()
-		// // ephemeral inbox for receiving messages
-		// opts.deliverTo(nats.createInbox())
+		const ipcSubject = `ipc.${this.refName}`
+		let streamName: string
 
-		// subscribe to the ipc stream for this service type
-		this.ipcSub = this.nats.subscribe(`ipc.${this.refName}`)
+		// find or create the stream that captures ipc subjects
+		try {
+			streamName = await jsm.streams.find(ipcSubject)
+		} catch {
+			streamName = "IPC"
+
+			await jsm.streams.add({
+				name: streamName,
+				subjects: ["ipc.>"],
+			})
+
+			console.log(`Created JetStream stream [${streamName}]`)
+		}
+
+		// ensure the durable consumer exists for this service type
+		const consumerName = `${this.refName}-processor`
+
+		try {
+			await jsm.consumers.add(streamName, {
+				durable_name: consumerName,
+				filter_subject: ipcSubject,
+				ack_policy: "explicit",
+			})
+		} catch (error: any) {
+			// consumer may already exist, which is expected after the first run
+			if (error.api_error?.err_code !== 400) {
+				console.error(
+					`Error adding JetStream consumer [${consumerName}]: ${error.message}`,
+				)
+			}
+		}
+
+		// retrieve the consumer and start the message iterator
+		const consumer = await this.jetstream.consumers.get(
+			streamName,
+			consumerName,
+		)
+
+		// max_messages: 1 ensures load balancing across multiple instances
+		this.ipcMessages = await consumer.consume({ max_messages: 1 })
 
 		// start the message processing loop
 		const eventLoop = async () => {
-			for await (const message of this.ipcSub) {
+			for await (const message of this.ipcMessages) {
 				this.handleUpstream(message)
 			}
 		}
@@ -119,11 +151,11 @@ export default class NatsAdapter {
 		channel: string,
 		handler: (data: any, message: any) => void,
 	): Promise<void> {
-		if (!this.nats) {
+		if (!this.connection) {
 			return
 		}
 
-		const subscription = this.nats.subscribe(`global.${channel}`)
+		const subscription = this.connection.subscribe(`global.${channel}`)
 
 		this.subscriptions.set(channel, subscription)
 
