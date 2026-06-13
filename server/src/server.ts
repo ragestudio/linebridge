@@ -136,7 +136,7 @@ export class Server<EngineType = "neo"> {
 	engine!: EngineAdaptor
 
 	/** NATS adapter (null unless LB_GATEWAY_SOCKET is set). */
-	nats: any = null
+	nats: NatsAdapter | null = null
 
 	/** IPC client (null unless LB_GATEWAY_SOCKET is set). */
 	ipc: any = null
@@ -323,7 +323,13 @@ export class Server<EngineType = "neo"> {
 			await this.nats.initialize()
 
 			console.info("Starting IPC client")
-			this.ipc = (global as any).ipc = new IPC(this, this.nats.nats)
+
+			if (this.nats.connection) {
+				this.ipc = (global as any).ipc = new IPC(
+					this,
+					this.nats.connection,
+				)
+			}
 		}
 
 		// Load the engine from the registry and construct it.
