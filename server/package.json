@@ -26,6 +26,7 @@
 		"@nats-io/transport-node": "^3.4.0"
 	},
 	"dependencies": {
+		"@nats-io/jetstream": "^3.4.0",
 		"busboy": "^1.6.0",
 		"chokidar": "^5.0.0",
 		"cookie": "^1.1.1",

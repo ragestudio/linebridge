@@ -8,9 +8,9 @@ importers:
 
   .:
     dependencies:
-      '@foxify/events':
-        specifier: ^2.1.0
-        version: 2.1.0
+      '@nats-io/jetstream':
+        specifier: ^3.4.0
+        version: 3.4.0
       busboy:
         specifier: ^1.6.0
         version: 1.6.0
@@ -210,9 +210,6 @@ packages:
   '@fastify/merge-json-schemas@0.2.1':
     resolution: {integrity: sha512-OA3KGBCy6KtIvLf8DINC5880o5iBlDX4SxzLQS8HorJAbqluzLRn80UXU0bxZn7UOFhFgpRJDasfwn9nG4FG4A==}
 
-  '@foxify/events@2.1.0':
-    resolution: {integrity: sha512-aMLFeeQgzAH/ft9VNGwQasr2lAXLIxk1VAYIUDM9G8HQX0yow6b7z/wm42e4s6JHU8zGu940sLj5FeglkFnEFQ==}
-
   '@infisical/sdk@5.0.2':
     resolution: {integrity: sha512-mkgghtmIgBOEOFj1gb2n/AoiroFvN+NqaEEwC8ezEQ87V55yf2yksHhnBMU2MiZ26n6b3sGcpDZHF1/H6JrgyA==}
     engines: {node: '>=20'}
@@ -229,6 +226,9 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
+
+  '@nats-io/jetstream@3.4.0':
+    resolution: {integrity: sha512-GzHQodNJ942+R5LRb8PuZ5ugVWVWMRiufxUYLLVWkXKfwDXYN+Owo0d7L/b9O7BPyrbYD7jQWAC6+ZVuXa9Gyw==}
 
   '@nats-io/nats-core@3.4.0':
     resolution: {integrity: sha512-QMDM86EUNm+wudlKC67HLar/KHHQUvJGLfb4jbahje3pUk3K9afeck9fwsxBZF0eUFox6T/TA6m/t+lQqf+QsQ==}
@@ -1019,8 +1019,6 @@ snapshots:
     dependencies:
       dequal: 2.0.3
 
-  '@foxify/events@2.1.0': {}
-
   '@infisical/sdk@5.0.2':
     dependencies:
       '@aws-crypto/sha256-js': 5.2.0
@@ -1045,19 +1043,20 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
+  '@nats-io/jetstream@3.4.0':
+    dependencies:
+      '@nats-io/nats-core': 3.4.0
+
   '@nats-io/nats-core@3.4.0':
     dependencies:
       '@nats-io/nkeys': 2.0.3
       '@nats-io/nuid': 3.0.0
-    optional: true
 
   '@nats-io/nkeys@2.0.3':
     dependencies:
       tweetnacl: 1.0.3
-    optional: true
 
-  '@nats-io/nuid@3.0.0':
-    optional: true
+  '@nats-io/nuid@3.0.0': {}
 
   '@nats-io/transport-node@3.4.0':
     dependencies:
@@ -1494,8 +1493,7 @@ snapshots:
   tslib@2.8.1:
     optional: true
 
-  tweetnacl@1.0.3:
-    optional: true
+  tweetnacl@1.0.3: {}
 
   typescript@5.9.3:
     optional: true
