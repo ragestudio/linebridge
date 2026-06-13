@@ -173,6 +173,9 @@ export default class Engine extends EngineAdaptor {
 				onDisconnect: this.server.handleWsDisconnect,
 			})
 
+			// attach the engine adaptor to RTEngine
+			this.ws.engine = this
+
 			// attach to uWebsockets with adaptors that bridge uWS events into RTEngine
 			this.uws.ws(websocket_attached_path, {
 				// uWS passes (res, req, context) but RTEngine expects (req, res)
