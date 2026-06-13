@@ -7,14 +7,11 @@
  * distributed cluster where clients can be connected to any instance.
  */
 
-const {
-	connect,
-	JSONCodec,
-	createInbox,
-	consumerOpts,
-} = require("@nats-io/transport-node")
-
+import nats from "@nats-io/transport-node"
+import { jetstream } from "@nats-io/jetstream"
 import * as Serializers from "./serializers"
+
+import JSONCodec from "./codecs/json"
 
 import handleUpstream from "./handlers/handleUpstream"
 import dispatchOperation from "./handlers/dispatchOperation"
@@ -24,6 +21,7 @@ import sendToTopic from "./operations/sendToTopic"
 import sendToClientID from "./operations/sendToClientID"
 import sendToUserId from "./operations/sendToUserId"
 
+import type { JetStreamClient } from "@nats-io/jetstream"
 import type Server from "../../server"
 
 /**
@@ -47,12 +45,12 @@ export default class NatsAdapter {
 	// exposed so operations can serialize their own payloads if needed
 	serializers = Serializers
 	/** json codec for encoding/decoding message payloads */
-	codec = JSONCodec()
+	codec = new JSONCodec()
 
 	/** underlying NATS connection instance */
-	nats: any = null
+	nats: nats.NatsConnection | null = null
 	/** JetStream client for durable messaging */
-	jetstream: any = null
+	jetstream: JetStreamClient | null = null
 	/** JetStream subscription for ipc messages addressed to this refName */
 	ipcSub: any = null
 
@@ -78,30 +76,27 @@ export default class NatsAdapter {
 	 * through handleUpstream
 	 */
 	initialize = async (): Promise<void> => {
-		this.nats = await connect({
+		this.nats = await nats.connect({
 			servers: `nats://${this.params.address ?? "localhost"}:${this.params.port ?? 4222}`,
 		})
 
 		console.log(`Connected to NATS server [${this.nats.getServer()}]`)
 
-		this.jetstream = this.nats.jetstream()
+		this.jetstream = jetstream(this.nats)
 
-		const opts = consumerOpts()
+		// const opts = this.jetstream.consumerOpts()
 
-		// durable name ensures messages survive restarts
-		opts.durable(`${this.refName}-processor`)
-		// queue group distributes messages across instances of the same service
-		opts.queue(`${this.refName}-worker`)
-		// explicit ack so we can ack after successful processing
-		opts.ackExplicit()
-		// ephemeral inbox for receiving messages
-		opts.deliverTo(createInbox())
+		// // durable name ensures messages survive restarts
+		// opts.durable(`${this.refName}-processor`)
+		// // queue group distributes messages across instances of the same service
+		// opts.queue(`${this.refName}-worker`)
+		// // explicit ack so we can ack after successful processing
+		// opts.ackExplicit()
+		// // ephemeral inbox for receiving messages
+		// opts.deliverTo(nats.createInbox())
 
 		// subscribe to the ipc stream for this service type
-		this.ipcSub = await this.jetstream.subscribe(
-			`ipc.${this.refName}`,
-			opts,
-		)
+		this.ipcSub = this.nats.subscribe(`ipc.${this.refName}`)
 
 		// start the message processing loop
 		const eventLoop = async () => {
@@ -124,6 +119,10 @@ export default class NatsAdapter {
 		channel: string,
 		handler: (data: any, message: any) => void,
 	): Promise<void> {
+		if (!this.nats) {
+			return
+		}
+
 		const subscription = this.nats.subscribe(`global.${channel}`)
 
 		this.subscriptions.set(channel, subscription)

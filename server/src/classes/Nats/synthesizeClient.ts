@@ -5,7 +5,7 @@
  * objects from the bare context fields returned by a remote service
  */
 
-const { headers } = require("@nats-io/transport-node")
+import { headers } from "@nats-io/transport-node"
 import NatsClient from "./client"
 import type NatsAdapter from "./adapter"
 

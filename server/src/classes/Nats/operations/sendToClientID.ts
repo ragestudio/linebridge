@@ -7,7 +7,7 @@
  */
 
 import * as Serializers from "../serializers"
-const { headers } = require("@nats-io/transport-node")
+import { headers } from "@nats-io/transport-node"
 import type NatsAdapter from "../adapter"
 
 /**
@@ -28,13 +28,21 @@ export default async function sendToClientID(
 	event: string,
 	data?: any,
 ): Promise<void> {
+	if (!this.nats) {
+		throw new Error("NATS connection not initialized")
+	}
+
+	if (!this.jetstream) {
+		throw new Error("JetStream not initialized")
+	}
+
 	// build headers that route the message to the target socket
 	const clientHeaders = headers()
 
 	clientHeaders.append("socket_id", client_id)
 
 	// publish directly to the ipc subject with routing headers
-	await this.nats.publish(
+	await this.jetstream.publish(
 		"ipc",
 		Buffer.from(Serializers.EventData({ event, data })),
 		{ headers: clientHeaders },

@@ -5,8 +5,6 @@
  * that flows between distributed Linebridge instances via NATS headers
  */
 
-import type Server from "../../server"
-
 /**
  * standard response shape for NATS operations across the cluster
  *
