@@ -11,6 +11,7 @@
 import type LinebridgeServer from "../../server"
 import type { MiddlewareHandlerFunction } from "../Handler"
 import type { RouteAlike } from "../Route"
+import type RTEngine from "../RtEngine"
 
 export class EngineAdaptor {
 	constructor(server: LinebridgeServer) {
@@ -24,7 +25,7 @@ export class EngineAdaptor {
 	server: LinebridgeServer
 
 	/** WebSocket layer (RTEngine instance) if websockets are enabled. */
-	ws!: any
+	ws!: RTEngine | null
 
 	/** Set of registered routes as { method, path } objects. */
 	registers: Set<Record<string, string>> = new Set()
