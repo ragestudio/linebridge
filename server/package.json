@@ -1,6 +1,6 @@
 {
 	"name": "linebridge",
-	"version": "2.0.0-alpha19",
+	"version": "2.0.0-alpha20",
 	"license": "MIT",
 	"description": "Multiproposal framework to build fast, scalable, and secure servers.",
 	"author": "RageStudio <support@ragestudio.net>",
