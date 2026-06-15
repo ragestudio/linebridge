@@ -7,6 +7,8 @@ import type {
 	defineRoute as _defineRoute,
 } from "./classes/Route"
 import type {
+	ServerRequest as _ServerRequest,
+	ServerResponse as _ServerResponse,
 	KnownKeys as _KnownKeys,
 	ContextsKeys as _ContextsKeys,
 	MiddlewaresKeys as _MiddlewaresKeys,
@@ -29,6 +31,9 @@ declare global {
 	type KnownKeys<T> = _KnownKeys<T>
 	type MiddlewaresKeys<T extends Server> = _MiddlewaresKeys<T>
 	type ContextsKeys<T extends Server> = _ContextsKeys<T>
+
+	type ServerRequest<T extends Server = Server> = _ServerRequest<T>
+	type ServerResponse<T extends Server = Server> = _ServerResponse<T>
 
 	function Boot(base_class: any): void
 	function ToBoolean(str: any): boolean
