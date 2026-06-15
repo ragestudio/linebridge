@@ -170,10 +170,10 @@ export class Server<EngineType = "neo"> {
 	// ---- user-defined routes & events ----
 
 	/** HTTP route definitions (class-based, registered at boot). */
-	routes!: Record<string, RouteObject<this>>
+	routes!: Record<string, RouteObject<this, any, "http">>
 
 	/** WebSocket event handler map. */
-	wsEvents?: Record<string, WebsocketHandlerFunction>
+	wsEvents?: Record<string, RouteObject<this, any, "ws">>
 
 	/** IPC event handler map (used with NATS). */
 	ipcEvents?: IPCEvents
@@ -375,12 +375,12 @@ export class Server<EngineType = "neo"> {
 		registerBaseMiddlewares(this)
 
 		// Register class-defined WebSocket event handlers on the engine's WS layer.
-		if (this.engine && typeof this.engine.ws === "object") {
+		if (this.engine.ws) {
 			if (typeof this.wsEvents === "object") {
-				for (const [eventName, eventHandler] of Object.entries(
+				for (const [eventName, definition] of Object.entries(
 					this.wsEvents,
 				)) {
-					this.engine.ws.events.set(eventName, eventHandler)
+					this.engine.ws.registerEvent(eventName, definition)
 				}
 			}
 		}
