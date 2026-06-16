@@ -1,5 +1,7 @@
 import Server from "./server"
 import Route from "./classes/Route"
+import IPC from "./classes/IPC"
+import NatsAdapter from "./classes/Nats/adapter"
 import registerBaseAliases from "./utils/registerAliases"
 import type { OperationErrorType } from "./classes/OperationError"
 import type {
@@ -21,8 +23,8 @@ export { Server, Route, registerBaseAliases, version }
 declare global {
 	var OperationError: OperationErrorType
 
-	var nats: any
-	var ipc: any
+	var nats: NatsAdapter
+	var ipc: IPC
 	var __linebridge: any
 
 	var defineRoute: typeof _defineRoute
