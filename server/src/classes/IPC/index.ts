@@ -45,11 +45,13 @@ class IPC {
 			return false
 		}
 
-		return this.nats
+		return true
 	}
 
-	handleReceivedEvent = handleReceivedEvent.bind(this)
-	invoke = invoke.bind(this)
+	handleReceivedEvent = handleReceivedEvent.bind(this) as OmitThisParameter<
+		typeof handleReceivedEvent
+	>
+	invoke = invoke.bind(this) as OmitThisParameter<typeof invoke>
 }
 
 export default IPC
