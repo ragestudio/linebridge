@@ -11,7 +11,6 @@ import signature from "cookie-signature"
 import { STATUS_CODES } from "http"
 import mime_types from "mime-types"
 
-import LiveFile from "./LiveFile"
 import SSEventStream from "./SSEventStream"
 
 import type { HttpResponse } from "uWebSockets.js"
@@ -19,9 +18,6 @@ import type { EngineAdaptor } from "../../classes/EngineAdaptor"
 import type { Route } from "../../classes/Route"
 import type { Server } from "../../server"
 import type { Response as BaseHttpResponse } from "../../classes/Handler/http"
-
-/** In-memory cache for file responses (LiveFile instances keyed by path). */
-const FilePool: Record<string, any> = Object.create(null)
 
 const stringify = JSON.stringify
 
@@ -110,7 +106,9 @@ export default class Response<
 		res.route = route
 		res._wrapped_request = request
 		res._upgrade_socket = socket || null
+
 		res._headers = {}
+
 		res._status_code = 200
 		res._middleware_cursor = -1
 
@@ -144,14 +142,14 @@ export default class Response<
 	 */
 	on(event: string, handler: EventHandler): this {
 		if (!this._events) {
-			this._events = {}
-		}
-		if (!this._events[event]) {
-			this._events[event] = []
+			this._events = Object.create(null)
 		}
 
-		this._events[event].push(handler)
+		if (!this._events![event]) {
+			this._events![event] = []
+		}
 
+		this._events![event].push(handler)
 		return this
 	}
 
@@ -163,7 +161,6 @@ export default class Response<
 			this.off(event, wrapper)
 			handler(...args)
 		}
-
 		return this.on(event, wrapper)
 	}
 
@@ -172,20 +169,16 @@ export default class Response<
 	 */
 	off(event: string, handler: EventHandler): this {
 		const arr = this._events?.[event]
-
 		if (arr) {
 			const idx = arr.indexOf(handler)
+
 			if (idx !== -1) {
 				arr.splice(idx, 1)
 			}
 		}
-
 		return this
 	}
 
-	/**
-	 * Returns the number of listeners for an event.
-	 */
 	listenerCount(event: string): number {
 		return this._events?.[event]?.length ?? 0
 	}
@@ -289,7 +282,6 @@ export default class Response<
 		options?: any,
 		sign_cookie: boolean = true,
 	): this {
-		// passing null value deletes the cookie (maxAge = 0)
 		if (name && value === null)
 			return this.cookie(name, "", null, { maxAge: 0 } as any)
 
@@ -307,9 +299,12 @@ export default class Response<
 			value = signature.sign(value as string, options.secret) as string
 		}
 
-		if (this._cookies === null) this._cookies = Object.create(null)
+		if (this._cookies === null) {
+			this._cookies = Object.create(null)
+		}
 
 		this._cookies![name] = cookie.serialize(name, value as any, options)
+
 		return this
 	}
 
@@ -323,7 +318,7 @@ export default class Response<
 
 		if (this._upgrade_socket == null) {
 			throw new Error(
-				"Cannot upgrade a request that does not come from an upgrade handler. No upgrade socket was found.",
+				"Cannot upgrade a request that does not come from an upgrade handler.",
 			)
 		}
 
@@ -355,12 +350,10 @@ export default class Response<
 	 */
 	_initiate_response(): boolean {
 		if (this.initiated) return false
-
 		this.initiated = true
 
 		const raw = this._raw_response!
 
-		// write status line
 		if (this._status_message) {
 			raw.writeStatus(`${this._status_code} ${this._status_message}`)
 		} else {
@@ -373,10 +366,7 @@ export default class Response<
 
 		for (let i = 0; i < headerKeys.length; i++) {
 			const name = headerKeys[i]
-
-			if (name === "content-length") {
-				continue
-			}
+			if (name === "content-length") continue
 
 			const values = this._headers[name]
 
@@ -389,10 +379,8 @@ export default class Response<
 			}
 		}
 
-		// write set-cookie headers
 		if (this._cookies) {
 			const cookieKeys = Object.keys(this._cookies)
-
 			for (let i = 0; i < cookieKeys.length; i++) {
 				raw.writeHeader("set-cookie", this._cookies[cookieKeys[i]])
 			}
@@ -417,9 +405,10 @@ export default class Response<
 
 				if (typeof output !== "boolean") {
 					throw new Error(
-						"Response.drain(handler) -> handler must return a boolean value stating if the write was successful or not.",
+						"Response.drain(handler) -> handler must return a boolean.",
 					)
 				}
+
 				return output
 			})
 		}
@@ -436,7 +425,6 @@ export default class Response<
 	send(body?: any, close_connection?: boolean): this {
 		if (this.completed) return this
 
-		// corked path: batch all writes into a single uWS cork callback
 		if (this._cork && !this._corked) {
 			this._corked = true
 			this._raw_response!.cork(() => {
@@ -446,13 +434,11 @@ export default class Response<
 					this._raw_response!.end(body, close_connection)
 				} else {
 					const custom_length = this._headers["content-length"]
-
 					if (custom_length) {
 						const content_length =
 							typeof custom_length === "string"
 								? custom_length
 								: custom_length[custom_length.length - 1]
-
 						this._raw_response!.endWithoutBody(
 							content_length as any,
 							close_connection,
@@ -463,7 +449,6 @@ export default class Response<
 				}
 			})
 		} else {
-			// uncorked path
 			this._initiate_response()
 
 			if (!this._wrapped_request._received) {
@@ -485,13 +470,11 @@ export default class Response<
 				raw.end(body, close_connection)
 			} else {
 				const custom_length = this._headers["content-length"]
-
 				if (custom_length) {
 					const content_length =
 						typeof custom_length === "string"
 							? custom_length
 							: custom_length[custom_length.length - 1]
-
 					raw.endWithoutBody(content_length as any, close_connection)
 				} else {
 					raw.end(body, close_connection)
@@ -499,10 +482,8 @@ export default class Response<
 			}
 		}
 
-		// fire finish listeners (unless streaming, where finish is handled differently)
 		if (!this._streaming && this.listenerCount("finish") > 0) {
 			const handlers = this._events!.finish
-
 			for (let i = 0; i < handlers.length; i++) {
 				handlers[i](this._wrapped_request, this)
 			}
@@ -511,7 +492,6 @@ export default class Response<
 		this.completed = true
 		this.engine?._resolve_pending_request()
 
-		// fire close listeners
 		if (this.listenerCount("close") > 0) {
 			const handlers = this._events!.close
 			for (let i = 0; i < handlers.length; i++) {
@@ -522,15 +502,10 @@ export default class Response<
 		return this
 	}
 
-	/**
-	 * Writes a single chunk to uWS. Returns `[wasSent, false]` or
-	 * `[wasSent, wasFinished]` when a total_size is provided.
-	 */
 	_uws_write_chunk(chunk: any, total_size?: number): [boolean, boolean] {
 		if (total_size) {
 			return this._raw_response!.tryEnd(chunk, total_size)
 		}
-
 		return [this._raw_response!.write(chunk), false]
 	}
 
@@ -541,14 +516,11 @@ export default class Response<
 	write(chunk: string): boolean {
 		if (this._cork && !this._corked) {
 			this._corked = true
-
 			let ok = false
-
 			this._raw_response!.cork(() => {
 				this._initiate_response()
 				ok = this._raw_response!.write(chunk)
 			})
-
 			return ok
 		}
 
@@ -563,33 +535,34 @@ export default class Response<
 	_stream_chunk(chunk: any, total_size?: number): Promise<void> {
 		if (this.completed) return Promise.resolve()
 
-		return new Promise((resolve) =>
-			this.atomic(() => {
-				if (this.completed) return resolve()
-
+		return new Promise((resolve) => {
+			if (this._cork && !this._corked) {
+				this._corked = true
+				this._raw_response!.cork(() => this._initiate_response())
+			} else {
 				this._initiate_response()
+			}
 
-				const write_offset = this._raw_response!.getWriteOffset()
-				const [sent] = this._uws_write_chunk(chunk, total_size)
-				if (sent) return resolve()
+			if (this.completed) return resolve()
 
-				this.drain((offset) => {
-					if (this.completed || !total_size) {
-						resolve()
-						return true
-					}
+			const write_offset = this._raw_response!.getWriteOffset()
+			const [sent] = this._uws_write_chunk(chunk, total_size)
 
-					const remaining = chunk.slice(offset - write_offset)
-					const [flushed] = this._uws_write_chunk(
-						remaining,
-						total_size,
-					)
-					if (flushed) resolve()
+			if (sent) return resolve()
 
-					return flushed
-				})
-			}),
-		)
+			this.drain((offset) => {
+				if (this.completed || !total_size) {
+					resolve()
+					return true
+				}
+
+				const remaining = chunk.slice(offset - write_offset)
+				const [flushed] = this._uws_write_chunk(remaining, total_size)
+
+				if (flushed) resolve()
+				return flushed
+			})
+		})
 	}
 
 	/**
@@ -611,7 +584,6 @@ export default class Response<
 		) {
 			let chunk = readable.read()
 			if (!chunk) {
-				// wait for more data
 				await new Promise<void>((resolve) => {
 					readable.once("end", resolve)
 					readable.once("readable", () => {
@@ -659,6 +631,7 @@ export default class Response<
 		this._corked = true
 		this._initiate_response()
 		this._raw_response!.end(body)
+
 		this.completed = true
 		this.engine?._resolve_pending_request()
 
@@ -690,37 +663,6 @@ export default class Response<
 	html(body: any): this {
 		this._headers["content-type"] = "text/html"
 		return this.send(body)
-	}
-
-	/**
-	 * Serves a file from the in-memory LiveFile cache.
-	 */
-	async _send_file(live_file: any, callback?: Function) {
-		if (!live_file.is_ready) await live_file.ready()
-
-		this.type(live_file.extension)
-		this.send(live_file.buffer)
-
-		if (callback) setImmediate(() => callback(FilePool))
-	}
-
-	/**
-	 * Serves a file from disk. Files are cached in memory via LiveFile.
-	 *
-	 * @param path - Filesystem path to the file.
-	 * @param callback - Optional callback after the file is served.
-	 */
-	file(path: string, callback?: Function): this {
-		if (FilePool[path])
-			return this._send_file(FilePool[path], callback) as any
-
-		FilePool[path] = new LiveFile({ path })
-		FilePool[path].on("error", (error: any) => {
-			throw error
-		})
-
-		this._send_file(FilePool[path], callback) as any
-		return this
 	}
 
 	/**
@@ -897,12 +839,10 @@ export default class Response<
 	 */
 	get(name: string) {
 		const values = this._headers[name]
-		if (values)
-			return Array.isArray(values)
-				? values
-				: (values as any).length
-					? values[0]
-					: values
+
+		if (values) {
+			return typeof values === "string" ? values : values[0]
+		}
 	}
 
 	/**
@@ -931,16 +871,6 @@ export default class Response<
 		this._throw_unsupported("render()")
 	}
 
-	/**
-	 * Serves a file (alias for `file()`).
-	 */
-	sendFile(path: string) {
-		return this.file(path)
-	}
-
-	/**
-	 * Sends a response with only a status code and no body.
-	 */
 	sendStatus(status_code: number) {
 		this._status_code = status_code
 		return this.send()

@@ -4,9 +4,6 @@
  * Wraps a raw uWS HttpRequest and provides high-level accessors for headers,
  * body parsing (JSON, text, urlencoded, buffer), cookies, IP resolution,
  * and path/query parameters.
- *
- * All body parsing is lazy and cached - calling `.json()` a second time returns a
- * cached promise.
  */
 
 import util from "util"
@@ -38,6 +35,7 @@ const utf8Decoder = new util.TextDecoder("utf-8")
 export default class Request<
 	TServer extends Server = Server,
 > implements BaseHttpRequest {
+	constructor() {}
 	/** Per-request local storage for middleware communication. */
 	_locals!: any
 	/** Whether the response stream is paused. */
@@ -68,8 +66,8 @@ export default class Request<
 	_raw_response!: HttpResponse
 	/** Context object for sharing data between middlewares and the handler. */
 	ctx!: Record<string, any>
-	/** Cached request headers (lazy). */
-	_headers!: Record<string, string> | null
+	/** Request headers extracted synchronously. */
+	_headers!: Record<string, string>
 	/** The matched route for this request. */
 	route!: Route<TServer> | null
 	/** Whether all body chunks have been received. */
@@ -102,16 +100,11 @@ export default class Request<
 	_urlencoded_promise!: Promise<any> | null
 	/** Promise tracking the current multipart field being processed. */
 	_multipart_promise!: Promise<void> | null
-	/** Callback invoked when body data is fully received (used by the body promise). */
+	/** Callback invoked when body data is fully received. */
 	_onDone!: (() => void) | null
-
-	constructor() {}
 
 	/**
 	 * Creates a Request instance from raw uWS objects.
-	 *
-	 * Extracts the method, path, query string, and path parameters in a single
-	 * synchronous step so they are ready before any middleware runs.
 	 */
 	static create<TServer extends Server>(
 		route: Route<TServer>,
@@ -168,10 +161,12 @@ export default class Request<
 	 */
 	get headers(): Record<string, string> {
 		if (this._headers) return this._headers
+
 		this._headers = {}
 		this._raw_request.forEach((key: string, value: string) => {
 			this._headers![key] = value
 		})
+
 		return this._headers
 	}
 
@@ -198,57 +193,6 @@ export default class Request<
 		return this
 	}
 
-	// TODO: properly implement pipe
-	// pipe(target: Writable): this {
-	// 	// write any chunks the body parser already buffered
-	// 	if (this._body_parser_buffered) {
-	// 		for (let i = 0; i < this._body_parser_buffered.length; i++) {
-	// 			target.write(this._body_parser_buffered[i])
-	// 		}
-
-	// 		this._body_parser_buffered = null
-	// 	}
-
-	// 	// resolve any pending body promise before overriding onData
-	// 	if (this._onDone) {
-	// 		this._onDone()
-	// 		this._onDone = null
-	// 	}
-
-	// 	// body parser is no longer active - pipe takes over
-	// 	this._body_parser_on_data_registered = false
-
-	// 	// if the complete body was already buffered, just end the target
-	// 	if (this._received) {
-	// 		target.end()
-	// 		return this
-	// 	}
-
-	// 	// body is still arriving - register onData for the remaining chunks
-	// 	this._raw_response.onData((chunk: ArrayBuffer, is_last: boolean) => {
-	// 		if (!chunk.byteLength && !is_last) {
-	// 			return
-	// 		}
-
-	// 		// uWS reuses the underlying ArrayBuffer, so we must copy
-	// 		// the data explicitly before writing to the target stream
-	// 		const chunkCopy = Buffer.allocUnsafe(chunk.byteLength)
-	// 		Buffer.from(chunk).copy(chunkCopy)
-
-	// 		const canContinue = target.write(chunkCopy)
-
-	// 		if (is_last) {
-	// 			target.end()
-	// 		} else if (!canContinue) {
-	// 			this.pause()
-	// 			target.once("drain", () => this.resume())
-	// 		}
-	// 	})
-
-	// 	this.resume()
-	// 	return this
-	// }
-
 	/**
 	 * Signs a string with a secret using the same algorithm as `cookie-signature`.
 	 */
@@ -271,7 +215,7 @@ export default class Request<
 	 * to begin buffering incoming body chunks.
 	 */
 	_body_parser_run(response: Response<TServer>, limit_bytes: number) {
-		const content_length = Number(this.headers["content-length"])
+		const content_length = Number(this.headers["content-length"]) || 0
 		const is_chunked_transfer =
 			this.headers["transfer-encoding"] === "chunked"
 
@@ -281,10 +225,20 @@ export default class Request<
 		if (!this._body_parser_on_data_registered) {
 			this._received = false
 			this._body_received_bytes = 0
-			this._body_parser_buffered = []
 			this._body_parser_on_data_registered = true
 
-			// register the uWS body listener - fires for every chunk
+			if (
+				content_length > 0 &&
+				content_length <= limit_bytes &&
+				!is_chunked_transfer
+			) {
+				this._body_raw = Buffer.allocUnsafe(content_length)
+				this._body_parser_buffered = null
+			} else {
+				this._body_parser_buffered = []
+				this._body_raw = null
+			}
+
 			this._raw_response.onData((chunk: ArrayBuffer, is_last: boolean) =>
 				this._body_parser_on_chunk(response, chunk, is_last),
 			)
@@ -317,17 +271,23 @@ export default class Request<
 
 		if (!chunk.byteLength && !is_last) return
 
-		this._body_received_bytes += chunk.byteLength
+		if (chunk.byteLength > 0) {
+			const chunkView = new Uint8Array(chunk)
 
-		if (this._body_parser_buffered) {
-			// uWS reuses ArrayBuffers, so we must copy each chunk
-			const chunkCopy = Buffer.allocUnsafe(chunk.byteLength)
-			Buffer.from(chunk).copy(chunkCopy)
-			this._body_parser_buffered.push(chunkCopy)
+			if (this._body_raw && !this._body_parser_buffered) {
+				this._body_raw.set(chunkView, this._body_received_bytes)
+			} else if (this._body_parser_buffered) {
+				const chunkCopy = Buffer.allocUnsafe(chunk.byteLength)
+				chunkCopy.set(chunkView)
+				this._body_parser_buffered.push(chunkCopy)
+			}
+
+			this._body_received_bytes += chunk.byteLength
 
 			if (
+				this._body_parser_buffered &&
 				this._body_received_bytes >
-				(this.engine?.options.max_body_buffer ?? Infinity)
+					(this.engine?.options.max_body_buffer ?? Infinity)
 			) {
 				// Prevent hanging when buffering large requests in memory directly
 				// by avoiding pause() if we are actively reading the entire body.
@@ -347,6 +307,17 @@ export default class Request<
 		if (is_last) {
 			this._received = true
 
+			if (
+				this._body_raw &&
+				!this._body_parser_buffered &&
+				this._body_received_bytes < this._body_expected_bytes
+			) {
+				this._body_raw = this._body_raw.subarray(
+					0,
+					this._body_received_bytes,
+				)
+			}
+
 			if (this._onDone) {
 				this._onDone()
 				this._onDone = null
@@ -364,12 +335,18 @@ export default class Request<
 		this.resume()
 	}
 
-	/**
-	 * Returns a promise that resolves with the complete raw body buffer.
-	 *
-	 * If the body data hasn't arrived yet, it waits via the `_onDone` callback.
-	 * The result is cached in `_body_raw`.
-	 */
+	_extract_final_buffer(): Buffer {
+		if (this._body_parser_buffered) {
+			const result = Buffer.concat(
+				this._body_parser_buffered,
+				this._body_received_bytes,
+			)
+			this._body_raw = result
+			this._body_parser_buffered = null
+		}
+		return this._body_raw || Buffer.allocUnsafe(0)
+	}
+
 	_body_parser_get_received_data(): Promise<Buffer> {
 		if (this._received_data_promise) return this._received_data_promise
 
@@ -378,49 +355,17 @@ export default class Request<
 			return Promise.resolve(Buffer.allocUnsafe(0))
 		}
 
-		// data already fully received
-		if (this._received && this._body_parser_buffered) {
-			const result = Buffer.concat(this._body_parser_buffered)
-			this._body_raw = result
-			this._body_parser_buffered = null
-			return Promise.resolve(result)
+		if (this._received) {
+			return Promise.resolve(this._extract_final_buffer())
 		}
 
-		// data already received but buffer was flushed (e.g. after handler sent response)
-		if (this._received && !this._body_parser_buffered) {
-			return Promise.resolve(this._body_raw || Buffer.allocUnsafe(0))
-		}
-
-		// body has not arrived yet - create a promise that resolves when it does
-		this._received_data_promise = new Promise<Buffer>((resolve, reject) => {
-			if (this._received && this._body_parser_buffered) {
-				const result = Buffer.concat(this._body_parser_buffered)
-				this._body_raw = result
-				this._body_parser_buffered = null
-				resolve(result)
-				return
+		this._received_data_promise = new Promise<Buffer>((resolve) => {
+			if (this._received) {
+				return resolve(this._extract_final_buffer())
 			}
 
-			// timeout after 3 seconds if the body never fully arrives
-			const timeout = setTimeout(() => {
-				console.log("[DEBUG] Promise timed out!")
-				reject(new Error("Timeout waiting for body"))
-			}, 3000)
-
-			// store the resolver for when body data arrives
 			this._onDone = () => {
-				clearTimeout(timeout)
-
-				if (this._body_parser_buffered) {
-					const result = Buffer.concat(this._body_parser_buffered)
-
-					this._body_raw = result
-					this._body_parser_buffered = null
-					resolve(result)
-				} else {
-					resolve(Buffer.allocUnsafe(0))
-				}
-				this._onDone = null
+				resolve(this._extract_final_buffer())
 			}
 		})
 
@@ -474,6 +419,10 @@ export default class Request<
 
 		this._text_promise = this._resolve_raw_body().then((raw) => {
 			const text = this._uint8_to_string(raw)
+
+			this._body_raw = null
+			this._received_data_promise = null
+
 			this._body = text
 			this._body_type = "text"
 			return text
@@ -493,6 +442,9 @@ export default class Request<
 
 		this._json_promise = this._resolve_raw_body().then((raw) => {
 			const text = this._uint8_to_string(raw)
+
+			this._body_raw = null
+			this._received_data_promise = null
 
 			try {
 				this._body = JSON.parse(text)
@@ -519,6 +471,9 @@ export default class Request<
 
 		this._urlencoded_promise = this._resolve_raw_body().then((raw) => {
 			const text = this._uint8_to_string(raw)
+
+			this._body_raw = null
+			this._received_data_promise = null
 
 			this._body = querystring.parse(text)
 			this._body_type = "urlencoded"
@@ -561,90 +516,6 @@ export default class Request<
 			field.file.stream.resume()
 	}
 
-	// TODO: properly implement multipart
-	// multipart(options: any, handler: any) {
-	// 	if (typeof options === "function") {
-	// 		handler = options
-	// 		options = {}
-	// 	}
-
-	// 	options = Object.assign({}, options)
-	// 	if (!options.headers) options.headers = this.headers
-
-	// 	if (typeof handler !== "function") {
-	// 		throw new Error(
-	// 			"Request.multipart(handler) -> handler must be a Function.",
-	// 		)
-	// 	}
-
-	// 	const content_type = this.headers["content-type"]
-	// 	if (!content_type || !/^(multipart\/.+);(.*)$/i.test(content_type)) {
-	// 		return Promise.resolve()
-	// 	}
-
-	// 	return new Promise((resolve, reject) => {
-	// 		const uploader = busboy(options)
-	// 		let finished = false
-
-	// 		const finish = async (error?: string | Error | null) => {
-	// 			if (finished) return
-	// 			finished = true
-
-	// 			let silent_error = false
-	// 			if (
-	// 				error instanceof Error &&
-	// 				error.message === "Unexpected end of form"
-	// 			)
-	// 				silent_error = true
-
-	// 			if (error && !silent_error) {
-	// 				reject(error)
-	// 			} else {
-	// 				if (this._multipart_promise) await this._multipart_promise
-	// 				resolve(null)
-	// 			}
-
-	// 			this._body_parser_stop()
-	// 			uploader.destroy()
-	// 		}
-
-	// 		uploader.once("error", finish)
-	// 		uploader.once("partsLimit", () => finish("PARTS_LIMIT_REACHED"))
-	// 		uploader.once("filesLimit", () => finish("FILES_LIMIT_REACHED"))
-	// 		uploader.once("fieldsLimit", () => finish("FIELDS_LIMIT_REACHED"))
-
-	// 		const on_field = (name: any, value: any, info: any) => {
-	// 			if (
-	// 				value &&
-	// 				typeof value === "object" &&
-	// 				typeof value.once === "function"
-	// 			) {
-	// 				value.once("error", finish)
-	// 			}
-
-	// 			this._on_multipart_field(handler, name, value, info).catch(
-	// 				finish,
-	// 			)
-	// 		}
-
-	// 		uploader.on("field", on_field)
-	// 		uploader.on("file", on_field)
-
-	// 		uploader.once("close", () => {
-	// 			if (this._multipart_promise) {
-	// 				this._multipart_promise.then(() => finish()).catch(finish)
-	// 			} else {
-	// 				finish()
-	// 			}
-	// 		})
-
-	// 		this.pipe(uploader)
-	// 	})
-	// }
-
-	/**
-	 * Per-request local storage for middleware communication.
-	 */
 	get locals() {
 		if (!this._locals) this._locals = Object.create(null)
 		return this._locals
