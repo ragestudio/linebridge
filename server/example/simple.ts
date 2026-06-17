@@ -4,12 +4,12 @@ import { Route } from "../src/classes/Route"
 class MainRoute extends Route<API> {
 	path = "/"
 
+	catched = JSON.stringify({
+		test: "hi!",
+	})
+
 	handler = async (req: any, res: any) => {
-		res.end(
-			JSON.stringify({
-				test: "hi!",
-			}),
-		)
+		res.end(this.catched)
 	}
 }
 
