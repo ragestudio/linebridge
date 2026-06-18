@@ -17,6 +17,8 @@ export default {
 			items: [
 				{ text: "🖥️ Server", link: "/guide/server" },
 				{ text: "🔀 Routes & Handlers", link: "/guide/routes" },
+				{ text: "📥 Request Object", link: "/guide/request" },
+				{ text: "📤 Response Object", link: "/guide/response" },
 				{ text: "📡 WebSockets", link: "/guide/websockets" },
 				{ text: "📚 Middlewares", link: "/guide/middlewares" },
 				{ text: "📦 Context System", link: "/guide/contexts" },

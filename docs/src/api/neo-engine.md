@@ -25,7 +25,7 @@ type EngineOptions = {
   auto_close: boolean      // default: true - graceful shutdown on SIGINT/SIGTERM
   trust_proxy: boolean     // default: false
   max_body_buffer: number  // default: 16 * 1024 (16 KB)
-  max_body_length: number  // default: 250 * 1024 (250 KB)
+  max_body_length: number  // default: 9 * 1024 * 1024 (9 MB)
   streaming?: any
 }
 ```
@@ -116,7 +116,7 @@ The Neo engine handles body parsing automatically:
 
 Body size limits:
 - Buffer limit: `max_body_buffer` (16 KB default)
-- Total limit: `max_body_length` (250 KB default)
+- Total limit: `max_body_length` (9 MB default)
 - Exceeding limits triggers a 413 response
 
 ## Streaming

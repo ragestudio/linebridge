@@ -69,6 +69,7 @@ const Vars: VarsType = {
 	// Built-in middlewares registered by name.
 	baseMiddlewares: {
 		logs: require("./middlewares/logger").default,
+		cors: require("./middlewares/cors").default,
 	},
 	// Aliases for HTTP method names (e.g. "del" normalizes to "delete").
 	fixedHttpMethods: {

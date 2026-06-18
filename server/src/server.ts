@@ -98,7 +98,7 @@ export class Server<EngineType = "neo"> {
 	static routesPath?: string
 	static wsRoutesPath?: string
 	static useMiddlewares?: Array<string | MiddlewareHandlerFunction>
-
+	static nats?: NatsParams
 	// ---- instance properties ----
 
 	/** Resolved server params (defaults merged with constructor arg). */
