@@ -90,7 +90,7 @@ export default class Engine extends EngineAdaptor {
 		auto_close: true,
 		trust_proxy: false,
 		max_body_buffer: 16 * 1024,
-		max_body_length: 250 * 1024,
+		max_body_length: 9 * 1024 * 1024,
 	}
 
 	/**

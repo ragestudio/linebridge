@@ -61,9 +61,10 @@ export default class Request<
 	/** Whether all body chunks have been received. */
 	protected _received!: boolean
 	/** Total bytes received so far for the body. */
-	protected _body_received_bytes!: number
+	_body_received_bytes!: number
 	/** Has the onData listener been registered for body parsing? */
-	protected _body_parser_on_data_registered!: boolean
+	_body_parser_on_data_registered!: boolean
+
 	/** Parsed body (populated lazily by `.json()`, `.text()`, etc.). */
 	protected _body!: any
 	/** The type that `.parseBody()` resolved to. */
@@ -103,6 +104,12 @@ export default class Request<
 		const rawMethod = raw_request.getMethod()
 		req._method = rawMethod === "del" ? "DELETE" : rawMethod.toUpperCase()
 
+		// Capture ALL headers synchronously. uWS HttpRequest is invalid after the first await.
+		req._headers = {}
+		raw_request.forEach((key, value) => {
+			req._headers[key] = value
+		})
+
 		// extract path parameters (e.g. `/user/:id` → `{ id: "42" }`)
 		const keys = route.pathParametersKey
 
@@ -138,15 +145,6 @@ export default class Request<
 	 * Header names are lowercased by uWS.
 	 */
 	get headers(): Record<string, string> {
-		if (this._headers) {
-			return this._headers
-		}
-
-		this._headers = {}
-		this._raw_request.forEach((key: string, value: string) => {
-			this._headers![key] = value
-		})
-
 		return this._headers
 	}
 
@@ -406,7 +404,7 @@ export default class Request<
 		if (this._body !== undefined) return this._body
 
 		const raw = this._body_raw || Buffer.allocUnsafe(0)
-		const contentType = this._raw_request.getHeader("content-type") || ""
+		const contentType = this._headers["content-type"] || ""
 
 		if (contentType.includes("application/json")) {
 			try {
@@ -446,7 +444,7 @@ export default class Request<
 			return this._remote_ip
 		}
 
-		const x_forwarded_for = this._raw_request.getHeader("x-forwarded-for")
+		const x_forwarded_for = this.locals._xff
 		const trust_proxy = this.engine?.options.trust_proxy
 
 		if (trust_proxy && x_forwarded_for) {
@@ -457,9 +455,14 @@ export default class Request<
 					? x_forwarded_for.trim()
 					: x_forwarded_for.slice(0, commaIdx).trim()
 		} else {
-			this._remote_ip = Buffer.from(
-				this._raw_response.getRemoteAddressAsText(),
-			).toString()
+			try {
+				this._remote_ip = Buffer.from(
+					this._raw_response.getRemoteAddressAsText(),
+				).toString()
+			} catch {
+				// Fallback for when the socket is already closed
+				this._remote_ip = ""
+			}
 		}
 
 		return this._remote_ip
