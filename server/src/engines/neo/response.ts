@@ -119,7 +119,7 @@ export default class Response<
 			res.completed = true
 
 			res.route?.server.engine._resolve_pending_request()
-			res._wrapped_request.pause()
+			//res._wrapped_request.pause()
 
 			if (res._events?.abort) {
 				for (let i = 0; i < res._events.abort.length; i++) {
@@ -599,7 +599,7 @@ export default class Response<
 
 		this.completed = true
 		this.engine?._resolve_pending_request()
-		this._wrapped_request.pause()
+		//this._wrapped_request.pause()
 		this._raw_response!.close()
 	}
 
