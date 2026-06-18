@@ -6,14 +6,9 @@
  * and path/query parameters.
  */
 
-import util from "util"
 import cookie from "cookie"
-import busboy from "busboy"
 import querystring from "fast-querystring"
 import signature from "cookie-signature"
-
-import { array_buffer_to_string } from "./utils"
-import MultipartField from "./MultipartField"
 
 import type { HttpRequest, HttpResponse } from "uWebSockets.js"
 import type { Request as BaseHttpRequest } from "../../classes/Handler/http"
@@ -21,8 +16,6 @@ import type { EngineAdaptor } from "../../classes/EngineAdaptor"
 import type { Route } from "../../classes/Route"
 import type { Server } from "../../server"
 import type Response from "./response"
-
-const utf8Decoder = new util.TextDecoder("utf-8")
 
 /**
  * HTTP Request class wrapping a uWS HttpRequest.
@@ -40,8 +33,6 @@ export default class Request<
 	_locals!: any
 	/** Whether the response stream is paused. */
 	_paused!: boolean
-	/** Whether the request has finished sending its body. */
-	_request_ended!: boolean
 	/** HTTP method string, normalized (e.g. "GET", "DELETE"). */
 	_method!: string
 	/** Full URL including query string. */
@@ -74,12 +65,6 @@ export default class Request<
 	_received!: boolean
 	/** Total bytes received so far for the body. */
 	_body_received_bytes!: number
-	/** Expected body byte length from `content-length` header. */
-	_body_expected_bytes!: number
-	/** Whether the body is being sent via chunked transfer encoding. */
-	_body_chunked_transfer!: boolean
-	/** Buffered body chunks while waiting for parsing to complete. */
-	_body_parser_buffered!: Buffer[] | null
 	/** Has the onData listener been registered for body parsing? */
 	_body_parser_on_data_registered!: boolean
 	/** Parsed body (populated lazily by `.json()`, `.text()`, etc.). */
@@ -88,18 +73,8 @@ export default class Request<
 	_body_type!: string | null
 	/** Raw body buffer, populated after body is fully received. */
 	_body_raw!: Buffer | null
-	/** Promise that resolves once all body data is received. */
-	_received_data_promise!: Promise<Buffer> | null
-	/** Cached promise for `.buffer()`. */
-	_buffer_promise!: Promise<Buffer> | null
-	/** Cached promise for `.text()`. */
-	_text_promise!: Promise<string> | null
-	/** Cached promise for `.json()`. */
-	_json_promise!: Promise<any> | null
-	/** Cached promise for `.urlencoded()`. */
-	_urlencoded_promise!: Promise<any> | null
-	/** Promise tracking the current multipart field being processed. */
-	_multipart_promise!: Promise<void> | null
+	/** Promise that resolves once all body data is received and parsed. */
+	_body_promise!: Promise<any> | null
 	/** Callback invoked when body data is fully received. */
 	_onDone!: (() => void) | null
 
@@ -160,7 +135,9 @@ export default class Request<
 	 * Header names are lowercased by uWS.
 	 */
 	get headers(): Record<string, string> {
-		if (this._headers) return this._headers
+		if (this._headers) {
+			return this._headers
+		}
 
 		this._headers = {}
 		this._raw_request.forEach((key: string, value: string) => {
@@ -215,294 +192,126 @@ export default class Request<
 	 * to begin buffering incoming body chunks.
 	 */
 	_body_parser_run(response: Response<TServer>, limit_bytes: number) {
-		const content_length = Number(this.headers["content-length"]) || 0
-		const is_chunked_transfer =
-			this.headers["transfer-encoding"] === "chunked"
+		if (this._body_parser_on_data_registered) return true
 
-		this._body_expected_bytes = is_chunked_transfer ? 0 : content_length
-		this._body_chunked_transfer = is_chunked_transfer
+		this._received = false
+		this._body_received_bytes = 0
+		this._body_parser_on_data_registered = true
 
-		if (!this._body_parser_on_data_registered) {
-			this._received = false
-			this._body_received_bytes = 0
-			this._body_parser_on_data_registered = true
+		const chunks: Buffer[] = []
+		const max_buffer = this.engine?.options.max_body_buffer ?? 1024 * 1024
 
-			if (
-				content_length > 0 &&
-				content_length <= limit_bytes &&
-				!is_chunked_transfer
-			) {
-				this._body_raw = Buffer.allocUnsafe(content_length)
-				this._body_parser_buffered = null
-			} else {
-				this._body_parser_buffered = []
-				this._body_raw = null
+		this._raw_response.onData((chunk: ArrayBuffer, is_last: boolean) => {
+			if (response.completed) return
+
+			if (chunk.byteLength > 0) {
+				this._body_received_bytes += chunk.byteLength
+
+				if (this._body_received_bytes > limit_bytes) {
+					response.status(413).send("Payload Too Large")
+					this._received = true
+					return
+				}
+
+				const chunkCopy = Buffer.allocUnsafe(chunk.byteLength)
+				chunkCopy.set(new Uint8Array(chunk))
+				chunks.push(chunkCopy)
+
+				if (
+					this._body_received_bytes > max_buffer &&
+					!this._body_promise
+				) {
+					this.pause()
+				}
 			}
 
-			this._raw_response.onData((chunk: ArrayBuffer, is_last: boolean) =>
-				this._body_parser_on_chunk(response, chunk, is_last),
-			)
-		}
+			if (is_last) {
+				this._received = true
+				if (chunks.length === 0) {
+					this._body_raw = Buffer.allocUnsafe(0)
+				} else if (chunks.length === 1) {
+					this._body_raw = chunks[0]
+				} else {
+					this._body_raw = Buffer.concat(
+						chunks,
+						this._body_received_bytes,
+					)
+				}
+
+				if (this._onDone) {
+					this._onDone()
+					this._onDone = null
+				}
+			}
+		})
 
 		return true
 	}
 
 	/**
-	 * Stops the body parser and discards buffered chunks.
-	 * Called when the response is sent before the body is fully consumed.
-	 */
-	_body_parser_stop() {
-		this._body_parser_flush_buffered()
-	}
-
-	/**
-	 * Handles an incoming body chunk from uWS.
-	 *
-	 * Buffers the chunk, tracks received bytes, and fires the `_onDone`
-	 * callback when the last chunk arrives.
-	 */
-	_body_parser_on_chunk(
-		response: Response<TServer>,
-		chunk: ArrayBuffer,
-		is_last: boolean,
-	) {
-		// response already sent - ignore remaining body chunks
-		if (response.completed) return
-
-		if (!chunk.byteLength && !is_last) return
-
-		if (chunk.byteLength > 0) {
-			const chunkView = new Uint8Array(chunk)
-
-			if (this._body_raw && !this._body_parser_buffered) {
-				this._body_raw.set(chunkView, this._body_received_bytes)
-			} else if (this._body_parser_buffered) {
-				const chunkCopy = Buffer.allocUnsafe(chunk.byteLength)
-				chunkCopy.set(chunkView)
-				this._body_parser_buffered.push(chunkCopy)
-			}
-
-			this._body_received_bytes += chunk.byteLength
-
-			if (
-				this._body_parser_buffered &&
-				this._body_received_bytes >
-					(this.engine?.options.max_body_buffer ?? Infinity)
-			) {
-				// Prevent hanging when buffering large requests in memory directly
-				// by avoiding pause() if we are actively reading the entire body.
-				if (
-					!this._received_data_promise &&
-					!this._buffer_promise &&
-					!this._text_promise &&
-					!this._json_promise &&
-					!this._urlencoded_promise
-				) {
-					this.pause()
-				}
-			}
-		}
-
-		// last chunk received - mark body as complete and fire the done callback
-		if (is_last) {
-			this._received = true
-
-			if (
-				this._body_raw &&
-				!this._body_parser_buffered &&
-				this._body_received_bytes < this._body_expected_bytes
-			) {
-				this._body_raw = this._body_raw.subarray(
-					0,
-					this._body_received_bytes,
-				)
-			}
-
-			if (this._onDone) {
-				this._onDone()
-				this._onDone = null
-			}
-		}
-	}
-
-	/**
-	 * Discards buffered body chunks and resumes the stream.
-	 */
-	_body_parser_flush_buffered() {
-		if (this._body_parser_buffered) {
-			this._body_parser_buffered = null
-		}
-		this.resume()
-	}
-
-	_extract_final_buffer(): Buffer {
-		if (this._body_parser_buffered) {
-			const result = Buffer.concat(
-				this._body_parser_buffered,
-				this._body_received_bytes,
-			)
-			this._body_raw = result
-			this._body_parser_buffered = null
-		}
-		return this._body_raw || Buffer.allocUnsafe(0)
-	}
-
-	_body_parser_get_received_data(): Promise<Buffer> {
-		if (this._received_data_promise) return this._received_data_promise
-
-		// empty body (no content-length and not chunked)
-		if (!this._body_chunked_transfer && this._body_expected_bytes <= 0) {
-			return Promise.resolve(Buffer.allocUnsafe(0))
-		}
-
-		if (this._received) {
-			return Promise.resolve(this._extract_final_buffer())
-		}
-
-		this._received_data_promise = new Promise<Buffer>((resolve) => {
-			if (this._received) {
-				return resolve(this._extract_final_buffer())
-			}
-
-			this._onDone = () => {
-				resolve(this._extract_final_buffer())
-			}
-		})
-
-		return this._received_data_promise
-	}
-
-	/**
 	 * Returns the entire request body as a Buffer.
-	 * Cached - calling it multiple times returns the same promise.
 	 */
-	buffer(): any {
-		if (this._buffer_promise) return this._buffer_promise
+	async buffer(): Promise<Buffer> {
+		if (this._body_type === "buffer") {
+			return this._body
+		}
 
-		this._buffer_promise = this._body_parser_get_received_data().then(
-			(raw) => {
-				this._body = raw
-				this._body_type = "buffer"
-				return raw
-			},
-		)
+		await this.parseBody()
 
-		return this._buffer_promise
+		return this._body_raw || Buffer.allocUnsafe(0)
 	}
 
 	/**
 	 * Returns the entire request body as a string.
-	 * Cached - calling it multiple times returns the same promise.
 	 */
-	text() {
-		if (this._text_promise) return this._text_promise
+	async text(): Promise<string> {
+		if (this._body_type === "text") {
+			return this._body
+		}
 
-		this._text_promise = this._body_parser_get_received_data().then(
-			(raw) => {
-				// Decodificación directa sin helpers
-				const text = utf8Decoder.decode(raw)
+		await this.parseBody()
 
-				// Vaciamos RAM
-				this._body_raw = null
-				this._received_data_promise = null
-
-				this._body = text
-				this._body_type = "text"
-				return text
-			},
-		)
-
-		return this._text_promise
+		return typeof this._body === "string" ? this._body : ""
 	}
 
 	/**
 	 * Parses the request body as JSON.
-	 * Cached - calling it multiple times returns the same promise.
-	 *
-	 * @param default_value - Value to return if JSON parsing fails (default: `{}`).
 	 */
-	json(default_value = {}) {
-		if (this._json_promise) return this._json_promise
+	async json(default_value = {}): Promise<any> {
+		if (this._body_type === "json") {
+			return this._body
+		}
 
-		this._json_promise = this._body_parser_get_received_data().then(
-			(raw) => {
-				const text = utf8Decoder.decode(raw)
+		try {
+			await this.parseBody()
+		} catch (error) {
+			if (default_value !== undefined) {
+				return default_value
+			}
+			throw error
+		}
 
-				this._body_raw = null
-				this._received_data_promise = null
-
-				try {
-					this._body = JSON.parse(text)
-				} catch (error) {
-					if (default_value !== undefined && default_value !== null) {
-						this._body = default_value
-					} else throw error
-				}
-				this._body_type = "json"
-				return this._body
-			},
-		)
-
-		return this._json_promise
+		return this._body
 	}
 
 	/**
 	 * Parses the request body as URL-encoded form data.
-	 * Cached - calling it multiple times returns the same promise.
 	 */
-	urlencoded() {
-		if (this._urlencoded_promise) return this._urlencoded_promise
-
-		this._urlencoded_promise = this._body_parser_get_received_data().then(
-			(raw) => {
-				const text = utf8Decoder.decode(raw)
-
-				this._body_raw = null
-				this._received_data_promise = null
-
-				this._body = querystring.parse(text)
-				this._body_type = "urlencoded"
-				return this._body
-			},
-		)
-
-		return this._urlencoded_promise
-	}
-
-	/**
-	 * Handles a single multipart field by calling the user's handler function.
-	 *
-	 * Ensures only one field is processed at a time to avoid race conditions.
-	 */
-	async _on_multipart_field(
-		handler: Function,
-		name: string,
-		value: any,
-		info: any,
-	) {
-		const field = new MultipartField(name, value, info)
-
-		// wait for the previous field to finish processing
-		if (this._multipart_promise) {
-			this.pause()
-			await this._multipart_promise
-			this.resume()
+	async urlencoded(): Promise<any> {
+		if (this._body_type === "urlencoded") {
+			return this._body
 		}
 
-		const output = handler(field)
-		if (output instanceof Promise) {
-			this._multipart_promise = output
-			await this._multipart_promise
-			this._multipart_promise = null
-		}
+		await this.parseBody()
 
-		// resume the file stream so busboy can continue
-		if (field.file && !field.file.stream.readableEnded)
-			field.file.stream.resume()
+		return this._body
 	}
 
 	get locals() {
-		if (!this._locals) this._locals = Object.create(null)
+		if (!this._locals) {
+			this._locals = Object.create(null)
+		}
+
 		return this._locals
 	}
 
@@ -518,8 +327,12 @@ export default class Request<
 
 	/** Full URL (path + query string). */
 	get url() {
-		if (this._url) return this._url
+		if (this._url) {
+			return this._url
+		}
+
 		this._url = this._path + (this._query_str ? "?" + this._query_str : "")
+
 		return this._url
 	}
 
@@ -530,12 +343,18 @@ export default class Request<
 
 	/** Parsed query string parameters. */
 	get query() {
-		return this.query_parameters || {}
+		if (this._query_parameters) {
+			return this._query_parameters
+		}
+
+		this._query_parameters = querystring.parse(this._query_str)
+
+		return this._query_parameters
 	}
 
-	/** Alias for `path_parameters`. */
+	/** URL path parameters extracted (e.g. `/user/:id` → `{ id: "42" }`). */
 	get params() {
-		return this._path_parameters || {}
+		return this._path_parameters
 	}
 
 	/**
@@ -543,22 +362,14 @@ export default class Request<
 	 * Parsed lazily on first access.
 	 */
 	get cookies() {
-		if (this._cookies) return this._cookies
+		if (this._cookies) {
+			return this._cookies
+		}
+
 		const header = this.headers["cookie"]
 		this._cookies = header ? cookie.parse(header) : Object.create(null)
+
 		return this._cookies
-	}
-
-	/** URL path parameters extracted by uWS (e.g. `/user/:id` → `{ id: "42" }`). */
-	get path_parameters() {
-		return this._path_parameters || {}
-	}
-
-	/** Parsed query string as an object (lazy). */
-	get query_parameters() {
-		if (this._query_parameters) return this._query_parameters
-		this._query_parameters = querystring.parse(this._query_str)
-		return this._query_parameters
 	}
 
 	/** The parsed body. Populated after calling `.parseBody()`, `.json()`, `.text()`, etc. */
@@ -568,39 +379,57 @@ export default class Request<
 
 	/**
 	 * Automatically parses the request body based on `Content-Type`.
-	 *
-	 * - `application/json` → `.json()`
-	 * - `application/x-www-form-urlencoded` → `.urlencoded()`
-	 * - `text/*`, `application/xml`, `application/javascript`, or no content-type → `.text()`
-	 * - `multipart/form-data` → `undefined` (multipart is not yet fully implemented)
 	 */
 	async parseBody(): Promise<any> {
-		if (this._body !== undefined && this._body !== null) return this._body
+		if (this._body_promise) return this._body_promise
 
-		const contentType = (this.headers["content-type"] || "").toLowerCase()
+		this._body_promise = new Promise((resolve) => {
+			if (this._received) {
+				return resolve(this._finalize_body())
+			}
+
+			this._onDone = () => {
+				resolve(this._finalize_body())
+			}
+		})
+
+		return this._body_promise
+	}
+
+	/**
+	 * Decodes the raw body buffer based on Content-Type.
+	 */
+	_finalize_body() {
+		if (this._body !== undefined) return this._body
+
+		const raw = this._body_raw || Buffer.allocUnsafe(0)
+		const contentType = this._raw_request.getHeader("content-type") || ""
 
 		if (contentType.includes("application/json")) {
-			return this.json()
-		}
-
-		if (contentType.includes("application/x-www-form-urlencoded")) {
-			return this.urlencoded()
-		}
-
-		if (
+			try {
+				this._body = JSON.parse(raw.toString())
+				this._body_type = "json"
+			} catch {
+				this._body = {}
+				this._body_type = "json"
+			}
+		} else if (contentType.includes("application/x-www-form-urlencoded")) {
+			this._body = querystring.parse(raw.toString())
+			this._body_type = "urlencoded"
+		} else if (
 			contentType.includes("text/") ||
 			contentType.includes("application/xml") ||
 			contentType.includes("application/javascript") ||
 			!contentType
 		) {
-			return this.text()
+			this._body = raw.toString()
+			this._body_type = "text"
+		} else {
+			this._body = raw
+			this._body_type = "buffer"
 		}
 
-		if (contentType.includes("multipart/form-data")) {
-			return undefined
-		}
-
-		return this.text()
+		return this._body
 	}
 
 	/**
@@ -614,13 +443,7 @@ export default class Request<
 			return this._remote_ip
 		}
 
-		if (this._request_ended) {
-			throw new Error(
-				"Request.ip cannot be consumed after the Request/Response has ended.",
-			)
-		}
-
-		const x_forwarded_for = this.headers["x-forwarded-for"]
+		const x_forwarded_for = this._raw_request.getHeader("x-forwarded-for")
 		const trust_proxy = this.engine?.options.trust_proxy
 
 		if (trust_proxy && x_forwarded_for) {
@@ -631,9 +454,9 @@ export default class Request<
 					? x_forwarded_for.trim()
 					: x_forwarded_for.slice(0, commaIdx).trim()
 		} else {
-			this._remote_ip = array_buffer_to_string(
+			this._remote_ip = Buffer.from(
 				this._raw_response.getRemoteAddressAsText(),
-			)
+			).toString()
 		}
 
 		return this._remote_ip
@@ -646,25 +469,10 @@ export default class Request<
 		if (this._remote_proxy_ip) {
 			return this._remote_proxy_ip
 		}
-		if (this._request_ended) {
-			throw new Error(
-				"Request.proxy_ip cannot be consumed after the Request/Response has ended.",
-			)
-		}
 
-		this._remote_proxy_ip = array_buffer_to_string(
+		this._remote_proxy_ip = Buffer.from(
 			this._raw_response.getProxiedRemoteAddressAsText(),
-		)
+		).toString()
 		return this._remote_proxy_ip
-	}
-
-	/**
-	 * Throws an error indicating a method is not supported by this engine.
-	 * Used for Express-compatible API surface methods that have no uWS equivalent.
-	 */
-	_throw_unsupported(name: string) {
-		throw new Error(
-			`ERR_INCOMPATIBLE_CALL: One of your middlewares or route logic tried to call Request.${name} which is unsupported.`,
-		)
 	}
 }

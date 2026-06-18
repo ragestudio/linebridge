@@ -42,9 +42,7 @@ export default async function (
 			response._cork = true
 
 			if (!BODYLESS_METHODS.has(request._method)) {
-				request._body_parser_run(response, this.options.max_body_length)
 				await request.parseBody()
-
 				if (response.completed) return
 			}
 		}

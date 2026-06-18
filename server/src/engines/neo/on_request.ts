@@ -56,6 +56,11 @@ export default function (
 
 		this.pending_requests_count++
 
+		// Start body parsing immediately if needed
+		if (!BODYLESS_METHODS.has(request._method)) {
+			request._body_parser_run(response, this.options.max_body_length)
+		}
+
 		// fast path: no middleware or at most one global middleware
 		if (this.middlewares.length <= 1 && route.middlewares.length === 0) {
 			return _fastPath.call(this, request, response, route)
@@ -89,21 +94,36 @@ function _fastPath(
 	response: Response<any>,
 	route: Route<any>,
 ): any {
-	if (this.middlewares.length === 1) {
-		const mwResult = this.middlewares[0].fn(request, response, EMPTY_NEXT)
+	const runMiddlewares = () => {
+		if (this.middlewares.length === 1) {
+			const mwResult = this.middlewares[0].fn(
+				request,
+				response,
+				EMPTY_NEXT,
+			)
 
-		// wait for async middleware to finish before calling the handler
-		if (mwResult instanceof Promise) {
-			return mwResult.then(() => {
-				if (response.completed) return
-				return _executeHandler.call(this, request, response, route)
-			})
+			// wait for async middleware to finish before calling the handler
+			if (mwResult instanceof Promise) {
+				return mwResult.then(() => {
+					if (response.completed) return
+					return _executeHandler.call(this, request, response, route)
+				})
+			}
+
+			if (response.completed) return
 		}
 
-		if (response.completed) return
+		return _executeHandler.call(this, request, response, route)
 	}
 
-	return _executeHandler.call(this, request, response, route)
+	if (!BODYLESS_METHODS.has(request._method)) {
+		return request.parseBody().then(() => {
+			if (response.completed) return
+			return runMiddlewares()
+		})
+	}
+
+	return runMiddlewares()
 }
 
 /**
@@ -118,18 +138,5 @@ function _executeHandler(
 	route: Route<any>,
 ): any {
 	response._cork = true
-
-	if (!BODYLESS_METHODS.has(request._method)) {
-		request._body_parser_run(response, this.options.max_body_length)
-
-		return request.parseBody().then(() => {
-			if (response.completed) {
-				return
-			}
-
-			return route.handler.execute(request, response)
-		})
-	}
-
 	return route.handler.execute(request, response)
 }

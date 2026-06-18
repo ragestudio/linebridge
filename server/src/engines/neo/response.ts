@@ -451,19 +451,6 @@ export default class Response<
 		} else {
 			this._initiate_response()
 
-			if (!this._wrapped_request._received) {
-				this._wrapped_request._body_parser_stop()
-				this._wrapped_request._onDone = () => {
-					this._raw_response!.cork(() => {
-						this._initiate_response()
-						this._raw_response!.end(body, close_connection)
-					})
-					this.completed = true
-					this.engine?._resolve_pending_request()
-				}
-				return this
-			}
-
 			const raw = this._raw_response!
 
 			if (body !== undefined || this._streaming) {
@@ -624,7 +611,7 @@ export default class Response<
 	}
 
 	/**
-	 * Fast-path send used by the `_invokeHandler` in on_request.ts.
+	 * Fast-path send used by the `_invokeHandler`.
 	 * Skips cork/uncork logic and writes directly.
 	 */
 	_sendFast(body: any): void {
@@ -828,13 +815,6 @@ export default class Response<
 	}
 
 	/**
-	 * Content negotiation by Accept header. Not implemented in this engine.
-	 */
-	format() {
-		this._throw_unsupported("format()")
-	}
-
-	/**
 	 * Returns the header value(s) for a given name.
 	 */
 	get(name: string) {
@@ -865,12 +845,8 @@ export default class Response<
 	}
 
 	/**
-	 * Template rendering. Not implemented in this engine.
+	 * Sends a status code response.
 	 */
-	render() {
-		this._throw_unsupported("render()")
-	}
-
 	sendStatus(status_code: number) {
 		this._status_code = status_code
 		return this.send()
@@ -893,14 +869,5 @@ export default class Response<
 	vary(name: string) {
 		this._headers["vary"] = name as any
 		return this
-	}
-
-	/**
-	 * Throws an error indicating a method is not supported by this engine.
-	 */
-	_throw_unsupported(name: string) {
-		throw new Error(
-			`ERR_INCOMPATIBLE_CALL: One of your middlewares or route logic tried to call Response.${name} which is unsupported.`,
-		)
 	}
 }
