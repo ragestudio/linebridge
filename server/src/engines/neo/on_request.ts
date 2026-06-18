@@ -57,7 +57,7 @@ export default function (
 		this.pending_requests_count++
 
 		// Start body parsing immediately if needed
-		if (!BODYLESS_METHODS.has(request._method)) {
+		if (!BODYLESS_METHODS.has(request.method)) {
 			request._body_parser_run(response, this.options.max_body_length)
 		}
 
@@ -116,7 +116,7 @@ function _fastPath(
 		return _executeHandler.call(this, request, response, route)
 	}
 
-	if (!BODYLESS_METHODS.has(request._method)) {
+	if (!BODYLESS_METHODS.has(request.method)) {
 		return request.parseBody().then(() => {
 			if (response.completed) return
 			return runMiddlewares()

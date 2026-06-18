@@ -41,7 +41,7 @@ export default async function (
 		if (cursor == 0) {
 			response._cork = true
 
-			if (!BODYLESS_METHODS.has(request._method)) {
+			if (!BODYLESS_METHODS.has(request.method)) {
 				await request.parseBody()
 				if (response.completed) return
 			}

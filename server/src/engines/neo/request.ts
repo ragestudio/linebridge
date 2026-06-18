@@ -30,53 +30,56 @@ export default class Request<
 > implements BaseHttpRequest {
 	constructor() {}
 	/** Per-request local storage for middleware communication. */
-	_locals!: any
+	protected _locals!: any
 	/** Whether the response stream is paused. */
-	_paused!: boolean
+	protected _paused!: boolean
 	/** HTTP method string, normalized (e.g. "GET", "DELETE"). */
-	_method!: string
+	protected _method!: string
 	/** Full URL including query string. */
-	_url!: string
+	protected _url!: string
 	/** URL path portion without query string. */
-	_path!: string
+	protected _path!: string
 	/** Raw query string (without leading `?`). */
-	_query_str!: string
+	protected _query_str!: string
 	/** Resolved remote IP address. */
-	_remote_ip!: string
+	protected _remote_ip!: string
 	/** Resolved proxy IP address. */
-	_remote_proxy_ip!: string
+	protected _remote_proxy_ip!: string
 	/** Parsed cookies (lazy). */
-	_cookies!: any
+	protected _cookies!: any
 	/** URL path parameters extracted by uWS (e.g. `/user/:id`). */
-	_path_parameters!: any
+	protected _path_parameters!: any
 	/** Parsed query string parameters (lazy). */
-	_query_parameters!: any
+	protected _query_parameters!: any
 	/** The raw uWS HttpRequest object. */
-	_raw_request!: HttpRequest
+	protected _raw_request!: HttpRequest
 	/** The raw uWS HttpResponse object (needed for `onData` and `getRemoteAddress`). */
-	_raw_response!: HttpResponse
+	protected _raw_response!: HttpResponse
+	/** Request headers extracted synchronously. */
+	protected _headers!: Record<string, string>
+
+	/** Whether all body chunks have been received. */
+	protected _received!: boolean
+	/** Total bytes received so far for the body. */
+	protected _body_received_bytes!: number
+	/** Has the onData listener been registered for body parsing? */
+	protected _body_parser_on_data_registered!: boolean
+	/** Parsed body (populated lazily by `.json()`, `.text()`, etc.). */
+	protected _body!: any
+	/** The type that `.parseBody()` resolved to. */
+	protected _body_type!: string | null
+	/** Raw body buffer, populated after body is fully received. */
+	protected _body_raw!: Buffer | null
+	/** Promise that resolves once all body data is received and parsed. */
+	protected _body_promise!: Promise<any> | null
+	/** Callback invoked when body data is fully received. */
+	protected _onDone!: (() => void) | null
+
 	/** Context object for sharing data between middlewares and the handler. */
 	ctx!: Record<string, any>
-	/** Request headers extracted synchronously. */
-	_headers!: Record<string, string>
+
 	/** The matched route for this request. */
 	route!: Route<TServer> | null
-	/** Whether all body chunks have been received. */
-	_received!: boolean
-	/** Total bytes received so far for the body. */
-	_body_received_bytes!: number
-	/** Has the onData listener been registered for body parsing? */
-	_body_parser_on_data_registered!: boolean
-	/** Parsed body (populated lazily by `.json()`, `.text()`, etc.). */
-	_body!: any
-	/** The type that `.parseBody()` resolved to. */
-	_body_type!: string | null
-	/** Raw body buffer, populated after body is fully received. */
-	_body_raw!: Buffer | null
-	/** Promise that resolves once all body data is received and parsed. */
-	_body_promise!: Promise<any> | null
-	/** Callback invoked when body data is fully received. */
-	_onDone!: (() => void) | null
 
 	/**
 	 * Creates a Request instance from raw uWS objects.
