@@ -373,41 +373,21 @@ export default class Request<
 	}
 
 	/**
-	 * Resolves the raw body buffer. Cached once resolved.
-	 */
-	async _resolve_raw_body(): Promise<Buffer> {
-		if (this._body_raw) return this._body_raw
-		this._body_raw = await this._body_parser_get_received_data()
-		return this._body_raw
-	}
-
-	/**
 	 * Returns the entire request body as a Buffer.
 	 * Cached - calling it multiple times returns the same promise.
 	 */
 	buffer(): any {
-		if (this._buffer_promise) {
-			return this._buffer_promise
-		}
+		if (this._buffer_promise) return this._buffer_promise
 
-		this._buffer_promise = this._resolve_raw_body().then((raw) => {
-			this._body = raw
-			this._body_type = "buffer"
-			return raw
-		})
+		this._buffer_promise = this._body_parser_get_received_data().then(
+			(raw) => {
+				this._body = raw
+				this._body_type = "buffer"
+				return raw
+			},
+		)
 
 		return this._buffer_promise
-	}
-
-	/**
-	 * Decodes a Uint8Array to string. Uses the fast UTF-8 decoder when possible.
-	 */
-	_uint8_to_string(uint8: Uint8Array, encoding: string = "utf-8") {
-		if (encoding === "utf-8" || encoding === "utf8") {
-			return utf8Decoder.decode(uint8)
-		}
-
-		return new util.TextDecoder(encoding).decode(uint8)
 	}
 
 	/**
@@ -417,16 +397,20 @@ export default class Request<
 	text() {
 		if (this._text_promise) return this._text_promise
 
-		this._text_promise = this._resolve_raw_body().then((raw) => {
-			const text = this._uint8_to_string(raw)
+		this._text_promise = this._body_parser_get_received_data().then(
+			(raw) => {
+				// Decodificación directa sin helpers
+				const text = utf8Decoder.decode(raw)
 
-			this._body_raw = null
-			this._received_data_promise = null
+				// Vaciamos RAM
+				this._body_raw = null
+				this._received_data_promise = null
 
-			this._body = text
-			this._body_type = "text"
-			return text
-		})
+				this._body = text
+				this._body_type = "text"
+				return text
+			},
+		)
 
 		return this._text_promise
 	}
@@ -440,24 +424,24 @@ export default class Request<
 	json(default_value = {}) {
 		if (this._json_promise) return this._json_promise
 
-		this._json_promise = this._resolve_raw_body().then((raw) => {
-			const text = this._uint8_to_string(raw)
+		this._json_promise = this._body_parser_get_received_data().then(
+			(raw) => {
+				const text = utf8Decoder.decode(raw)
 
-			this._body_raw = null
-			this._received_data_promise = null
+				this._body_raw = null
+				this._received_data_promise = null
 
-			try {
-				this._body = JSON.parse(text)
-			} catch (error) {
-				if (default_value !== undefined && default_value !== null) {
-					this._body = default_value
-				} else {
-					throw error
+				try {
+					this._body = JSON.parse(text)
+				} catch (error) {
+					if (default_value !== undefined && default_value !== null) {
+						this._body = default_value
+					} else throw error
 				}
-			}
-			this._body_type = "json"
-			return this._body
-		})
+				this._body_type = "json"
+				return this._body
+			},
+		)
 
 		return this._json_promise
 	}
@@ -469,17 +453,18 @@ export default class Request<
 	urlencoded() {
 		if (this._urlencoded_promise) return this._urlencoded_promise
 
-		this._urlencoded_promise = this._resolve_raw_body().then((raw) => {
-			const text = this._uint8_to_string(raw)
+		this._urlencoded_promise = this._body_parser_get_received_data().then(
+			(raw) => {
+				const text = utf8Decoder.decode(raw)
 
-			this._body_raw = null
-			this._received_data_promise = null
+				this._body_raw = null
+				this._received_data_promise = null
 
-			this._body = querystring.parse(text)
-			this._body_type = "urlencoded"
-
-			return this._body
-		})
+				this._body = querystring.parse(text)
+				this._body_type = "urlencoded"
+				return this._body
+			},
+		)
 
 		return this._urlencoded_promise
 	}
