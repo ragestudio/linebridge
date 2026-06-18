@@ -18,6 +18,7 @@ import type { EngineAdaptor } from "../../classes/EngineAdaptor"
 import type { Route } from "../../classes/Route"
 import type { Server } from "../../server"
 import type { Response as BaseHttpResponse } from "../../classes/Handler/http"
+import type Request from "./request"
 
 const stringify = JSON.stringify
 
@@ -54,7 +55,7 @@ export default class Response<
 	/** Tracks the furthest middleware index executed to prevent double-next(). */
 	_middleware_cursor!: number
 	/** The paired Request instance. */
-	_wrapped_request!: any
+	_wrapped_request!: Request
 	/** The uWS upgrade socket (WebSocket upgrade requests only). */
 	_upgrade_socket!: any
 	/** The raw uWS HttpResponse object. */
@@ -118,7 +119,7 @@ export default class Response<
 			res.completed = true
 
 			res.route?.server.engine._resolve_pending_request()
-			res._wrapped_request._body_parser_stop()
+			res._wrapped_request.pause()
 
 			if (res._events?.abort) {
 				for (let i = 0; i < res._events.abort.length; i++) {
@@ -598,7 +599,7 @@ export default class Response<
 
 		this.completed = true
 		this.engine?._resolve_pending_request()
-		this._wrapped_request._body_parser_stop()
+		this._wrapped_request.pause()
 		this._raw_response!.close()
 	}
 
