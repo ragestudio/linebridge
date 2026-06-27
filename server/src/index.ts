@@ -18,6 +18,8 @@ import type {
 
 const version: string = require("../package.json").version
 
+export type { Client as RTEClient } from "./classes/RtEngine/classes/client"
+
 export { Server, Route, registerBaseAliases, version }
 
 declare global {
