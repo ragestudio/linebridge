@@ -7,6 +7,7 @@
  * @module RtEngine/Client
  */
 
+import serializeError from "../../../utils/serializeError"
 import type RTEngine from "../index"
 import type { RtEngineSocket } from "../types"
 
@@ -67,6 +68,10 @@ export class Client {
 		ack?: boolean,
 	): Promise<any> {
 		if (!this.socket) return null
+
+		if (error instanceof Error) {
+			error = serializeError(error)
+		}
 
 		return this.socket.send(
 			this.engine.encode({

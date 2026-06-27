@@ -11,6 +11,8 @@ import * as Serializers from "./serializers"
 
 import type RTEClient from "../RtEngine/classes/client"
 import type { NatsClientContext } from "./types"
+import serializeError from "../../utils/serializeError"
+import safeJsonStringify from "../../utils/safeJsonStringify"
 
 /**
  * proxy object for a client connected to a different gateway instance
@@ -113,11 +115,29 @@ export default class NatsClient implements RTEClient {
 		error?: any,
 		ack?: boolean,
 	): Promise<void> {
-		await this.nats.publish(
-			"ipc",
-			Buffer.from(Serializers.EventData({ event, data, error, ack })),
-			{ headers: this.headers },
-		)
+		if (error instanceof Error) {
+			error = serializeError(error)
+		}
+
+		const payload = { event, data, error, ack }
+		let serialized: string
+
+		try {
+			serialized = Serializers.EventData(payload)
+		} catch (err: any) {
+			if (err?.message?.includes("circular")) {
+				console.warn(
+					`[nats-client] circular reference detected while serializing event "${event}", falling back to safe serialization`,
+				)
+				serialized = safeJsonStringify(payload)
+			} else {
+				throw err
+			}
+		}
+
+		await this.nats.publish("ipc", Buffer.from(serialized), {
+			headers: this.headers,
+		})
 	}
 
 	/**
