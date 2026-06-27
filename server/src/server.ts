@@ -27,6 +27,8 @@ import type { EngineAdaptor } from "./classes/EngineAdaptor"
 import type { IPCEvents, ServerPlugin } from "./types"
 import { Route, RouteAlike, RouteObject } from "./classes/Route"
 import { HandlerKind } from "./classes/Handler"
+import { RtEngineContext, RtEngineSocket } from "./classes/RtEngine/types"
+import { Client } from "./classes/RtEngine/classes/client"
 
 export interface NatsParams {
 	address?: string
@@ -139,7 +141,7 @@ export class Server<EngineType = "neo"> {
 	nats: NatsAdapter | null = null
 
 	/** IPC client (null unless LB_GATEWAY_SOCKET is set). */
-	ipc: any = null
+	ipc: IPC | null = null
 
 	/** Loaded plugins, keyed by name. */
 	plugins: Map<string, ServerPlugin> = new Map()
@@ -179,13 +181,20 @@ export class Server<EngineType = "neo"> {
 	ipcEvents?: IPCEvents
 
 	/** WebSocket upgrade hook - validate tokens, attach user data. */
-	handleWsUpgrade?: (context: any, token: string, res: any) => Promise<void>
+	handleWsUpgrade?: (
+		context: RtEngineContext,
+		token: string,
+		res: ServerResponse,
+	) => Promise<void>
 
 	/** WebSocket connection established hook. */
-	handleWsConnection?: (socket: any) => Promise<void>
+	handleWsConnection?: (socket: RtEngineSocket) => Promise<void>
 
 	/** WebSocket disconnection hook. */
-	handleWsDisconnect?: (socket: any, client?: any) => Promise<void>
+	handleWsDisconnect?: (
+		socket: RtEngineSocket,
+		client?: Client,
+	) => Promise<void>
 
 	constructor(params: ConstructorParams = {}) {
 		// Warn if running an experimental build.
