@@ -42,6 +42,17 @@ global["aliases"] = {
 }
 
 try {
+	// try to read the package.json
+	const packageJson = require(path.resolve(global.paths.root, "package.json"))
+
+	if (packageJson) {
+		if (typeof packageJson.aliases === "object") {
+			for (const [key, value] of Object.entries(packageJson.aliases)) {
+				global["aliases"][key] = path.resolve(global.paths.root, value)
+			}
+		}
+	}
+
 	// apply global functions & patches
 	require("./globals.js")
 	// use sucrase transcompiler
