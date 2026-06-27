@@ -1,7 +1,7 @@
 import { version } from "../../package.json"
+
 import TopicsController from "./topics"
 import handlers from "./handlers"
-
 import type {
 	RTE_ClientParams,
 	RTE_ClientState,
@@ -529,9 +529,22 @@ export class RTEngineClient {
 		try {
 			const payload = this.#_decode(event.data)
 
+			// console.debug(
+			// 	`[rt/${this.params.refName}] #handleMessage:`,
+			// 	payload,
+			// )
+
 			if (typeof payload.event !== "string") {
 				// Silently ignore or log warning for invalid format
 				return
+			}
+
+			// if is available a serialized error, reconstruct it as an Error instance
+			if (payload.error) {
+				const syntheticError = new Error(payload.error.message)
+				syntheticError.stack = payload.error.stack
+
+				payload.error = syntheticError
 			}
 
 			if (payload.event === "pong") {
@@ -695,6 +708,12 @@ export class RTEngineClient {
 			return
 		}
 
+		// console.debug(`[rt/${this.params.refName}] #dispatchToHandlers:`, {
+		// 	event,
+		// 	data,
+		// 	payload,
+		// })
+
 		for (const reg of [...(eventHandlers as Set<RTE_EventHandler>)]) {
 			if (reg.ack === true && !payload.ack) {
 				continue
@@ -702,8 +721,15 @@ export class RTEngineClient {
 
 			try {
 				await reg.handler(data, payload)
+
+				if (payload.error instanceof Error) {
+					throw payload.error
+				}
 			} catch (error) {
-				console.error(`[rt] Handler error for event '${event}':`, error)
+				console.error(
+					`[rt/${this.params.refName}] Event handler error ["${event}"]:\n\n`,
+					error,
+				)
 			}
 
 			if (reg.once === true) {
@@ -714,6 +740,13 @@ export class RTEngineClient {
 		if (eventHandlers.size === 0) {
 			this.handlers.delete(event)
 		}
+	}
+
+	#getNow(): number {
+		if (typeof performance !== "undefined" && performance.now) {
+			return performance.now()
+		}
+		return Date.now()
 	}
 }
 
