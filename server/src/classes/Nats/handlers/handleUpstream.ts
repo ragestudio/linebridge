@@ -101,7 +101,7 @@ export default async function handleUpstream(
 		)
 
 		// ack back with the result (or error) so the gateway can relay it
-		await client.ack(event, result, error?.message)
+		await client.ack(event, result, error)
 	} catch (error: any) {
 		// if we have enough context, try to ack the error to the client
 		if (client && event) {
