@@ -187,12 +187,12 @@ export class Handler<K extends HandlerKind = HandlerKind> {
 
 		try {
 			result = await fn(client, data, ctx ?? this.ctx)
-		} catch (error: any) {
-			if (!(error instanceof OperationError)) {
-				console.debug(`[ws] 500 >`, error)
-			}
-
-			error = error
+		} catch (err: any) {
+			error = err
+			console.debug(`[ws] 500 >`, err)
+			// if (!(error instanceof OperationError)) {
+			// 	console.debug(`[ws] 500 >`, error)
+			// }
 		}
 
 		return [result, error]
