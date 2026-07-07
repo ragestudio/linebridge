@@ -27,6 +27,8 @@ import type { EngineAdaptor } from "./classes/EngineAdaptor"
 import type { IPCEvents, ServerPlugin } from "./types"
 import { Route, RouteAlike, RouteObject } from "./classes/Route"
 import { HandlerKind } from "./classes/Handler"
+import { RtEngineContext, RtEngineSocket } from "./classes/RtEngine/types"
+import { Client } from "./classes/RtEngine/classes/client"
 
 export interface NatsParams {
 	address?: string
@@ -98,7 +100,7 @@ export class Server<EngineType = "neo"> {
 	static routesPath?: string
 	static wsRoutesPath?: string
 	static useMiddlewares?: Array<string | MiddlewareHandlerFunction>
-
+	static nats?: NatsParams
 	// ---- instance properties ----
 
 	/** Resolved server params (defaults merged with constructor arg). */
@@ -136,10 +138,10 @@ export class Server<EngineType = "neo"> {
 	engine!: EngineAdaptor
 
 	/** NATS adapter (null unless LB_GATEWAY_SOCKET is set). */
-	nats: any = null
+	nats: NatsAdapter | null = null
 
 	/** IPC client (null unless LB_GATEWAY_SOCKET is set). */
-	ipc: any = null
+	ipc: IPC | null = null
 
 	/** Loaded plugins, keyed by name. */
 	plugins: Map<string, ServerPlugin> = new Map()
@@ -170,22 +172,29 @@ export class Server<EngineType = "neo"> {
 	// ---- user-defined routes & events ----
 
 	/** HTTP route definitions (class-based, registered at boot). */
-	routes!: Record<string, RouteObject<this>>
+	routes!: Record<string, RouteObject<this, any, "http">>
 
 	/** WebSocket event handler map. */
-	wsEvents?: Record<string, WebsocketHandlerFunction>
+	wsEvents?: Record<string, RouteObject<this, any, "ws">>
 
 	/** IPC event handler map (used with NATS). */
 	ipcEvents?: IPCEvents
 
 	/** WebSocket upgrade hook - validate tokens, attach user data. */
-	handleWsUpgrade?: (context: any, token: string, res: any) => Promise<void>
+	handleWsUpgrade?: (
+		context: RtEngineContext,
+		token: string,
+		res: ServerResponse,
+	) => Promise<void>
 
 	/** WebSocket connection established hook. */
-	handleWsConnection?: (socket: any) => Promise<void>
+	handleWsConnection?: (socket: RtEngineSocket) => Promise<void>
 
 	/** WebSocket disconnection hook. */
-	handleWsDisconnect?: (socket: any, client?: any) => Promise<void>
+	handleWsDisconnect?: (
+		socket: RtEngineSocket,
+		client?: Client,
+	) => Promise<void>
 
 	constructor(params: ConstructorParams = {}) {
 		// Warn if running an experimental build.
@@ -323,7 +332,13 @@ export class Server<EngineType = "neo"> {
 			await this.nats.initialize()
 
 			console.info("Starting IPC client")
-			this.ipc = (global as any).ipc = new IPC(this, this.nats.nats)
+
+			if (this.nats.connection) {
+				this.ipc = (global as any).ipc = new IPC(
+					this,
+					this.nats.connection,
+				)
+			}
 		}
 
 		// Load the engine from the registry and construct it.
@@ -369,12 +384,12 @@ export class Server<EngineType = "neo"> {
 		registerBaseMiddlewares(this)
 
 		// Register class-defined WebSocket event handlers on the engine's WS layer.
-		if (this.engine && typeof this.engine.ws === "object") {
+		if (this.engine.ws) {
 			if (typeof this.wsEvents === "object") {
-				for (const [eventName, eventHandler] of Object.entries(
+				for (const [eventName, definition] of Object.entries(
 					this.wsEvents,
 				)) {
-					this.engine.ws.events.set(eventName, eventHandler)
+					this.engine.ws.registerEvent(eventName, definition)
 				}
 			}
 		}

@@ -33,8 +33,8 @@ type ConstructorParams = Partial<ServerParams>
 | `websockets` | `boolean \| WebsocketParams` | `false` | WebSocket configuration |
 | `nats` | `NatsParams \| null` | `null` | NATS connection config |
 | `baseRoutes` | `boolean` | `true` | Register `/` and `/_map` |
-| `routesPath` | `string` | `"./routes"` | HTTP file routes directory |
-| `wsRoutesPath` | `string` | `"./ws_routes"` | WS file events directory |
+| `routesPath` | `string` | `path.resolve(cwd, "routes")` | HTTP file routes directory |
+| `wsRoutesPath` | `string` | `path.resolve(cwd, "ws_routes")` | WS file events directory |
 | `useMiddlewares` | `Array<string \| MiddlewareHandlerFunction>` | `[]` | Global middlewares |
 | `httpMethods` | `string[]` | `["get","post","put","patch","del","delete","trace","head","any","options","ws"]` | Supported methods |
 

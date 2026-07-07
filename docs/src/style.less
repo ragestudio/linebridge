@@ -873,126 +873,108 @@ button[title="Copy Code"].copy {
 
 		// Sidebar section icon gradients
 		> .VPSidebarItem > .item > .text {
-			&::before {
-				display: block;
-				width: @spacing-4;
-				height: @spacing-4;
-				margin-right: @spacing-2;
-				background-size: cover;
-				content: "";
+			position: relative;
+			padding-left: 44px;
+		}
+
+		&:nth-child(n + 1) > .VPSidebarItem > .item > .text {
+			//background-color: red;
+		}
+
+		&:nth-child(n + 1) > .VPSidebarItem > .item {
+			&::first-letter {
+				font-size: 200px !important;
+				font-weight: bold;
 			}
 		}
 
 		&:nth-child(n + 1) > .VPSidebarItem > .item > .text {
+			/*
 			&::before {
+				position: absolute;
 				z-index: 20;
-				filter: brightness(0) invert(1);
-				margin-right: @spacing-3_5;
-				margin-left: calc(var(--spacing) * 1.375);
-			}
+				left: 4px;
+				top: 50%;
+				transform: translateY(-50%);
+				width: 1.6875rem;
+				height: 1.6875rem;
+				display: block;
+				text-align: center;
+				line-height: 1.6875rem;
+				font-size: 15px;
+			} */
 
 			&::after {
 				position: absolute;
 				z-index: 10;
-				left: 0;
+				left: 4px;
+				top: 50%;
+				transform: translateY(-50%);
 				display: block;
 				width: 1.6875rem;
 				height: 1.6875rem;
 				padding: @spacing-1_5;
 				border-radius: 0.5rem;
 				opacity: 1;
-				background-image: linear-gradient(
-					to bottom right,
-					var(--tw-gradient-stops)
-				);
 				content: "";
 			}
 		}
 
 		&:nth-child(2) > .VPSidebarItem > .item > .text {
-			&::before {
-				background-image: url(/assets/getting-start.svg);
-			}
 			&::after {
-				--tw-gradient-from: @brand-teal;
-				--tw-gradient-to: @brand-violet;
+				background-image: linear-gradient(
+					to bottom right,
+					@brand-teal,
+					@brand-violet
+				);
 			}
 		}
 
 		&:nth-child(3) > .VPSidebarItem > .item > .text {
-			&::before {
-				background-image: url(/assets/essential.svg);
-			}
 			&::after {
-				--tw-gradient-from: #2dd4bf;
-				--tw-gradient-to: #60a5fa;
+				background-image: linear-gradient(to bottom right, #2dd4bf, #60a5fa);
 			}
 		}
 
 		&:nth-child(4) > .VPSidebarItem > .item > .text {
-			&::before {
-				background-image: url(/assets/pattern.svg);
-			}
 			&::after {
-				--tw-gradient-from: @brand-violet;
-				--tw-gradient-to: #a78bfa;
+				background-image: linear-gradient(
+					to bottom right,
+					@brand-violet,
+					#a78bfa
+				);
 			}
 		}
 
 		&:nth-child(5) > .VPSidebarItem > .item > .text {
-			&::before {
-				background-image: url(/assets/eden.svg);
-			}
 			&::after {
-				--tw-gradient-from: #818cf8;
-				--tw-gradient-to: #d946ef;
+				background-image: linear-gradient(to bottom right, #818cf8, #d946ef);
 			}
 		}
 
 		&:nth-child(6) > .VPSidebarItem > .item > .text {
-			&::before {
-				background-image: url(/assets/blocks.svg);
-			}
 			&::after {
-				--tw-gradient-from: #a78bfa;
-				--tw-gradient-to: #fb7185;
+				background-image: linear-gradient(to bottom right, #a78bfa, #fb7185);
 			}
 		}
 
 		&:nth-child(7) > .VPSidebarItem > .item > .text {
-			&::before {
-				background-image: url(/assets/cook.svg);
-			}
 			&::after {
-				--tw-gradient-from: #f472b6;
-				--tw-gradient-to: #fb923c;
+				background-image: linear-gradient(to bottom right, #f472b6, #fb923c);
 			}
 		}
 
 		&:nth-child(8) > .VPSidebarItem > .item > .text {
-			&::before {
-				background-image: url(/assets/book.svg);
-			}
 			&::after {
-				--tw-gradient-from: #f87171;
-				--tw-gradient-to: #facc15;
+				background-image: linear-gradient(to bottom right, #f87171, #facc15);
 			}
 		}
 
 		&:nth-child(9) > .VPSidebarItem > .item > .text {
-			&::before {
-				background-image: url(/assets/book.svg);
-			}
 			&::after {
-				--tw-gradient-from: #fb923c;
-				--tw-gradient-to: #fbbf24;
+				background-image: linear-gradient(to bottom right, #fb923c, #fbbf24);
 			}
 		}
-	}
-
-	// Sidebar icons invert (dark mode default)
-	> .group:not(:first-child) > .VPSidebarItem > .item > .text::before {
-		filter: invert(1);
 	}
 }
 
@@ -1231,11 +1213,9 @@ button[title="Copy Code"].copy {
 			}
 
 			&.prev > .desc::before {
-				content: "←";
 			}
 
 			&.next > .desc::after {
-				content: "→";
 			}
 
 			> .desc {

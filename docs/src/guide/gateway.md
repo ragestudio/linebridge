@@ -197,15 +197,21 @@ When a Linebridge service starts in gateway mode (`LB_GATEWAY_SOCKET` is set):
   "event": "service:register",
   "data": {
     "namespace": "api",
+    "secure": false,
     "http": {
       "enabled": true,
+      "proto": "http",
       "paths": ["/users", "/users/:id", "/health"]
     },
     "websocket": {
       "enabled": true,
+      "proto": "ws",
+      "path": "api",
       "events": ["chat:message", "user:typing"]
     },
     "listen": {
+      "ip": "0.0.0.0",
+      "port": 3000,
       "socket": "/tmp/lb_node_api.sock"
     }
   }

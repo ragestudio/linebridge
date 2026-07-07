@@ -29,7 +29,7 @@ export default (pattern: string) => {
 			let current = chunks[index]
 
 			// a parameter is a segment starting with ":" and at least 2 chars long
-			if (current.startsWith(":") && current.length > 2) {
+			if (current.startsWith(":") && current.length >= 2) {
 				// strip the ":" prefix, record the name and its positional index
 				results.push([current.substring(1), counter])
 				counter++

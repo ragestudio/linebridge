@@ -29,7 +29,8 @@ import sendToClientId from "./handlers/sendToClientId"
 import sendToUserId from "./handlers/sendToUserId"
 
 import type Server from "../../server"
-import type { RtEngineConfig, RtEngineSocket } from "./types"
+import type { RtEngineConfig } from "./types"
+import type EngineAdaptor from "../EngineAdaptor"
 
 class RTEngine {
 	/** The parent Linebridge Server instance */
@@ -39,7 +40,7 @@ class RTEngine {
 	config: RtEngineConfig
 
 	/** The uWebSockets.js app instance (populated by attach()) */
-	engine: any = null
+	engine: EngineAdaptor
 
 	/** Map of registered event handlers (built-in + user-defined) */
 	events: Map<string, Handler> = new Map()
@@ -64,9 +65,15 @@ class RTEngine {
 	 * - Local mode: the action is performed directly on the local engine
 	 */
 	senders = {
-		toTopic: sendToTopic.bind(this),
-		toClientId: sendToClientId.bind(this),
-		toUserId: sendToUserId.bind(this),
+		toTopic: sendToTopic.bind(this) as OmitThisParameter<
+			typeof sendToTopic
+		>,
+		toClientId: sendToClientId.bind(this) as OmitThisParameter<
+			typeof sendToClientId
+		>,
+		toUserId: sendToUserId.bind(this) as OmitThisParameter<
+			typeof sendToUserId
+		>,
 	}
 
 	/**
@@ -76,7 +83,9 @@ class RTEngine {
 	 * searches the local Clients collection.
 	 */
 	find = {
-		clientsByUserId: findClientsByUserId.bind(this),
+		clientsByUserId: findClientsByUserId.bind(this) as OmitThisParameter<
+			typeof findClientsByUserId
+		>,
 	}
 
 	/**
@@ -90,6 +99,7 @@ class RTEngine {
 	 */
 	constructor(server: Server, config: RtEngineConfig = {}) {
 		this.server = server
+		this.engine = this.server.engine
 		this.config = config
 
 		this.events = new Map()
@@ -129,16 +139,24 @@ class RTEngine {
 	}
 
 	/** Bound message handler - dispatches incoming WebSocket messages */
-	handleMessage = handleMessage.bind(this)
+	handleMessage = handleMessage.bind(this) as OmitThisParameter<
+		typeof handleMessage
+	>
 
 	/** Bound connection handler - called when a new WebSocket connects */
-	handleConnection = handleConnection.bind(this)
+	handleConnection = handleConnection.bind(this) as OmitThisParameter<
+		typeof handleConnection
+	>
 
 	/** Bound disconnect handler - called when a WebSocket closes */
-	handleDisconnect = handleDisconnect.bind(this)
+	handleDisconnect = handleDisconnect.bind(this) as OmitThisParameter<
+		typeof handleDisconnect
+	>
 
 	/** Bound upgrade handler - validates and upgrades HTTP to WebSocket */
-	handleUpgrade = handleUpgrade.bind(this)
+	handleUpgrade = handleUpgrade.bind(this) as OmitThisParameter<
+		typeof handleUpgrade
+	>
 
 	/**
 	 * Registers a single event handler.
@@ -160,12 +178,29 @@ class RTEngine {
 			return
 		}
 
+		let ctx: Record<string, any> = {}
+
+		const allContexts = Object.assign(
+			{},
+			this.server.contexts,
+			this.server.base_contexts,
+		)
+
+		if (Array.isArray(handler.useContexts)) {
+			for (const key of handler.useContexts) {
+				if (key in allContexts) {
+					ctx[key] = allContexts[key]
+				}
+			}
+		}
+
 		// Wrap in a Handler instance for uniform dispatch
 		const wsHandler = new Handler({
 			kind: HandlerKind.ws,
 			engine: this.server.engine,
-			event,
+			event: event,
 			fn: handler.fn,
+			ctx: ctx,
 		} as any)
 
 		this.events.set(event, wsHandler)

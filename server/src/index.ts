@@ -1,5 +1,7 @@
 import Server from "./server"
 import Route from "./classes/Route"
+import IPC from "./classes/IPC"
+import NatsAdapter from "./classes/Nats/adapter"
 import registerBaseAliases from "./utils/registerAliases"
 import type { OperationErrorType } from "./classes/OperationError"
 import type {
@@ -7,6 +9,8 @@ import type {
 	defineRoute as _defineRoute,
 } from "./classes/Route"
 import type {
+	ServerRequest as _ServerRequest,
+	ServerResponse as _ServerResponse,
 	KnownKeys as _KnownKeys,
 	ContextsKeys as _ContextsKeys,
 	MiddlewaresKeys as _MiddlewaresKeys,
@@ -14,13 +18,15 @@ import type {
 
 const version: string = require("../package.json").version
 
+export type { Client as RTEClient } from "./classes/RtEngine/classes/client"
+
 export { Server, Route, registerBaseAliases, version }
 
 declare global {
 	var OperationError: OperationErrorType
 
-	var nats: any
-	var ipc: any
+	var nats: NatsAdapter
+	var ipc: IPC
 	var __linebridge: any
 
 	var defineRoute: typeof _defineRoute
@@ -29,6 +35,9 @@ declare global {
 	type KnownKeys<T> = _KnownKeys<T>
 	type MiddlewaresKeys<T extends Server> = _MiddlewaresKeys<T>
 	type ContextsKeys<T extends Server> = _ContextsKeys<T>
+
+	type ServerRequest<T extends Server = Server> = _ServerRequest<T>
+	type ServerResponse<T extends Server = Server> = _ServerResponse<T>
 
 	function Boot(base_class: any): void
 	function ToBoolean(str: any): boolean

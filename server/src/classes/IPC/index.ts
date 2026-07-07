@@ -1,18 +1,9 @@
-import { Codec } from "@nats-io/transport-node"
 import type { NatsConnection } from "@nats-io/transport-node"
 
 import handleReceivedEvent from "./handleReceivedEvent"
 import invoke from "./invoke"
 
-class JSONCodec implements Codec<any> {
-	encode(data: any): Uint8Array {
-		return Buffer.from(JSON.stringify(data))
-	}
-
-	decode(data: any): any {
-		return JSON.parse(data)
-	}
-}
+import JSONCodec from "../Nats/codecs/json"
 
 class IPC {
 	constructor(server: any, nats: NatsConnection) {
@@ -54,11 +45,13 @@ class IPC {
 			return false
 		}
 
-		return this.nats
+		return true
 	}
 
-	handleReceivedEvent = handleReceivedEvent.bind(this)
-	invoke = invoke.bind(this)
+	handleReceivedEvent = handleReceivedEvent.bind(this) as OmitThisParameter<
+		typeof handleReceivedEvent
+	>
+	invoke = invoke.bind(this) as OmitThisParameter<typeof invoke>
 }
 
 export default IPC

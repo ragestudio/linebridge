@@ -90,7 +90,7 @@ export default class Engine extends EngineAdaptor {
 		auto_close: true,
 		trust_proxy: false,
 		max_body_buffer: 16 * 1024,
-		max_body_length: 250 * 1024,
+		max_body_length: 9 * 1024 * 1024,
 	}
 
 	/**
@@ -172,6 +172,9 @@ export default class Engine extends EngineAdaptor {
 				onConnection: this.server.handleWsConnection,
 				onDisconnect: this.server.handleWsDisconnect,
 			})
+
+			// attach the engine adaptor to RTEngine
+			this.ws.engine = this
 
 			// attach to uWebsockets with adaptors that bridge uWS events into RTEngine
 			this.uws.ws(websocket_attached_path, {

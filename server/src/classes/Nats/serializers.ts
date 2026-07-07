@@ -6,7 +6,7 @@
  * on the hot path of the NATS publish/subscribe pipeline
  */
 
-const fastJSON = require("fast-json-stringify")
+import fastJSON from "fast-json-stringify"
 
 /**
  * serializer for socket event messages pushed over the "ipc" subject

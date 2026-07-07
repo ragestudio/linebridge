@@ -5,7 +5,7 @@
  * that flows between distributed Linebridge instances via NATS headers
  */
 
-import type Server from "../../server"
+import { RtEngineContext, RtEngineSocket } from "../RtEngine/types"
 
 /**
  * standard response shape for NATS operations across the cluster
@@ -28,7 +28,7 @@ export interface OperationResult {
  * this is serialized into NATS message headers so that any instance
  * in the cluster can rebuild a NatsClient proxy for that remote socket
  */
-export interface NatsClientContext {
+export interface NatsClientContext extends RtEngineContext {
 	/** unique client identifier (same as socket_id) */
 	id: string
 	/** the underlying websocket connection id */
@@ -41,8 +41,6 @@ export interface NatsClientContext {
 	userId?: string
 	/** display name of the authenticated user */
 	username?: string
-	/** full user document, if available */
-	user?: Record<string, any>
 	/** url to the user's avatar image */
 	avatar?: string
 }

@@ -2,15 +2,13 @@ import { headers } from "@nats-io/transport-node"
 import type { Msg } from "@nats-io/transport-node"
 import type IPC from "./index"
 
-type invoke = (this: IPC, message: Msg) => Promise<void>
-
-async function invoke(
+export default async function (
 	this: IPC,
 	targetServiceID: string,
 	command: string,
 	payload = {},
 ) {
-	if (!this.isAvailable) {
+	if (!this.nats) {
 		return null
 	}
 
@@ -45,5 +43,3 @@ async function invoke(
 
 	return response.data
 }
-
-export default invoke

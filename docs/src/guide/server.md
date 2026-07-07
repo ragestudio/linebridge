@@ -50,8 +50,8 @@ export default class MyAPI extends Server {
 | `websockets` | `boolean \| WebsocketParams` | `false` | Enable WebSocket support |
 | `nats` | `NatsParams \| null` | `null` | NATS connection settings |
 | `baseRoutes` | `boolean` | `true` | Register `/` and `/_map` endpoints |
-| `routesPath` | `string` | `"./routes"` | Directory for file-based HTTP routes |
-| `wsRoutesPath` | `string` | `"./ws_routes"` | Directory for file-based WS events |
+| `routesPath` | `string` | `path.resolve(cwd, "routes")` | Directory for file-based HTTP routes |
+| `wsRoutesPath` | `string` | `path.resolve(cwd, "ws_routes")` | Directory for file-based WS events |
 | `useMiddlewares` | `string[] \| Function[]` | `[]` | Global middlewares to apply |
 | `httpMethods` | `string[]` | `["get","post","put","patch","del","delete","trace","head","any","options","ws"]` | Supported HTTP methods |
 

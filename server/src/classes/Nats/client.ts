@@ -8,7 +8,11 @@
  */
 
 import * as Serializers from "./serializers"
+
+import type RTEClient from "../RtEngine/classes/client"
 import type { NatsClientContext } from "./types"
+import serializeError from "../../utils/serializeError"
+import safeJsonStringify from "../../utils/safeJsonStringify"
 
 /**
  * proxy object for a client connected to a different gateway instance
@@ -19,7 +23,7 @@ import type { NatsClientContext } from "./types"
  * "operations" subject, both with the client's headers attached so
  * the remote gateway can route them to the correct socket.
  */
-export default class NatsClient {
+export default class NatsClient implements RTEClient {
 	/** the server engine that owns this client proxy */
 	engine: any
 	/** the nats connection used for publishing and requesting */
@@ -30,6 +34,8 @@ export default class NatsClient {
 	codec: any
 	/** deserialized client context extracted from headers */
 	context: NatsClientContext
+
+	socket!: null
 
 	constructor({
 		engine,
@@ -109,11 +115,29 @@ export default class NatsClient {
 		error?: any,
 		ack?: boolean,
 	): Promise<void> {
-		await this.nats.publish(
-			"ipc",
-			Buffer.from(Serializers.EventData({ event, data, error, ack })),
-			{ headers: this.headers },
-		)
+		if (error instanceof Error) {
+			error = serializeError(error)
+		}
+
+		const payload = { event, data, error, ack }
+		let serialized: string
+
+		try {
+			serialized = Serializers.EventData(payload)
+		} catch (err: any) {
+			if (err?.message?.includes("circular")) {
+				console.warn(
+					`[nats-client] circular reference detected while serializing event "${event}", falling back to safe serialization`,
+				)
+				serialized = safeJsonStringify(payload)
+			} else {
+				throw err
+			}
+		}
+
+		await this.nats.publish("ipc", Buffer.from(serialized), {
+			headers: this.headers,
+		})
 	}
 
 	/**
@@ -168,6 +192,15 @@ export default class NatsClient {
 		if (!response.ok) return await this.error(response.error)
 
 		return await this.emit("topic:unsubscribed", topic)
+	}
+
+	/**
+	 * unsubscribes the remote client from all pubsub topics
+	 */
+	async unsubscribeAll(): Promise<void> {
+		for (const topic of this.engine.topics) {
+			await this.unsubscribe(topic)
+		}
 	}
 
 	/**

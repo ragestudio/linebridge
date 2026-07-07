@@ -91,10 +91,10 @@ private async executeAsMiddleware(req: Request, res: Response, next: () => void)
 #### WebSocket Execution
 
 ```ts
-private async executeAsWebsocket(client: Client, data?: any): Promise<void>
+private async executeAsWebsocket(client: Client, data?: any, ctx?: Record<string, any>): Promise<void>
 ```
 
-1. Calls the WebSocket handler with `(client, data)`
+1. Calls the WebSocket handler with `(client, data, ctx)`
 2. Silently swallows `OperationError`
 3. Logs other errors
 

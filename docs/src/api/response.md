@@ -1,8 +1,8 @@
 # Response API
 
-The `Response` class represents the outgoing HTTP response. It extends `stream.Writable` and provides methods for setting status codes, headers, cookies, and sending various response types.
+The `Response` object represents the outgoing HTTP response. It wraps a raw uWS `HttpResponse` and provides methods for status codes, headers, cookies (with signed cookie support), streaming, Server-Sent Events, redirects, and JSON/HTML shortcuts. It extends `stream.Writable`.
 
-When using `defineRoute<MyAPI>()`, `res` is automatically typed with the engine-specific Response class (e.g. Neo engine), giving you access to all methods like `res.sse`, `res.cookie()`, `res.locals`, `res.file()`, etc.
+When using `defineRoute<MyAPI>()`, `res` is automatically typed with the engine-specific `Response` class.
 
 ## Import
 
@@ -11,67 +11,67 @@ When using `defineRoute<MyAPI>()`, `res` is automatically typed with the engine-
 // Available as the second parameter in route handlers and middlewares.
 ```
 
-## Interface
-
-```ts
-interface Response {
-  end(data?: any): this
-  send(data?: any): this
-  json(data: any): void
-  status(code: number): Response
-  header(name: string, value: string | string[], overwrite?: boolean): this
-  setHeader(key: string, value: string): this
-  completed: boolean
-  _status_code?: number
-  _responseTimeMs?: number
-}
-```
-
 ## Properties
 
 ### `completed: boolean`
-Whether the response has been sent or the connection aborted.
+Whether the response has been sent or the connection was aborted.
 
 ### `initiated: boolean`
-Whether response headers have been written.
-
-### `_status_code: number`
-The HTTP status code (default: 200).
-
-### `_status_message: string | null`
-Custom status message.
-
-### `locals: Record<string, any>`
-Lazy-initialized object for middleware-to-middleware data passing.
-
-### `aborted: boolean`
-Alias for `completed`.
-
-### `route: Route | null`
-The matched Route instance.
-
-### `raw: HttpResponse | null`
-The underlying uWebSockets.js `HttpResponse` object.
-
-### `sse: SSEventStream | undefined`
-Server-Sent Events stream (only available for GET requests).
-
-### `write_offset: number`
-Current write offset position. Returns `-1` if completed.
+Whether response headers have been written to the wire.
 
 ### `statusCode: number`
-Getter/setter for the status code.
+Getter/setter for the HTTP status code. Defaults to `200`.
+
+```ts
+res.statusCode       // 200
+res.statusCode = 404
+```
 
 ### `statusMessage: string | null`
-Getter/setter for the status message.
+Getter/setter for a custom status message. If not set, the standard message for the status code is used (e.g. `"OK"`, `"Not Found"`).
+
+```ts
+res.statusMessage = "Custom Message"
+// → "404 Custom Message"
+```
 
 ### `headersSent: boolean`
-Whether response headers have been sent (alias for `initiated`).
+Whether response headers have been sent. Alias for `initiated`.
+
+### `aborted: boolean`
+Whether the response has been completed (sent or aborted). Alias for `completed`.
+
+### `locals: Record<string, any>`
+Lazy-initialized object for middleware-to-middleware data passing. Created via `Object.create(null)`.
+
+```ts
+res.locals.requestId = nanoid()
+```
+
+### `raw: HttpResponse | null`
+The underlying uWS `HttpResponse` object. `null` after the response is completed.
+
+### `route: Route | null`
+The matched `Route` instance for this request.
+
+### `engine: EngineAdaptor | null`
+Shortcut to `this.route?.engine`.
+
+### `write_offset: number`
+The current uWS write offset. Returns `-1` if the response is completed.
+
+### `upgrade_socket: any`
+The uWS upgrade socket handle. Only set for WebSocket upgrade requests.
+
+### `sse: SSEventStream | undefined`
+Server-Sent Events stream. Only available on GET requests. Returns `undefined` on non-GET methods. The stream is created lazily on first access.
+
+---
 
 ## Status & Headers
 
 ### `status(code: number, message?: string): this`
-Sets the HTTP status code and optional message.
+Sets the HTTP status code and optional custom message. Returns `this` for chaining.
 
 ```ts
 res.status(404)
@@ -79,39 +79,75 @@ res.status(201, "Created")
 ```
 
 ### `header(name: string, value: string | string[], overwrite?: boolean): this`
-Sets a response header. Appends if the header already exists, unless `overwrite` is `true`.
+Sets a response header. If the header already exists and `overwrite` is `false`, values are accumulated as an array (e.g. for multiple `Set-Cookie`).
 
 ```ts
 res.header("content-type", "application/json")
-res.header("set-cookie", ["a=1", "b=2"])
+res.header("x-custom", "value")
+
+// Multiple values:
+res.header("set-cookie", "a=1")
+res.header("set-cookie", "b=2")  // accumulated
 ```
 
 ### `setHeader(name: string, value: string): this`
-Alias for `header(name, value, true)` (overwrites).
+Sets a header value with overwrite semantics (calls `header(name, value, true)` internally).
 
-### `writeHeaders(headers: Record<string, any>): void`
-Writes multiple headers at once.
-
-### `setHeaders(headers: Record<string, any>): void`
-Alias for `writeHeaders`.
-
-### `writeHeaderValues(name: string, values: any[]): void`
-Writes multiple values for a single header.
+```ts
+res.setHeader("x-custom", "final-value")
+```
 
 ### `getHeader(name: string): string | string[] | undefined`
-Gets a header value.
+Returns the current value(s) of a header.
+
+```ts
+res.getHeader("content-type")  // "application/json"
+```
 
 ### `removeHeader(name: string): void`
-Removes a header.
+Removes a header from the response.
 
-### `get(name: string): string | string[] | undefined`
-Alias for `getHeader`.
+```ts
+res.removeHeader("x-powered-by")
+```
+
+### `writeHeaders(headers: Record<string, any>): void`
+Writes multiple headers at once from an object.
+
+```ts
+res.writeHeaders({
+  "x-rate-limit": "100",
+  "x-rate-remaining": "95",
+})
+```
+
+### `setHeaders(headers: Record<string, any>): void`
+Alias for `writeHeaders()`.
+
+### `writeHeaderValues(name: string, values: string[]): void`
+Writes multiple values for a single header.
+
+```ts
+res.writeHeaderValues("set-cookie", ["a=1", "b=2"])
+```
+
+### `get(name: string): string | undefined`
+Returns the first value of a header (or the value itself if it's a string).
+
+```ts
+res.get("content-type")  // "application/json"
+```
 
 ### `set(field: string | object, value?: any): this`
-Sets header(s). Accepts either `(key, value)` or `({ key: value })`.
+Sets headers using either `(key, value)` or `({ key: value })` syntax.
 
-### `type(mime_type: string): this`
-Sets the `Content-Type` header by MIME type or file extension.
+```ts
+res.set("x-custom", "value")
+res.set({ "x-foo": "bar", "x-baz": "qux" })
+```
+
+### `type(mime: string): this`
+Sets the `Content-Type` header from a file extension or MIME string. Prefix with `.` for extension lookup.
 
 ```ts
 res.type("json")        // application/json
@@ -122,104 +158,160 @@ res.type("text/plain")  // text/plain
 ### `vary(name: string): this`
 Sets the `Vary` header.
 
+```ts
+res.vary("Accept-Encoding")
+```
+
 ### `location(path: string): this`
 Sets the `Location` header.
 
+```ts
+res.location("/new-url")
+```
+
 ### `links(links: Record<string, string>): this`
-Sets the `Link` header.
+Sets the `Link` header from an object mapping `rel` → `URL`.
 
 ```ts
-res.links({ next: "/page/2", last: "/page/10" })
+res.links({
+  next: "/page/2",
+  last: "/page/10",
+})
+// → Link: </page/2>; rel="next", </page/10>; rel="last"
 ```
+
+### `append(name: string, values: string | string[]): this`
+Appends values to a header. Alias for `header()` with no overwrite.
+
+---
 
 ## Cookies
 
 ### `cookie(name, value, expiry?, options?, sign_cookie?): this`
-Sets a cookie. Auto-signs if `sign_cookie` is `true` and `options.secret` is provided.
+Sets a `Set-Cookie` header. Auto-signs the value if `sign_cookie` is `true` (default) and `options.secret` is provided.
 
 ```ts
-res.cookie("session", token, 3600000, { httpOnly: true, secret: "my-secret" })
+// Simple cookie with 1-hour expiry
+res.cookie("session", token, 3600000)
+
+// Secure cookie with signing
+res.cookie("auth", token, 3600000, {
+  secure: true,
+  sameSite: "none",
+  path: "/",
+  httpOnly: true,
+  secret: "my-secret",
+})
+
+// Delete a cookie (pass null value)
+res.cookie("session", null)
 ```
 
-### `setCookie(name, value, options): this`
-Sets a cookie without expiry.
+Default options when not provided: `{ secure: true, sameSite: "none", path: "/" }`.
 
-### `hasCookie(name): boolean`
-Checks if a cookie has been set.
+### `setCookie(name: string, value: any, options: any): this`
+Sets a cookie without expiry. Shorthand for `cookie(name, value, null, options)`.
 
-### `removeCookie(name): this`
-Removes a cookie by setting it with `maxAge: 0`.
+### `hasCookie(name: string): boolean`
+Checks if a cookie with the given name has been queued for the response.
 
-### `clearCookie(name): this`
-Alias for `removeCookie`.
+### `removeCookie(name: string): this`
+Removes a cookie by setting it with `maxAge: 0`. Equivalent to `cookie(name, null)`.
+
+### `clearCookie(name: string): this`
+Alias for `removeCookie()`.
+
+---
 
 ## Sending Responses
 
 ### `send(body?: any, close_connection?: boolean): this`
-Sends the response. Handles streaming, empty responses, and content-length.
+Sends the response and marks it as completed. Handles:
+- Corked (batched) writes for efficiency
+- `endWithoutBody` when a custom `content-length` header is set
+- Streaming mode
+- `finish` and `close` event dispatch
+
+```ts
+res.send("Hello World")
+res.send({ data: [1, 2, 3] })
+res.send()              // empty 200
+res.send(null, true)    // close connection immediately
+```
 
 ### `json(body: any): this`
-Sets `Content-Type: application/json` and sends JSON.
+Sets `Content-Type: application/json` and sends the body as a JSON string. Uses `JSON.stringify` internally.
 
 ```ts
 res.json({ users: [...] })
+res.json({ error: "Not found" })
 ```
 
 ### `html(body: any): this`
-Sets `Content-Type: text/html` and sends HTML.
+Sets `Content-Type: text/html` and sends the body.
 
-### `jsonp(body: any, callback_name?: string): this`
-Sends a JSONP response. Uses `callback` query parameter by default.
-
-### `redirect(url: string): boolean`
-Sends a 302 redirect. Returns `false` if already completed.
+```ts
+res.html("<h1>Hello</h1>")
+```
 
 ### `end(data?: any): this`
-Alias for `send`.
+Alias for `send(data)`.
 
 ### `sendStatus(code: number): this`
 Sends a response with only a status code and no body.
 
+```ts
+res.sendStatus(204)  // 204 No Content
+res.sendStatus(404)  // 404 Not Found
+```
+
+### `redirect(url: string): boolean`
+Sends a 302 redirect response. Returns `false` if already completed.
+
+```ts
+res.redirect("/login")
+res.redirect("https://example.com")
+```
+
 ### `close(): void`
-Closes the connection without sending a response.
+Immediately closes the response connection (hard abort). Marks as completed and resolves the pending request counter.
 
-## File Responses
+```ts
+res.close()
+```
 
-### `file(path: string, callback?: Function): this`
-Sends a file. Uses `LiveFile` for automatic reloading on file changes (watches the file).
-
-### `sendFile(path: string): this`
-Alias for `file`.
-
-### `attachment(path?: string, name?: string): this`
-Sets `Content-Disposition: attachment` header. If path/name provided, includes filename.
-
-### `download(path: string, filename?: string): this`
-Combines `attachment` and `file` for file downloads.
+---
 
 ## Streaming
 
-`Response` extends `stream.Writable`:
+`Response` extends `stream.Writable` and supports chunked responses.
 
-### `stream(readable: stream.Readable, total_size?: number): Promise<void>`
-Streams a Readable to the response. Handles backpressure.
+### `write(chunk: string): boolean`
+Writes a chunk to the response body. Initiates headers on first call. Returns `false` under backpressure.
 
-### `write(chunk, encoding?, callback?): boolean`
-Writes a chunk to the response body.
+```ts
+res.write("chunk1")
+res.write("chunk2")
+res.send()  // end the stream
+```
+
+### `stream(readable: Readable, total_size?: number): Promise<void>`
+Streams a Node.js `Readable` to the client chunk by chunk. Handles backpressure via uWS drain. If `total_size` is provided, uses `tryEnd` for the final chunk.
+
+```ts
+const fileStream = fs.createReadStream("/path/to/file")
+await res.stream(fileStream, stat.size)
+```
 
 ### `drain(handler: (offset: number) => boolean): void`
-Registers a drain handler for backpressure management.
+Registers a drain handler for backpressure-aware streaming. The handler receives the current uWS write offset and must return `true` if the chunk was successfully written.
 
-## Upgrade
+---
 
-### `upgrade(context?: any): void`
-Upgrades the connection to WebSocket. Can only be called from an upgrade handler.
-
-## Server-Sent Events
+## Server-Sent Events (SSE)
 
 ### `sse: SSEventStream | undefined`
-
-Access the SSE stream (only available for GET requests). Returns `undefined` for non-GET methods.
+Access the SSE stream. Only available on GET requests. Returns `undefined` for other methods.
 
 ```ts
 fn: (req, res) => {
@@ -233,7 +325,7 @@ fn: (req, res) => {
       clearInterval(timer)
       return
     }
-    stream.send("message", JSON.stringify({ text: "hi!" }))
+    stream.send("message", JSON.stringify({ text: "hello" }))
   }, 1000)
 }
 ```
@@ -242,20 +334,36 @@ fn: (req, res) => {
 
 ```ts
 interface SSEventStream {
-  open(): boolean           // initiates the SSE connection
-  close(): boolean          // closes the SSE connection
-  comment(data: string): boolean  // keep-alive comment (not emitted by EventSource)
+  open(): boolean                                    // initiates the SSE connection
+  close(): boolean                                   // closes the SSE connection
+  comment(data: string): boolean                     // keep-alive comment (": ...")
   send(id: string, event: string, data: string): boolean
   send(event: string, data: string): boolean
   send(data: string): boolean
-  readonly active: boolean  // whether the stream is still alive
+  readonly active: boolean                           // false when stream is dead
 }
 ```
 
 When the client disconnects:
 - `stream.active` becomes `false`
-- subsequent `send()` calls return `false` instead of throwing
-- always check `stream.active` before writing to avoid errors
+- Subsequent `send()` calls return `false` instead of throwing
+- Always check `stream.active` before writing in async loops
+
+---
+
+## Upgrade
+
+### `upgrade(context?: any): void`
+Upgrades the HTTP connection to a WebSocket. Only callable from an upgrade handler. Throws if `_upgrade_socket` is not set.
+
+```ts
+async handleWsUpgrade(context: any, token: string, res: any) {
+  context.user = await validateToken(token)
+  res.upgrade(context)
+}
+```
+
+---
 
 ## Events
 
@@ -267,15 +375,43 @@ Response emits these events:
 | `close` | Response was sent or connection closed |
 | `finish` | Response body was fully sent |
 
+```ts
+res.on("finish", () => {
+  console.log("Response sent")
+})
+
+res.on("abort", (req, res) => {
+  console.log("Client disconnected")
+})
+
+res.on("close", (req, res) => {
+  console.log("Connection closed")
+})
+```
+
+### `on(event: string, handler: Function): this`
+Registers an event listener.
+
+### `once(event: string, handler: Function): this`
+Registers an event listener that fires at most once.
+
+### `off(event: string, handler: Function): this`
+Removes an event listener.
+
+### `listenerCount(event: string): number`
+Returns the number of listeners for an event.
+
+---
+
 ## Atomic Operations
 
 ### `atomic(handler: Function): this`
-Batches multiple write operations into a single network call using uWS corking.
+Wraps a handler in uWS `cork()` for batched writes. All writes inside the handler are sent in a single TCP segment.
 
 ```ts
 res.atomic(() => {
-  res.header("x-custom", "value")
   res.status(200)
+  res.header("x-custom", "value")
   res.json({ ok: true })
 })
 ```

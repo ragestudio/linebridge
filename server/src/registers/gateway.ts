@@ -13,6 +13,30 @@ import net from "node:net"
 import getRoutes from "../utils/getRoutes"
 import type Server from "../server"
 
+export type RegisterObj = {
+	event: string
+	data: {
+		namespace: string
+		secure: boolean
+		http: {
+			enabled: boolean
+			proto: "http" | "https"
+			paths?: string[]
+		}
+		websocket: {
+			enabled: boolean
+			proto: "ws" | "wss"
+			path: string
+			events?: string[]
+		}
+		listen: {
+			ip: string
+			port: string | number
+			socket?: string
+		}
+	}
+}
+
 /**
  * Collects all HTTP paths and WebSocket events registered on the engine,
  * filters out internal routes, and sends the service metadata to the
@@ -70,7 +94,7 @@ export default async (server: Server): Promise<void | null> => {
 	})
 
 	// build the registration payload for the gateway
-	const registerObj = {
+	const registerObj: RegisterObj = {
 		event: "service:register",
 		data: {
 			namespace: server.params.refName,
@@ -97,8 +121,8 @@ export default async (server: Server): Promise<void | null> => {
 	}
 
 	// if the engine listens on a unix socket, include that path
-	if (server.engine.SOCKET_PATH) {
-		;(registerObj.data.listen as any).socket = server.engine.SOCKET_PATH
+	if (server.engine.socket_path) {
+		registerObj.data.listen.socket = server.engine.socket_path
 	}
 
 	// connect to the gateway socket, send the payload, and disconnect

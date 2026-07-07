@@ -5,7 +5,7 @@
  * objects from the bare context fields returned by a remote service
  */
 
-const { headers } = require("@nats-io/transport-node")
+import { headers } from "@nats-io/transport-node"
 import NatsClient from "./client"
 import type NatsAdapter from "./adapter"
 
@@ -67,7 +67,7 @@ export default (client: ClientInput, adapter: NatsAdapter): NatsClient => {
 
 	// create the proxy using the adapter's shared resources
 	return new NatsClient({
-		nats: adapter.nats,
+		nats: adapter.connection,
 		engine: adapter.server.engine,
 		codec: adapter.codec,
 		headers: clientHeaders,

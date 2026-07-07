@@ -1,6 +1,6 @@
 {
 	"name": "linebridge",
-	"version": "2.0.0-alpha18",
+	"version": "2.0.0-alpha24",
 	"license": "MIT",
 	"description": "Multiproposal framework to build fast, scalable, and secure servers.",
 	"author": "RageStudio <support@ragestudio.net>",
@@ -26,6 +26,7 @@
 		"@nats-io/transport-node": "^3.4.0"
 	},
 	"dependencies": {
+		"@nats-io/jetstream": "^3.4.0",
 		"busboy": "^1.6.0",
 		"chokidar": "^5.0.0",
 		"cookie": "^1.1.1",
