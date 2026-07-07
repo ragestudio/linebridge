@@ -61,6 +61,10 @@ export interface RtEngineSocket {
 	 */
 	context: RtEngineContext
 
+	ip: string
+	raw: any
+	closed: boolean
+
 	/** Sends a string payload directly to this client */
 	send: (data: string) => any
 
