@@ -324,10 +324,20 @@ export class Server<EngineType = "neo"> {
 
 		// If running behind the Linebridge Gateway, spin up NATS + IPC.
 		if (process.env.LB_GATEWAY_SOCKET) {
+			let address = this.params.nats?.address
+			let port = this.params.nats?.port
+
+			// fallback to NATS_URL if no static nats config
+			if (!address && process.env.NATS_URL) {
+				const url = new URL(process.env.NATS_URL)
+				address = url.hostname
+				port = parseInt(url.port) || 4222
+			}
+
 			console.info("Starting NATS adapter")
 			this.nats = (global as any).nats = new NatsAdapter(this, {
-				address: this.params.nats?.address || "127.0.0.1",
-				port: this.params.nats?.port || 4222,
+				address: address || "127.0.0.1",
+				port: port || 4222,
 			})
 			await this.nats.initialize()
 
