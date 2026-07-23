@@ -368,7 +368,9 @@ export default class Request<
 		}
 
 		const header = this.headers["cookie"]
-		this._cookies = header ? cookie.parse(header) : Object.create(null)
+		this._cookies = header
+			? cookie.parseCookie(header)
+			: Object.create(null)
 
 		return this._cookies
 	}

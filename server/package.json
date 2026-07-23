@@ -21,18 +21,33 @@
 	"scripts": {
 		"build": "tsgo && cp -r bootloader build && cp package.json build && cp README.md build"
 	},
-	"optionalDependencies": {
+	"peerDependencies": {
 		"@infisical/sdk": "^5.0.2",
+		"@nats-io/jetstream": "^3.4.0",
+		"@nats-io/kv": "^3.4.0",
 		"@nats-io/transport-node": "^3.4.0"
 	},
+	"peerDependenciesMeta": {
+		"@infisical/sdk": {
+			"optional": true
+		},
+		"@nats-io/transport-node": {
+			"optional": true
+		},
+		"@nats-io/jetstream": {
+			"optional": true
+		},
+		"@nats-io/kv": {
+			"optional": true
+		}
+	},
 	"dependencies": {
-		"@nats-io/jetstream": "^3.4.0",
 		"busboy": "^1.6.0",
 		"chokidar": "^5.0.0",
-		"cookie": "^1.1.1",
+		"cookie": "^2.0.1",
 		"cookie-signature": "^1.2.2",
 		"dotenv": "^17.4.2",
-		"fast-json-stringify": "^6.4.0",
+		"fast-json-stringify": "^7.0.1",
 		"fast-querystring": "^1.1.2",
 		"mime-types": "^3.0.2",
 		"minimatch": "^10.2.5",
@@ -42,11 +57,12 @@
 		"uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.68.0"
 	},
 	"devDependencies": {
+		"@typescript/native-preview": "7.0.0-dev.20260707.2",
 		"@types/busboy": "^1.5.4",
 		"@types/cookie-signature": "^1.1.2",
 		"@types/express": "^5.0.6",
 		"@types/mime-types": "^3.0.1",
-		"@types/node": "^25.9.1",
-		"@typescript/native-preview": "7.0.0-dev.20260604.1"
+		"@types/node": "^26.1.1",
+		"typescript": "^7.0.2"
 	}
 }

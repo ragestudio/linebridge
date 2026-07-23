@@ -283,8 +283,9 @@ export default class Response<
 		options?: any,
 		sign_cookie: boolean = true,
 	): this {
-		if (name && value === null)
+		if (name && value === null) {
 			return this.cookie(name, "", null, { maxAge: 0 } as any)
+		}
 
 		options = options
 			? Object.assign({}, options)
@@ -304,7 +305,11 @@ export default class Response<
 			this._cookies = Object.create(null)
 		}
 
-		this._cookies![name] = cookie.serialize(name, value as any, options)
+		this._cookies![name] = cookie.stringifySetCookie({
+			...options,
+			name: name,
+			value: value as string,
+		})
 
 		return this
 	}
