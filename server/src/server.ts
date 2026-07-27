@@ -158,7 +158,7 @@ export class Server<EngineType = "neo"> {
 	// ---- lifecycle hooks (overridden by subclass or set at runtime) ----
 
 	/** Array of async init tasks executed in parallel before onInitialize. */
-	initialize?: Array<() => Promise<void>>
+	initialize?: Array<() => Promise<unknown>>
 
 	/** Called early in the boot sequence, before route registration. */
 	onInitialize?(): Promise<void>
