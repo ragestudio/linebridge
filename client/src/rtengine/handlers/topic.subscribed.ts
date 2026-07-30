@@ -1,9 +1,9 @@
+import type RTEClient from ".."
+
 /**
  * Handles topic subscribed events.
- *
- * @param {string} topic - The topic that was subscribed to.
  */
-export default function (this: any, topic: string) {
+export default function (this: RTEClient, topic: string) {
 	console.log(`[rt/${this.params.refName}] topic subscribed:`, topic)
 
 	this.topics.subscribed.add(topic)

@@ -1,15 +1,15 @@
 import connected from "./connected"
 import reconnected from "./reconnected"
 import error from "./error"
-import pong from "./pong"
+import ping from "./ping"
 import topicSubscribed from "./topic.subscribed"
 import topicUnsubscribed from "./topic.unsubscribed"
 
 export default {
+	ping,
 	connected,
 	reconnected,
 	error,
-	pong,
 	topicSubscribed: topicSubscribed,
 	topicUnsubscribed: topicUnsubscribed,
 }
