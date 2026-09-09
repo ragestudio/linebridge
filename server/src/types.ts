@@ -28,6 +28,12 @@ export type KnownKeys<T = any> = keyof {
 			: K]: T[K]
 }
 
+type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
+	k: infer I,
+) => void
+	? I
+	: never
+
 /** Union of context keys available to a route on a given Server subclass. */
 export type ContextsKeys<Child extends Server = Server> = KnownKeys<
 	Child["contexts"] & Server["base_contexts"]
@@ -37,6 +43,9 @@ export type ContextsKeys<Child extends Server = Server> = KnownKeys<
 export type MiddlewaresKeys<Child extends Server = Server> = KnownKeys<
 	Child["middlewares"] & Server["base_middlewares"]
 >
+
+export type AllMiddlewares<Child extends Server = Server> =
+	Child["middlewares"] & Server["base_middlewares"]
 
 /** Resolved contexts object (merges user-defined + base contexts). */
 export type Contexts<Child extends Server = Server> = Child["contexts"] &
@@ -96,3 +105,25 @@ export interface SSEventStream {
 	/** Whether this SSE stream is still active (response not completed). */
 	readonly active: boolean
 }
+
+export type ExtractReqExt<
+	Child extends Server,
+	K extends keyof AllMiddlewares<Child>,
+> = UnionToIntersection<
+	K extends any
+		? AllMiddlewares<Child>[K] extends { _reqExt?: infer ReqExt }
+			? NonNullable<ReqExt>
+			: {}
+		: never
+>
+
+export type ExtractResExt<
+	Child extends Server,
+	K extends keyof AllMiddlewares<Child>,
+> = UnionToIntersection<
+	K extends any
+		? AllMiddlewares<Child>[K] extends { _resExt?: infer ResExt }
+			? NonNullable<ResExt>
+			: {}
+		: never
+>

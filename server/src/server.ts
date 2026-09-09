@@ -121,7 +121,7 @@ export class Server<EngineType = "neo"> {
 	contexts!: Record<string, any>
 
 	/** User-defined middlewares (merged with base_middlewares at route init). */
-	middlewares!: Record<string, MiddlewareHandlerFunction>
+	middlewares!: Record<string, MiddlewareHandlerFunction<any, any, any, any>>
 
 	// ---- runtime state ----
 
@@ -172,10 +172,10 @@ export class Server<EngineType = "neo"> {
 	// ---- user-defined routes & events ----
 
 	/** HTTP route definitions (class-based, registered at boot). */
-	routes!: Record<string, RouteObject<this, any, "http">>
+	routes!: Record<string, RouteObject<this, any, "http", any> | any>
 
 	/** WebSocket event handler map. */
-	wsEvents?: Record<string, RouteObject<this, any, "ws">>
+	wsEvents?: Record<string, RouteObject<this, any, "ws", any> | any>
 
 	/** IPC event handler map (used with NATS). */
 	ipcEvents?: IPCEvents

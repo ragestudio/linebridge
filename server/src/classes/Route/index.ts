@@ -5,6 +5,8 @@ import type { Server } from "../../server"
 import type { HttpHandlerFunction } from "../Handler/http"
 import type { WebsocketHandlerFunction } from "../Handler/websocket"
 import type {
+	ExtractReqExt,
+	ExtractResExt,
 	ContextsKeys,
 	MiddlewaresKeys,
 	Contexts,
@@ -14,29 +16,23 @@ import type {
 
 export type RouteTypes = "http" | "ws"
 export type RouteHttpMethods =
-	| "any"
-	| "get"
-	| "post"
-	| "put"
-	| "delete"
-	| "patch"
-	| "options"
-	| "head"
+	"any" | "get" | "post" | "put" | "delete" | "patch" | "options" | "head"
 
 export interface RouteObject<
 	Child extends Server = Server,
 	SelectedCtx extends ContextsKeys<Child> = ContextsKeys<Child>,
 	Type extends RouteTypes = "http",
+	SelectedMw extends MiddlewaresKeys<Child> = MiddlewaresKeys<Child>,
 > {
 	method?: RouteHttpMethods
-	useMiddlewares?: MiddlewaresKeys<Child>[]
+	useMiddlewares?: readonly SelectedMw[]
 	useContexts?: readonly SelectedCtx[]
 	fn: Type extends "ws"
 		? WebsocketHandlerFunction<Pick<Contexts<Child>, SelectedCtx>>
 		: HttpHandlerFunction<
 				Pick<Contexts<Child>, SelectedCtx>,
-				ServerRequest<Child>,
-				ServerResponse<Child>
+				ServerRequest<Child> & ExtractReqExt<Child, SelectedMw>,
+				ServerResponse<Child> & ExtractResExt<Child, SelectedMw>
 			>
 }
 
@@ -49,9 +45,10 @@ export function defineRoute<
 
 	const define = <
 		UseContexts extends readonly ContextsKeys<Child>[] = readonly [],
+		UseMiddlewares extends readonly MiddlewaresKeys<Child>[] = readonly [],
 	>(route: {
 		method?: RouteHttpMethods
-		useMiddlewares?: MiddlewaresKeys<Child>[]
+		useMiddlewares?: UseMiddlewares
 		useContexts?: UseContexts
 		fn: Type extends "ws"
 			? WebsocketHandlerFunction<
@@ -63,8 +60,8 @@ export function defineRoute<
 					UseContexts extends readonly [any, ...any[]]
 						? Pick<Contexts<Child>, UseContexts[number]>
 						: unknown,
-					Req,
-					Res
+					Req & ExtractReqExt<Child, UseMiddlewares[number]>,
+					Res & ExtractResExt<Child, UseMiddlewares[number]>
 				>
 	}): typeof route => route
 
@@ -73,14 +70,11 @@ export function defineRoute<
 
 // routealike trys to match a RouteObject or a non-constructed Route or a constructed Route
 export type RouteAlike<TServer extends Server = Server> =
-	| Route<TServer>
-	| (new () => Route<TServer>)
-	| RouteObject
+	Route<TServer> | (new () => Route<TServer>) | RouteObject
 
 export class Route<
 	TServer extends Server = Server,
-	TContextKeys extends MiddlewaresKeys<TServer>[] =
-		MiddlewaresKeys<TServer>[],
+	TContextKeys extends MiddlewaresKeys<TServer>[] = MiddlewaresKeys<TServer>[],
 > {
 	server!: TServer
 
@@ -189,10 +183,7 @@ export class Route<
 					continue
 				}
 
-				middleware = this._to_handler(
-					middleware,
-					HandlerKind.middleware,
-				)
+				middleware = this._to_handler(middleware, HandlerKind.middleware)
 
 				if (middleware) {
 					// push the middleware in that order
