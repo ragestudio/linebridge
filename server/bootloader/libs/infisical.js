@@ -11,6 +11,9 @@ class InfisicalLib {
 
 	static LoadFromEnv = async () => {
 		if (!InfisicalLib.client) {
+			console.warn(
+				"WARN: Infisical client not found, skipping env injection...",
+			)
 			return null
 		}
 
