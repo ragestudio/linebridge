@@ -46,6 +46,7 @@ const Vars: VarsType = {
 		routesPath: path.resolve(process.cwd(), "routes"),
 		wsRoutesPath: path.resolve(process.cwd(), "ws_routes"),
 		useMiddlewares: [],
+		usePlugins: [],
 		// All HTTP methods that the framework recognizes for route registration.
 		httpMethods: [
 			"get",
