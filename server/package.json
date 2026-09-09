@@ -1,6 +1,6 @@
 {
 	"name": "linebridge",
-	"version": "2.0.0-alpha27",
+	"version": "2.0.0-alpha28",
 	"license": "MIT",
 	"description": "Multiproposal framework to build fast, scalable, and secure servers.",
 	"author": "RageStudio <support@ragestudio.net>",
@@ -18,8 +18,15 @@
 	"engines": {
 		"node": ">24.0.0"
 	},
+	"files": [
+		"bootloader",
+		"dist",
+		"package.json",
+		"README.md"
+	],
 	"scripts": {
-		"build": "tsgo && cp -r bootloader build && cp package.json build && cp README.md build"
+		"build": "tsc",
+		"typecheck": "tsc --noEmit"
 	},
 	"peerDependencies": {
 		"@infisical/sdk": "^5.0.2",
@@ -50,19 +57,18 @@
 		"fast-json-stringify": "^7.0.1",
 		"fast-querystring": "^1.1.2",
 		"mime-types": "^3.0.2",
-		"minimatch": "^10.2.5",
+		"minimatch": "^10.2.6",
 		"module-alias": "^2.3.4",
 		"sucrase": "^3.35.1",
 		"tseep": "^1.3.1",
 		"uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.68.0"
 	},
 	"devDependencies": {
-		"@typescript/native-preview": "7.0.0-dev.20260707.2",
 		"@types/busboy": "^1.5.4",
 		"@types/cookie-signature": "^1.1.2",
 		"@types/express": "^5.0.6",
 		"@types/mime-types": "^3.0.1",
-		"@types/node": "^26.1.1",
+		"@types/node": "^26.5.0",
 		"typescript": "^7.0.2"
 	}
 }
