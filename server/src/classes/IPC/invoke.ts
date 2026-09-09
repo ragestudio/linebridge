@@ -1,6 +1,6 @@
-import { headers } from "@nats-io/transport-node"
-import type { Msg } from "@nats-io/transport-node"
 import type IPC from "./index"
+
+import { headers } from "@nats-io/transport-node"
 
 export default async function (
 	this: IPC,
