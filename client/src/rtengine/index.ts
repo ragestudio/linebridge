@@ -305,7 +305,7 @@ export class RTEngineClient {
 	 */
 	call = (
 		event: string,
-		data: any,
+		data?: any,
 		timeout: number = RTEngineClient.callTimeout,
 	): Promise<object | string> => {
 		return new Promise((resolve, reject) => {
