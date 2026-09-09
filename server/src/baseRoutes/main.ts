@@ -30,7 +30,7 @@ export default class MainRoute extends Route<Server> {
 			version: Vars.projectPkg.version,
 			engine: ctx.server.params.useEngine ?? "unknown",
 			lb_version: Vars.libPkg.version ?? "unknown",
-			experimental: ctx.server.experimental ?? "unknown",
+			experimental: ctx.server.experimental ? true : undefined,
 			request_time: new Date().getTime(),
 		}
 	}
