@@ -6,7 +6,7 @@
  * Server-Sent Events, redirects, and JSON/HTML shortcuts.
  */
 
-import cookie from "cookie"
+import * as cookie from "cookie"
 import signature from "cookie-signature"
 import { STATUS_CODES } from "http"
 import mime_types from "mime-types"

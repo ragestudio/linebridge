@@ -6,7 +6,7 @@
  * and path/query parameters.
  */
 
-import cookie from "cookie"
+import * as cookie from "cookie"
 import querystring from "fast-querystring"
 import signature from "cookie-signature"
 
