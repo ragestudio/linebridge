@@ -1,6 +1,0 @@
-allowBuilds:
-  esbuild: true
-  protobufjs: true
-  vue-demi: true
-
-blockExoticSubdeps: false

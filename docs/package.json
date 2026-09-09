@@ -13,7 +13,7 @@
 		"@vueuse/core": "^14.3.0",
 		"@vueuse/integrations": "^14.3.0",
 		"less": "^4.6.4",
-		"linebridge": "^1.8.1",
+		"linebridge": "workspace:*",
 		"live-directory": "^3.0.3",
 		"medium-zoom": "^1.1.0",
 		"minisearch": "^7.2.0",
