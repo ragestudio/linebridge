@@ -1,16 +1,28 @@
 import { Server } from "../src/index"
+import { defineRoute } from "../src/classes/Route/index"
+import { defineMiddleware } from "../src/classes/Handler/middleware"
+
+import OpenApiPlugin from "../../plugins/openapi/index"
 
 export default class ExampleAPI extends Server {
 	static useMiddlewares = ["logs"]
+	static usePlugins = [OpenApiPlugin]
 
 	routes = {
 		// basic route
 		"/hi": defineRoute<ExampleAPI>()({
 			method: "get",
-			fn: async () => {
+			fn: async (req, res, ctx) => {
 				return {
 					message: "Hello world",
 				}
+			},
+		}),
+		"/get_test": defineRoute<ExampleAPI>()({
+			method: "get",
+			useMiddlewares: ["injectTest"],
+			fn: async (req, res, ctx) => {
+				return req.test
 			},
 		}),
 		// get from context
@@ -24,7 +36,10 @@ export default class ExampleAPI extends Server {
 		// use parameters
 		"/sum/:value1/:value2": defineRoute<ExampleAPI>()({
 			method: "get",
-			fn: async (req, res) => {
+			fn: async (
+				req,
+				res,
+			): Promise<{ a: number; b: number; result: number }> => {
 				req.params.value1 = parseInt(req.params.value1)
 				req.params.value2 = parseInt(req.params.value2)
 
@@ -42,6 +57,12 @@ export default class ExampleAPI extends Server {
 			console.log("Hi! Im a middleware")
 			next()
 		},
+		injectTest: defineMiddleware<{ test: string }>()(
+			async (req, res, next) => {
+				req.test = "im a test!"
+				next()
+			},
+		),
 	}
 
 	contexts = {
