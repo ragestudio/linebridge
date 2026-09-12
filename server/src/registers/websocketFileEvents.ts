@@ -26,7 +26,7 @@ import type Server from "../server"
  */
 export default async (
 	startDir: string,
-	server: Server,
+	server: Server<any>,
 ): Promise<typeof server | null> => {
 	// bail if WebSocket is not enabled or the directory doesn't exist
 	if (!server.engine?.ws || !fs.existsSync(startDir)) {

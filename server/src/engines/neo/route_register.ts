@@ -9,6 +9,7 @@ import { Route, RouteAlike, RouteHttpMethods } from "../../classes/Route"
 
 import type { HttpRequest, HttpResponse } from "uWebSockets.js"
 import type Engine from "./index"
+import { HandlerKind } from "../../classes/Handler"
 
 /**
  * Registers a route with the engine's uWS app.
@@ -36,10 +37,12 @@ export default function (this: Engine, route: RouteAlike) {
 		routeInstance = route
 	} else if (typeof route.fn === "function") {
 		routeInstance = new Route()
+		routeInstance.kind = HandlerKind.http
+		routeInstance.path = route.path ?? "/"
 		routeInstance.method = route.method ?? "get"
 		routeInstance.useContexts = route.useContexts ?? []
 		routeInstance.useMiddlewares = route.useMiddlewares ?? []
-		routeInstance.handler = route.fn
+		routeInstance.fn = route.fn
 	} else {
 		throw new Error("Invalid route provided")
 	}
@@ -66,8 +69,13 @@ export default function (this: Engine, route: RouteAlike) {
 	}
 
 	this.registers.add({
+		kind: routeInstance.kind,
 		method: routeInstance.method,
 		path: routeInstance.path,
+		useContexts: routeInstance.useContexts,
+		useMiddlewares: routeInstance.useMiddlewares,
+		_source_file: routeInstance._source_file,
+		handler: routeInstance.handler,
 	})
 
 	this.uws[routeInstance.method](

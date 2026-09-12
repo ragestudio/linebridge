@@ -45,7 +45,7 @@ export type RegisterObj = {
  * @param server - the Linebridge server instance
  * @returns void, or null if the gateway socket is not configured
  */
-export default async (server: Server): Promise<void | null> => {
+export default async (server: Server<any>): Promise<void | null> => {
 	if (!process.env.LB_GATEWAY_SOCKET) {
 		console.error("LB_GATEWAY_SOCKET not available")
 		return null

@@ -59,7 +59,7 @@ type uwsEngine = uWebsockets.TemplatedApp & {
  * It handles app construction (plain or SSL), WebSocket setup, route registration,
  * middleware registration, and the request/response pipeline.
  */
-export default class Engine extends EngineAdaptor {
+export class NeoEngine extends EngineAdaptor {
 	/** WebSocket engine instance, set when websockets are enabled. */
 	declare ws: RTEngine | null
 	/** The underlying uWS listen socket handle. */
@@ -68,15 +68,15 @@ export default class Engine extends EngineAdaptor {
 	declare uws: uwsEngine | null
 
 	/** Number of in-flight HTTP requests. Tracked so the server knows when it is idle. */
-	protected pending_requests_count: number = 0
+	pending_requests_count: number = 0
 	/** Callback fired when the pending request count reaches zero. */
-	protected pending_requests_zero_handler: any = null
+	pending_requests_zero_handler: any = null
 
 	/** Base headers to include in all responses. */
 	base_headers: Record<string, string> = {}
 
 	/** Set of registered {method, path} objects to avoid duplicate registrations. */
-	registers: Set<Record<string, string>> = new Set()
+	registers: Set<Record<string, any>> = new Set()
 	/** Global middleware stack applied to every request before route handlers run. */
 	middlewares: Handler<HandlerKind.middleware>[] = []
 
@@ -215,7 +215,7 @@ export default class Engine extends EngineAdaptor {
 		const defaultRoute = new Route()
 		defaultRoute.method = "any"
 		defaultRoute.path = "/*"
-		defaultRoute.handler = this._defaultResponse
+		defaultRoute.fn = this._defaultResponse
 
 		this.register(defaultRoute)
 	}
@@ -251,9 +251,9 @@ export default class Engine extends EngineAdaptor {
 	}
 
 	/** Incoming HTTP request handler. Bound to the engine instance. */
-	protected on_request = on_request.bind(this)
+	on_request = on_request.bind(this)
 	/** Middleware/route iteration loop. Bound to the engine instance. */
-	protected request_iterator = request_iterator.bind(this)
+	request_iterator = request_iterator.bind(this)
 
 	/**
 	 * Decrements the pending request counter and fires the zero-handler
@@ -275,7 +275,9 @@ export default class Engine extends EngineAdaptor {
 	/**
 	 * Default handler for unmatched routes. Responds with a 404 JSON body.
 	 */
-	protected _defaultResponse(req: Request<Server>, res: Response<Server>) {
+	_defaultResponse(req: Request<Server>, res: Response<Server>) {
 		res.status(404).json({ error: "Not found" })
 	}
 }
+
+export default NeoEngine

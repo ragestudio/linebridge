@@ -27,9 +27,9 @@ const base_routes = [MainBaseRoute, MapBaseRoute]
  *
  * @param server - the Linebridge server instance
  */
-export default async (server: Server): Promise<void> => {
+export default async (server: Server<any>): Promise<void> => {
 	for await (const route of base_routes) {
 		// instantiate the route class and register it with the engine
-		server.engine.register(new (route as typeof Route<Server>)())
+		server.engine.register(new route())
 	}
 }

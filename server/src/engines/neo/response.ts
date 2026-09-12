@@ -40,7 +40,7 @@ type EventHandler = (...args: any[]) => void
  * @typeParam TServer - The server type this response belongs to.
  */
 export default class Response<
-	TServer extends Server = Server,
+	TServer extends Server<any> = Server<any>,
 > implements BaseHttpResponse {
 	constructor() {}
 
@@ -95,7 +95,7 @@ export default class Response<
 	 * pending request counter, stops body parsing on the paired request, and
 	 * fires abort/close event listeners.
 	 */
-	static create<TServer extends Server>(
+	static create<TServer extends Server<any>>(
 		raw_response: HttpResponse,
 		route: Route<TServer>,
 		request: any,

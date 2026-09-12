@@ -14,7 +14,7 @@ import isExperimental from "./utils/isExperimental"
 import getHostAddress from "./utils/getHostAddress"
 
 import Vars from "./vars"
-import Engines from "./engines"
+import Engines, { type EnginesRegistry } from "./engines"
 import NatsAdapter from "./classes/Nats/adapter"
 import IPC from "./classes/IPC"
 
@@ -24,7 +24,9 @@ import CorsMiddleware from "./middlewares/cors"
 import type { MiddlewareHandlerFunction } from "./classes/Handler/middleware"
 import type { WebsocketHandlerFunction } from "./classes/Handler/websocket"
 import type { EngineAdaptor } from "./classes/EngineAdaptor"
-import type { IPCEvents, ServerPlugin } from "./types"
+import type { IPCEvents } from "./types"
+
+import { Plugin } from "./classes/Plugin"
 import { Route, RouteAlike, RouteObject } from "./classes/Route"
 import { HandlerKind } from "./classes/Handler"
 import { RtEngineContext, RtEngineSocket } from "./classes/RtEngine/types"
@@ -63,6 +65,8 @@ export interface ServerParams {
 	useMiddlewares: Array<string | MiddlewareHandlerFunction>
 	/** Recognized HTTP method names. */
 	httpMethods: string[]
+	/** Plugins to load at startup. */
+	usePlugins: Array<typeof Plugin>
 }
 
 /** Shape passed to the engine for registering a single HTTP route. */
@@ -86,20 +90,22 @@ export interface ServerLike {
 }
 
 export type ConstructorParams = Partial<ServerParams>
-export type ExtendedServer<T extends Server> = Server & T
+export type ExtendedServer<T extends Server<any>> = Server<any> & T
 
-export class Server<EngineType = "neo"> {
+export class Server<EngineType extends string = "neo"> {
 	// ---- static properties: subclass overrides for default params ----
 	// These are read in the constructor and merged into this.params.
 	static refName?: string
 	static useEngine?: string
+	static useMiddlewares?: Array<string | MiddlewareHandlerFunction>
+	static usePlugins?: Array<typeof Plugin>
+
 	static listenIp?: string
 	static listenPort?: string | number
 	static websockets?: boolean | WebsocketParams
 	static baseRoutes?: boolean
 	static routesPath?: string
 	static wsRoutesPath?: string
-	static useMiddlewares?: Array<string | MiddlewareHandlerFunction>
 	static nats?: NatsParams
 	// ---- instance properties ----
 
@@ -107,7 +113,7 @@ export class Server<EngineType = "neo"> {
 	params: ServerParams
 
 	/** Built-in contexts injected into every route handler. */
-	base_contexts: { server: Server } = {
+	base_contexts: { server: Server<any> } = {
 		server: this,
 	}
 
@@ -135,7 +141,9 @@ export class Server<EngineType = "neo"> {
 	events: Record<string, (...args: any[]) => void> = {}
 
 	/** Engine instance. */
-	engine!: EngineAdaptor
+	engine!: EngineType extends keyof EnginesRegistry
+		? InstanceType<EnginesRegistry[EngineType]>
+		: EngineAdaptor
 
 	/** NATS adapter (null unless LB_GATEWAY_SOCKET is set). */
 	nats: NatsAdapter | null = null
@@ -144,7 +152,7 @@ export class Server<EngineType = "neo"> {
 	ipc: IPC | null = null
 
 	/** Loaded plugins, keyed by name. */
-	plugins: Map<string, ServerPlugin> = new Map()
+	plugins: Map<string, Plugin> = new Map()
 
 	/** Local IP address resolved at startup. */
 	localAddress: string = ""
@@ -261,6 +269,14 @@ export class Server<EngineType = "neo"> {
 			this.params.useMiddlewares = ctor.useMiddlewares
 		}
 
+		if (typeof ctor.usePlugins !== "undefined") {
+			if (!Array.isArray(ctor.usePlugins)) {
+				ctor.usePlugins = [ctor.usePlugins]
+			}
+
+			this.params.usePlugins = ctor.usePlugins
+		}
+
 		// Stash params and vars globally so plugins and route files can
 		// access them without passing the server instance around.
 		// @ts-ignore
@@ -352,13 +368,12 @@ export class Server<EngineType = "neo"> {
 		}
 
 		// Load the engine from the registry and construct it.
-		this.engine = Engines[this.params.useEngine]
+		const EngineClass = Engines[this.params.useEngine] as any
 
-		if (!this.engine) {
+		if (!EngineClass) {
 			throw new Error(`Engine ${this.params.useEngine} not found`)
 		}
 
-		const EngineClass = this.engine as any
 		this.engine = new EngineClass(this)
 
 		// Let the engine do its internal setup (SSL, uWS app, etc.).
@@ -434,11 +449,11 @@ export class Server<EngineType = "neo"> {
 				routeObj.kind = HandlerKind.http
 				routeObj.path = path
 				routeObj.method = definition.method
-				routeObj.handler = definition.fn
+				routeObj.fn = definition.fn
 				routeObj.useContexts =
-					definition.useContexts as ContextsKeys<Server>[]
+					definition.useContexts as ContextsKeys<this>[]
 				routeObj.useMiddlewares =
-					definition.useMiddlewares as MiddlewaresKeys<Server>[]
+					definition.useMiddlewares as MiddlewaresKeys<this>[]
 
 				this.engine.register(routeObj)
 			}
@@ -495,14 +510,14 @@ export class Server<EngineType = "neo"> {
 	}
 
 	register = {
-		http: (route: RouteAlike<Server>): void => {
+		http: (route: RouteAlike<this>): void => {
 			if (!this.engine) {
 				throw new Error("Engine not initialized")
 			}
 
-			this.engine.register(route)
+			this.engine.register(route as any)
 		},
-		ws: (route: RouteAlike<Server>): void => {
+		ws: (route: RouteAlike<this>): void => {
 			throw new Error(
 				"Functional/Dynamic websocket event register not implemented yet",
 			)

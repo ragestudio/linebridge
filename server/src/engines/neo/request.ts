@@ -26,55 +26,55 @@ import type Response from "./response"
  * @typeParam TServer - The server type this request belongs to.
  */
 export default class Request<
-	TServer extends Server = Server,
+	TServer extends Server<any> = Server<any>,
 > implements BaseHttpRequest {
 	constructor() {}
 	/** Per-request local storage for middleware communication. */
-	protected _locals!: any
+	_locals!: any
 	/** Whether the response stream is paused. */
-	protected _paused!: boolean
+	_paused!: boolean
 	/** HTTP method string, normalized (e.g. "GET", "DELETE"). */
-	protected _method!: string
+	_method!: string
 	/** Full URL including query string. */
-	protected _url!: string
+	_url!: string
 	/** URL path portion without query string. */
-	protected _path!: string
+	_path!: string
 	/** Raw query string (without leading `?`). */
-	protected _query_str!: string
+	_query_str!: string
 	/** Resolved remote IP address. */
-	protected _remote_ip!: string
+	_remote_ip!: string
 	/** Resolved proxy IP address. */
-	protected _remote_proxy_ip!: string
+	_remote_proxy_ip!: string
 	/** Parsed cookies (lazy). */
-	protected _cookies!: any
+	_cookies!: any
 	/** URL path parameters extracted by uWS (e.g. `/user/:id`). */
-	protected _path_parameters!: any
+	_path_parameters!: any
 	/** Parsed query string parameters (lazy). */
-	protected _query_parameters!: any
+	_query_parameters!: any
 	/** The raw uWS HttpRequest object. */
-	protected _raw_request!: HttpRequest
+	_raw_request!: HttpRequest
 	/** The raw uWS HttpResponse object (needed for `onData` and `getRemoteAddress`). */
-	protected _raw_response!: HttpResponse
+	_raw_response!: HttpResponse
 	/** Request headers extracted synchronously. */
-	protected _headers!: Record<string, string>
+	_headers!: Record<string, string>
 
 	/** Whether all body chunks have been received. */
-	protected _received!: boolean
+	_received!: boolean
 	/** Total bytes received so far for the body. */
 	_body_received_bytes!: number
 	/** Has the onData listener been registered for body parsing? */
 	_body_parser_on_data_registered!: boolean
 
 	/** Parsed body (populated lazily by `.json()`, `.text()`, etc.). */
-	protected _body!: any
+	_body!: any
 	/** The type that `.parseBody()` resolved to. */
-	protected _body_type!: string | null
+	_body_type!: string | null
 	/** Raw body buffer, populated after body is fully received. */
-	protected _body_raw!: Buffer | null
+	_body_raw!: Buffer | null
 	/** Promise that resolves once all body data is received and parsed. */
-	protected _body_promise!: Promise<any> | null
+	_body_promise!: Promise<any> | null
 	/** Callback invoked when body data is fully received. */
-	protected _onDone!: (() => void) | null
+	_onDone!: (() => void) | null
 
 	/** Context object for sharing data between middlewares and the handler. */
 	ctx!: Record<string, any>
@@ -85,7 +85,7 @@ export default class Request<
 	/**
 	 * Creates a Request instance from raw uWS objects.
 	 */
-	static create<TServer extends Server>(
+	static create<TServer extends Server<any>>(
 		route: Route<TServer>,
 		raw_request: HttpRequest,
 		raw_response: HttpResponse,

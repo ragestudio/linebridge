@@ -18,7 +18,7 @@ import type Server from "../server"
  *
  * @param server - the Linebridge server instance
  */
-export default async (server: Server): Promise<void> => {
+export default async (server: Server<any>): Promise<void> => {
 	// merge server-specific and built-in middleware maps, then resolve
 	// the selectors (names or functions) into actual middleware functions
 	const middlewares = composeMiddlewares(

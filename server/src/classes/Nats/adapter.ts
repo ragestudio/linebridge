@@ -34,7 +34,7 @@ import type Server from "../../server"
  */
 export default class NatsAdapter {
 	/** the linebridge server instance */
-	server: Server
+	server: Server<any>
 	/** connection parameters for the NATS server */
 	params: { address?: string; port?: number }
 	/** unique reference name used as the durable consumer name */
@@ -55,7 +55,7 @@ export default class NatsAdapter {
 	ipcMessages: any = null
 
 	constructor(
-		server: Server,
+		server: Server<any>,
 		params: { address?: string; port?: number } = {},
 	) {
 		this.server = server

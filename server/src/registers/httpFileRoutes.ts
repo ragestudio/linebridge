@@ -33,7 +33,7 @@ const parametersRegex = /\[([a-zA-Z0-9_]+)\]/g
  */
 export default async (
 	startDir: string,
-	server: Server,
+	server: Server<any>,
 ): Promise<void | null> => {
 	// bail if the routes directory does not exist
 	if (!fs.existsSync(startDir)) {
@@ -94,7 +94,8 @@ export default async (
 			routeClass.useContexts = fileObj.useContexts
 			routeClass.useMiddlewares = fileObj.useMiddlewares
 			routeClass.method = method as RouteHttpMethods
-			routeClass.handler = fileObj.fn ?? fileObj
+			routeClass.fn = fileObj.fn ?? fileObj
+			routeClass._source_file = absolutePath
 
 			server.engine.register(routeClass)
 		},

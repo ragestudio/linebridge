@@ -1,4 +1,8 @@
-import Handler, { HandlerKind, MiddlewareHandlerFunction } from "../Handler"
+import Handler, {
+	HandlerKind,
+	HandlerParamsByKind,
+	MiddlewareHandlerFunction,
+} from "../Handler"
 import parsePathParameters from "../../utils/parsePathParameters"
 
 import type { Server } from "../../server"
@@ -16,14 +20,22 @@ import type {
 
 export type RouteTypes = "http" | "ws"
 export type RouteHttpMethods =
-	"any" | "get" | "post" | "put" | "delete" | "patch" | "options" | "head"
+	| "any"
+	| "get"
+	| "post"
+	| "put"
+	| "delete"
+	| "patch"
+	| "options"
+	| "head"
 
 export interface RouteObject<
-	Child extends Server = Server,
+	Child extends Server<any> = Server<any>,
 	SelectedCtx extends ContextsKeys<Child> = ContextsKeys<Child>,
 	Type extends RouteTypes = "http",
 	SelectedMw extends MiddlewaresKeys<Child> = MiddlewaresKeys<Child>,
 > {
+	path?: string
 	method?: RouteHttpMethods
 	useMiddlewares?: readonly SelectedMw[]
 	useContexts?: readonly SelectedCtx[]
@@ -37,7 +49,7 @@ export interface RouteObject<
 }
 
 export function defineRoute<
-	Child extends Server = Server,
+	Child extends Server<any> = Server<any>,
 	Type extends RouteTypes = "http",
 >() {
 	type Req = ServerRequest<Child>
@@ -69,12 +81,15 @@ export function defineRoute<
 }
 
 // routealike trys to match a RouteObject or a non-constructed Route or a constructed Route
-export type RouteAlike<TServer extends Server = Server> =
-	Route<TServer> | (new () => Route<TServer>) | RouteObject
+export type RouteAlike<TServer extends Server<any> = Server<any>> =
+	| Route<TServer>
+	| (new () => Route<TServer>)
+	| RouteObject
 
 export class Route<
-	TServer extends Server = Server,
-	TContextKeys extends MiddlewaresKeys<TServer>[] = MiddlewaresKeys<TServer>[],
+	TServer extends Server<any> = Server<any>,
+	TContextKeys extends ContextsKeys<TServer>[] =
+		ContextsKeys<TServer>[],
 > {
 	server!: TServer
 
@@ -86,9 +101,12 @@ export class Route<
 	pathParametersKey: any
 	streaming?: any
 
+	_source_file?: string
+
 	middlewares: Handler[] = []
 	ctx: Record<string, any> = {}
-	handler: Handler | any
+	handler!: Handler<HandlerKind>
+	fn!: Function
 
 	get engine() {
 		return this.server.engine
@@ -128,8 +146,10 @@ export class Route<
 			}
 		}
 
-		if (!this.handler) {
-			throw new Error(`Route [${this.path}] does not have a handler fn`)
+		if (!this.handler && !this.fn) {
+			throw new Error(
+				`Route [${this.path}] does not have a handler or fn`,
+			)
 		}
 
 		this.pathParametersKey = parsePathParameters(this.path)
@@ -183,7 +203,10 @@ export class Route<
 					continue
 				}
 
-				middleware = this._to_handler(middleware, HandlerKind.middleware)
+				middleware = this._to_handler(
+					middleware,
+					HandlerKind.middleware,
+				)
 
 				if (middleware) {
 					// push the middleware in that order
@@ -192,16 +215,17 @@ export class Route<
 			}
 		}
 
-		this.handler = this._to_handler(this.handler, HandlerKind.http)
+		if (this.fn) {
+			this.handler = this._to_handler(this.fn, this.kind)
+		}
 	}
 
-	protected _to_handler = (obj: any, kind: HandlerKind): Handler | null => {
-		if (!this.server) {
-			return null
-		}
-
-		if (obj instanceof Handler) {
-			return obj
+	_to_handler = (
+		fn: any,
+		kind: HandlerKind,
+	): Handler<HandlerKind> => {
+		if (fn instanceof Handler) {
+			return fn
 		}
 
 		switch (kind) {
@@ -209,22 +233,20 @@ export class Route<
 				return new Handler<HandlerKind.http>({
 					kind: HandlerKind.http,
 					engine: this.server.engine,
-					fn: obj,
+					fn: fn,
 				})
 			case HandlerKind.middleware:
 				return new Handler<HandlerKind.middleware>({
 					kind: HandlerKind.middleware,
 					engine: this.server.engine,
-					fn: obj,
+					fn: fn,
 				})
 			case HandlerKind.ws:
 				return new Handler<HandlerKind.ws>({
 					kind: HandlerKind.ws,
 					engine: this.server.engine,
-					fn: obj,
+					fn: fn,
 				})
-			default:
-				return null
 		}
 	}
 }

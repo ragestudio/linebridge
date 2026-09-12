@@ -21,7 +21,7 @@ import type Server from "../server"
  * @param server - the Linebridge server instance
  * @returns void, or null if IPC is not available
  */
-export default async (server: Server): Promise<void | null> => {
+export default async (server: Server<any>): Promise<void | null> => {
 	// bail if IPC mode is not enabled or process.send is unavailable
 	if (!process.env.lb_service || !process.send) {
 		console.error("IPC not available")

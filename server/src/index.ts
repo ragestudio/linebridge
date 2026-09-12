@@ -1,4 +1,5 @@
 import Server from "./server"
+import { Plugin } from "./classes/Plugin"
 import Route from "./classes/Route"
 import IPC from "./classes/IPC"
 import NatsAdapter from "./classes/Nats/adapter"
@@ -22,7 +23,7 @@ const version: string = require("../package.json").version
 
 export type { Client as RTEClient } from "./classes/RtEngine/classes/client"
 
-export { Server, Route, registerBaseAliases, version }
+export { Server, Plugin, Route, registerBaseAliases, version }
 
 declare global {
 	var OperationError: OperationErrorType
@@ -36,11 +37,12 @@ declare global {
 
 	type RouteTypes = _RouteTypes
 	type KnownKeys<T> = _KnownKeys<T>
-	type MiddlewaresKeys<T extends Server> = _MiddlewaresKeys<T>
-	type ContextsKeys<T extends Server> = _ContextsKeys<T>
+	type MiddlewaresKeys<T extends Server<any>> = _MiddlewaresKeys<T>
+	type ContextsKeys<T extends Server<any>> = _ContextsKeys<T>
 
-	type ServerRequest<T extends Server = Server> = _ServerRequest<T>
-	type ServerResponse<T extends Server = Server> = _ServerResponse<T>
+	type ServerRequest<T extends Server<any> = Server<any>> = _ServerRequest<T>
+	type ServerResponse<T extends Server<any> = Server<any>> =
+		_ServerResponse<T>
 
 	function Boot(base_class: any): void
 	function ToBoolean(str: any): boolean

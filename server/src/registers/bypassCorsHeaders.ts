@@ -17,7 +17,7 @@ import type Server from "../server"
  *
  * @param server - the Linebridge server instance
  */
-export default (server: Server): void => {
+export default (server: Server<any>): void => {
 	server.headers["Access-Control-Allow-Origin"] = "*"
 	server.headers["Access-Control-Allow-Methods"] = "*"
 	server.headers["Access-Control-Allow-Headers"] = "*"

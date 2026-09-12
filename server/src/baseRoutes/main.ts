@@ -24,7 +24,7 @@ export default class MainRoute extends Route<Server> {
 	// request the server context so we can access server metadata
 	useContexts = ["server"] as const
 
-	handler: HttpHandlerFunction = async (req, res, ctx) => {
+	fn: HttpHandlerFunction = async (req, res, ctx) => {
 		return {
 			name: ctx.server.params.refName ?? "unknown",
 			version: Vars.projectPkg.version,

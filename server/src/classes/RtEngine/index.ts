@@ -34,7 +34,7 @@ import type EngineAdaptor from "../EngineAdaptor"
 
 class RTEngine {
 	/** The parent Linebridge Server instance */
-	server: Server
+	server: Server<any>
 
 	/** Configuration passed at construction time */
 	config: RtEngineConfig
@@ -97,7 +97,7 @@ class RTEngine {
 	 * @param server - The parent Linebridge Server instance
 	 * @param config - Configuration options for this engine
 	 */
-	constructor(server: Server, config: RtEngineConfig = {}) {
+	constructor(server: Server<any>, config: RtEngineConfig = {}) {
 		this.server = server
 		this.engine = this.server.engine
 		this.config = config

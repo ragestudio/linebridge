@@ -5,12 +5,12 @@ import type { Server } from "./server"
 import type NeoRequest from "./engines/neo/request"
 import type NeoResponse from "./engines/neo/response"
 
-export type ServerRequest<T extends Server> =
+export type ServerRequest<T extends Server<any>> =
 	T extends Server<"neo">
 		? NeoRequest
 		: import("./classes/Handler/http").Request & { [key: string]: any }
 
-export type ServerResponse<T extends Server> =
+export type ServerResponse<T extends Server<any>> =
 	T extends Server<"neo">
 		? NeoResponse
 		: import("./classes/Handler/http").Response
@@ -35,21 +35,20 @@ type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
 	: never
 
 /** Union of context keys available to a route on a given Server subclass. */
-export type ContextsKeys<Child extends Server = Server> = KnownKeys<
+export type ContextsKeys<Child extends Server<any> = Server<any>> = KnownKeys<
 	Child["contexts"] & Server["base_contexts"]
 >
 
 /** Union of middleware keys available on a given Server subclass. */
-export type MiddlewaresKeys<Child extends Server = Server> = KnownKeys<
-	Child["middlewares"] & Server["base_middlewares"]
->
+export type MiddlewaresKeys<Child extends Server<any> = Server<any>> =
+	KnownKeys<Child["middlewares"] & Server["base_middlewares"]>
 
-export type AllMiddlewares<Child extends Server = Server> =
+export type AllMiddlewares<Child extends Server<any> = Server<any>> =
 	Child["middlewares"] & Server["base_middlewares"]
 
 /** Resolved contexts object (merges user-defined + base contexts). */
-export type Contexts<Child extends Server = Server> = Child["contexts"] &
-	Server["base_contexts"]
+export type Contexts<Child extends Server<any> = Server<any>> =
+	Child["contexts"] & Server["base_contexts"]
 
 /** Signature for an IPC event handler function. */
 export interface IPCEventFn {
@@ -70,14 +69,6 @@ export interface NatsClientContext {
 	userId: string
 	username: string
 	user?: Record<string, any>
-}
-
-/**
- * Interface that server plugins must implement.
- * The `initialize` method is called after the engine starts.
- */
-export interface ServerPlugin {
-	initialize?: () => Promise<void>
 }
 
 /**
@@ -107,7 +98,7 @@ export interface SSEventStream {
 }
 
 export type ExtractReqExt<
-	Child extends Server,
+	Child extends Server<any>,
 	K extends keyof AllMiddlewares<Child>,
 > = UnionToIntersection<
 	K extends any
@@ -118,7 +109,7 @@ export type ExtractReqExt<
 >
 
 export type ExtractResExt<
-	Child extends Server,
+	Child extends Server<any>,
 	K extends keyof AllMiddlewares<Child>,
 > = UnionToIntersection<
 	K extends any

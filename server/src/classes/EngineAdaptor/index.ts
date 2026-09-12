@@ -28,7 +28,7 @@ export class EngineAdaptor {
 	ws!: RTEngine | null
 
 	/** Set of registered routes as { method, path } objects. */
-	registers: Set<Record<string, string>> = new Set()
+	registers: Set<Record<string, any>> = new Set()
 
 	/** Registers an HTTP route (called by route_register). */
 	register!: (route: RouteAlike) => void

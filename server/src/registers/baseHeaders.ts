@@ -18,7 +18,7 @@ import type Server from "../server"
  * @param server - the Linebridge server instance
  * @returns null if the server or engine is not available, otherwise void
  */
-export default (server: Server): void | null => {
+export default (server: Server<any>): void | null => {
 	if (!server || !server.engine) {
 		return null
 	}
