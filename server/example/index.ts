@@ -3,14 +3,15 @@ import { defineRoute } from "../src/classes/Route/index"
 import { defineMiddleware } from "../src/classes/Handler/middleware"
 
 import OpenApiPlugin from "../../plugins/openapi/src/index"
+import ShmMapPlugin from "../../plugins/shm_map/build/out/index"
 
 export default class ExampleAPI extends Server {
 	static useMiddlewares = ["logs"]
-	static usePlugins = [OpenApiPlugin]
+	static usePlugins = [OpenApiPlugin, ShmMapPlugin]
 
 	routes = {
 		// basic route
-		"/hi": defineRoute<ExampleAPI>()({
+		"/hi": defineRoute(ExampleAPI)({
 			method: "get",
 			fn: async (req, res, ctx) => {
 				return {
@@ -18,7 +19,7 @@ export default class ExampleAPI extends Server {
 				}
 			},
 		}),
-		"/get_test": defineRoute<ExampleAPI>()({
+		"/get_test": defineRoute(ExampleAPI)({
 			method: "get",
 			useMiddlewares: ["injectTest"],
 			fn: async (req, res, ctx) => {
@@ -26,15 +27,15 @@ export default class ExampleAPI extends Server {
 			},
 		}),
 		// get from context
-		"/server_params": defineRoute<ExampleAPI>()({
+		"/server_params": defineRoute(ExampleAPI)({
 			method: "get",
-			useContexts: ["server"] as const,
+			useContexts: ["server"],
 			fn: async (req, res, ctx) => {
 				return ctx.server.params
 			},
 		}),
 		// use parameters
-		"/sum/:value1/:value2": defineRoute<ExampleAPI>()({
+		"/sum/:value1/:value2": defineRoute(ExampleAPI)({
 			method: "get",
 			fn: async (
 				req,
