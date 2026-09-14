@@ -2,7 +2,8 @@
 	"targets": [
 		{
 			"target_name": "shm_map",
-			"sources": ["./main.cpp"],
+			"sources": ["./src/main.cpp"],
+			"product_dir": "./out",
 			"cflags!": ["-fno-exceptions"],
 			"cflags_cc!": ["-fno-exceptions"],
 			"cflags": [

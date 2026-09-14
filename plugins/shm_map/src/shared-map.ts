@@ -1,5 +1,5 @@
 import { TextEncoder, TextDecoder } from "util"
-const shmAddon = require("./build/Release/shm_map.node")
+const shmAddon = require("./shm_map.node")
 
 /**
  * Number of Int32 slots used for the key in each entry.
