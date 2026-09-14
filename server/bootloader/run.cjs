@@ -1,8 +1,8 @@
 const path = require("node:path")
 const childProcess = require("node:child_process")
-const Watcher = require("./libs/watcher.js")
+const Watcher = require("./libs/watcher.cjs")
 
-const bootloaderPath = path.resolve(__dirname, "boot.js")
+const bootloaderPath = path.resolve(__dirname, "boot.cjs")
 const mainModulePath = process.argv[2]
 
 if (!mainModulePath) {

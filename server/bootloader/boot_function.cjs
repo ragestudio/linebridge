@@ -1,4 +1,4 @@
-const InfisicalLib = require("./libs/infisical")
+const InfisicalLib = require("./libs/infisical.cjs")
 
 async function Boot(main) {
 	if (!main) {

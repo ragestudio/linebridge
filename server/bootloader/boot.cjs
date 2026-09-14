@@ -4,7 +4,7 @@ require("dotenv").config({
 
 const path = require("node:path")
 const Module = require("node:module")
-const Aliases = require("./libs/aliases.js")
+const Aliases = require("./libs/aliases.cjs")
 
 // Override file execution arg
 process.argv.splice(1, 1)
@@ -39,6 +39,8 @@ global["aliases"] = {
 	"@config": path.resolve(global.paths.__src, "config"),
 	"@utils": path.resolve(global.paths.__src, "utils"),
 	"@lib": path.resolve(global.paths.__src, "lib"),
+
+	"@services": path.resolve(global.paths.root, "services"),
 }
 
 try {
@@ -54,7 +56,7 @@ try {
 	}
 
 	// apply global functions & patches
-	require("./globals.js")
+	require("./globals.cjs")
 	// use sucrase transcompiler
 	require("sucrase/register")
 
