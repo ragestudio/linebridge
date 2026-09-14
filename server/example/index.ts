@@ -3,11 +3,10 @@ import { defineRoute } from "../src/classes/Route/index"
 import { defineMiddleware } from "../src/classes/Handler/middleware"
 
 import OpenApiPlugin from "../../plugins/openapi/src/index"
-import ShmMapPlugin from "../../plugins/shm_map/build/out/index"
 
 export default class ExampleAPI extends Server {
 	static useMiddlewares = ["logs"]
-	static usePlugins = [OpenApiPlugin, ShmMapPlugin]
+	static usePlugins = [OpenApiPlugin]
 
 	routes = {
 		// basic route

@@ -1,6 +1,7 @@
 import API from "@/index"
+import { defineRoute } from "../../../src/classes/Route/index"
 
-export default defineRoute<API>()({
+export default defineRoute(API)({
 	fn: (req, res) => {
 		const stream = res.sse
 		if (!stream) return

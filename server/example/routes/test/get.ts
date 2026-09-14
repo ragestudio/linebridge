@@ -1,8 +1,9 @@
 import API from "@/index"
+import { defineRoute } from "../../../src/classes/Route/index"
 
-export default defineRoute<API>()({
+export default defineRoute(API)({
 	useMiddlewares: ["test"],
-	useContexts: ["sum", "server"] as const,
+	useContexts: ["sum", "server"],
 	fn: (req, res, ctx) => {
 		const testSum = ctx.sum(5, 10)
 
@@ -13,5 +14,3 @@ export default defineRoute<API>()({
 		}
 	},
 })
-
-const a: RouteTypes[] = ["http"]
