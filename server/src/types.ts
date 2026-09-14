@@ -5,13 +5,13 @@ import type { Server } from "./server"
 import type NeoRequest from "./engines/neo/request"
 import type NeoResponse from "./engines/neo/response"
 
-export type ServerRequest<T extends Server<any>> =
-	T extends Server<"neo">
+export type ServerRequest<T = Server<any>> =
+	ServerInstance<T> extends Server<"neo">
 		? NeoRequest
 		: import("./classes/Handler/http").Request & { [key: string]: any }
 
-export type ServerResponse<T extends Server<any>> =
-	T extends Server<"neo">
+export type ServerResponse<T = Server<any>> =
+	ServerInstance<T> extends Server<"neo">
 		? NeoResponse
 		: import("./classes/Handler/http").Response
 
@@ -34,21 +34,46 @@ type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
 	? I
 	: never
 
-/** Union of context keys available to a route on a given Server subclass. */
-export type ContextsKeys<Child extends Server<any> = Server<any>> = KnownKeys<
-	Child["contexts"] & Server["base_contexts"]
+type ExtractPluginContexts<Plugins extends any[]> = UnionToIntersection<
+	Plugins[number] extends new (...args: any[]) => infer P
+		? P extends { contexts: infer C }
+			? C
+			: {}
+		: {}
 >
 
+export type ServerInstance<T> = T extends new (...args: any[]) => infer R
+	? R
+	: T
+
+type _ExtractMiddlewares<T> = T extends { middlewares: infer M } ? M : {}
+type _ExtractContexts<T> = T extends { contexts: infer C } ? C : {}
+
+export type ExtractPlugins<T> = T extends { usePlugins: infer P }
+	? P extends any[]
+		? P
+		: []
+	: []
+
+/** Union of context keys available to a route on a given Server subclass. */
+export type ContextsKeys<Child = Server<any>> = KnownKeys<Contexts<Child>>
+
 /** Union of middleware keys available on a given Server subclass. */
-export type MiddlewaresKeys<Child extends Server<any> = Server<any>> =
-	KnownKeys<Child["middlewares"] & Server["base_middlewares"]>
+export type MiddlewaresKeys<Child = Server<any>> = KnownKeys<
+	_ExtractMiddlewares<ServerInstance<Child>> & Server["base_middlewares"]
+>
 
-export type AllMiddlewares<Child extends Server<any> = Server<any>> =
-	Child["middlewares"] & Server["base_middlewares"]
+export type AllMiddlewares<Child = Server<any>> = _ExtractMiddlewares<
+	ServerInstance<Child>
+> &
+	Server["base_middlewares"]
 
-/** Resolved contexts object (merges user-defined + base contexts). */
-export type Contexts<Child extends Server<any> = Server<any>> =
-	Child["contexts"] & Server["base_contexts"]
+/** Resolved contexts object (merges user-defined + base contexts + plugin contexts). */
+export type Contexts<Child = Server<any>> = _ExtractContexts<
+	ServerInstance<Child>
+> &
+	Server["base_contexts"] &
+	ExtractPluginContexts<ExtractPlugins<Child>>
 
 /** Signature for an IPC event handler function. */
 export interface IPCEventFn {
@@ -98,8 +123,8 @@ export interface SSEventStream {
 }
 
 export type ExtractReqExt<
-	Child extends Server<any>,
-	K extends keyof AllMiddlewares<Child>,
+	Child = Server<any>,
+	K extends keyof AllMiddlewares<Child> = any,
 > = UnionToIntersection<
 	K extends any
 		? AllMiddlewares<Child>[K] extends { _reqExt?: infer ReqExt }
@@ -109,8 +134,8 @@ export type ExtractReqExt<
 >
 
 export type ExtractResExt<
-	Child extends Server<any>,
-	K extends keyof AllMiddlewares<Child>,
+	Child = Server<any>,
+	K extends keyof AllMiddlewares<Child> = any,
 > = UnionToIntersection<
 	K extends any
 		? AllMiddlewares<Child>[K] extends { _resExt?: infer ResExt }
