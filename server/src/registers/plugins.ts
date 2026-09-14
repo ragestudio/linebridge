@@ -17,6 +17,11 @@ export default async (server: Server<any>): Promise<void | null> => {
 			await inst.initialize()
 		}
 
+		// if plugin has contexts, register them on the server
+		if (typeof inst.contexts === "object") {
+			Object.assign(server.contexts, inst.contexts)
+		}
+
 		// store the plugin instance on the server for later access
 		server.plugins.set(plugin.name, inst)
 	}
