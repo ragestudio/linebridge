@@ -1,0 +1,16 @@
+{
+	"compilerOptions": {
+		"lib": ["ESNext", "DOM.Iterable", "DOM"],
+		"module": "esnext",
+		"target": "esnext",
+		"moduleResolution": "bundler",
+		"allowSyntheticDefaultImports": true,
+		"allowJs": true,
+		"strict": false,
+		"jsx": "preserve",
+		"skipLibCheck": true,
+		"skipDefaultLibCheck": true,
+		"isolatedModules": true,
+	},
+	"include": ["src/**/*.ts"],
+}
