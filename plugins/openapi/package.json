@@ -1,0 +1,7 @@
+{
+	"name": "linebridge-plugin-openapi",
+	"version": "1.0.0",
+	"peerDependencies": {
+		"linebridge": "workspace:*"
+	}
+}

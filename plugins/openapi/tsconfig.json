@@ -1,0 +1,14 @@
+{
+	"$schema": "http://json.schemastore.org/tsconfig",
+	"compilerOptions": {
+		"module": "nodenext",
+		"moduleResolution": "nodenext",
+		"allowSyntheticDefaultImports": true,
+		"strict": false,
+		"noImplicitAny": false,
+		"skipLibCheck": true,
+		"paths": {
+			"@/*": ["./*"],
+		},
+	},
+}
