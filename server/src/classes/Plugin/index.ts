@@ -7,6 +7,7 @@ export class Plugin<EngineType extends string = "neo"> {
 		this.server = server
 	}
 
+	contexts: Record<string, any> = {}
 	initialize!: () => Promise<void>
 }
 
