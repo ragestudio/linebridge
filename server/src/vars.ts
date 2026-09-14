@@ -5,10 +5,11 @@
  * built-in middlewares, and HTTP method aliases (e.g. "del" → "delete").
  * These defaults are merged with user-provided params in the Server constructor.
  */
-import path from "node:path"
 import type { ServerParams } from "./server"
 
-declare const __dirname: string
+import path from "node:path"
+import loggerMiddleware from "./middlewares/logger/index"
+import corsMiddleware from "./middlewares/cors/index"
 
 // Root of the linebridge library installation (one level above this file).
 const rootLibPath: string = path.resolve(__dirname, "../")
@@ -69,8 +70,8 @@ const Vars: VarsType = {
 	},
 	// Built-in middlewares registered by name.
 	baseMiddlewares: {
-		logs: require("./middlewares/logger").default,
-		cors: require("./middlewares/cors").default,
+		logs: loggerMiddleware,
+		cors: corsMiddleware,
 	},
 	// Aliases for HTTP method names (e.g. "del" normalizes to "delete").
 	fixedHttpMethods: {
