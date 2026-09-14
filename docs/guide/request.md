@@ -5,7 +5,7 @@ The `req` object is the first parameter in every route handler and middleware. I
 ## Anatomy of a Request
 
 ```ts
-export default defineRoute<MyAPI>()({
+export default defineRoute(MyAPI)({
   fn: async (req, res, ctx) => {
     // req.method   → "GET" | "POST" | ...
     // req.url      → "/users?page=1"
@@ -208,10 +208,10 @@ req.resume()  // resume
 
 ## TypeScript
 
-When using `defineRoute<MyAPI>()`, `req` is typed as the engine-specific Request class:
+When using `defineRoute(MyAPI)`, `req` is typed as the engine-specific Request class:
 
 ```ts
-defineRoute<MyAPI>()({
+defineRoute(MyAPI)({
   fn: (req, res, ctx) => {
     // req: NeoRequest<MyAPI>
     req.sign("val", "secret")    // ✅ typed

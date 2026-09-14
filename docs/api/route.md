@@ -116,9 +116,9 @@ function defineRoute<
 ```ts
 import API from "@/index"
 
-export default defineRoute<API>()({
+export default defineRoute(API)({
   useMiddlewares: ["logs"],
-  useContexts: ["server"] as const,
+  useContexts: ["server"],
   fn: (req, res, ctx) => {
     // req, res → Neo engine types (sse, sign, cookie, locals, etc.)
     // ctx.server → fully typed Server instance

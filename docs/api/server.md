@@ -36,6 +36,7 @@ type ConstructorParams = Partial<ServerParams>
 | `routesPath` | `string` | `path.resolve(cwd, "routes")` | HTTP file routes directory |
 | `wsRoutesPath` | `string` | `path.resolve(cwd, "ws_routes")` | WS file events directory |
 | `useMiddlewares` | `Array<string \| MiddlewareHandlerFunction>` | `[]` | Global middlewares |
+| `usePlugins` | `Array<typeof Plugin>` | `[]` | Plugins to initialize |
 | `httpMethods` | `string[]` | `["get","post","put","patch","del","delete","trace","head","any","options","ws"]` | Supported methods |
 
 ## Static Properties
@@ -54,6 +55,7 @@ class MyServer extends Server {
   static routesPath?: string
   static wsRoutesPath?: string
   static useMiddlewares?: Array<string | MiddlewareHandlerFunction>
+  static usePlugins?: Array<typeof Plugin>
 }
 ```
 
@@ -216,6 +218,6 @@ When extending `Server`, the default `"neo"` engine is used. To use a custom eng
 
 ```ts
 class MyAPI extends Server<"fastify"> {
-  // req/res in defineRoute<MyAPI>() will use Fastify types
+  // req/res in defineRoute(MyAPI) will use Fastify types
 }
 ```

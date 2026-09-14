@@ -67,9 +67,9 @@ route.path = "/cdn/*/download"   // matches /cdn/123/download
 // routes/users/get.ts
 import type MyAPI from "@/index"
 
-export default defineRoute<MyAPI>()({
+export default defineRoute(MyAPI)({
   useMiddlewares: ["auth"],
-  useContexts: ["db"] as const,
+  useContexts: ["db"],
   fn: async (req, res, ctx) => {
     const users = await ctx.db.users.find()
     return { users }

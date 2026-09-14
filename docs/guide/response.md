@@ -248,7 +248,7 @@ SSE streams are only available on GET requests. Access via `res.sse` — returns
 
 ```ts
 routes = {
-  "/events": defineRoute<MyAPI>()({
+  "/events": defineRoute(MyAPI)({
     method: "get",
     fn: (req, res) => {
       const stream = res.sse
@@ -373,10 +373,10 @@ fn: (req, res) => {
 
 ## TypeScript
 
-When using `defineRoute<MyAPI>()`, `res` is typed as the engine-specific Response class:
+When using `defineRoute(MyAPI)`, `res` is typed as the engine-specific Response class:
 
 ```ts
-defineRoute<MyAPI>()({
+defineRoute(MyAPI)({
   fn: (req, res, ctx) => {
     // res: NeoResponse<MyAPI>
 

@@ -2,7 +2,7 @@
 
 The `Request` object represents an incoming HTTP request. It wraps a raw uWS `HttpRequest` and provides high-level access to headers, body parsing, cookies, IP resolution, path/query parameters, and cookie signing.
 
-When using `defineRoute<MyAPI>()`, `req` is fully typed with the engine-specific `Request` class, giving you access to all methods.
+When using `defineRoute(MyAPI)`, `req` is fully typed with the engine-specific `Request` class, giving you access to all methods.
 
 ## Import
 

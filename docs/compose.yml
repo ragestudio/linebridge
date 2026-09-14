@@ -1,5 +1,0 @@
-services:
-  docs:
-    build: .
-    ports:
-      - "${LISTEN_PORT:-3000}:3000"

@@ -69,7 +69,7 @@ export default class MyAPI extends Server {
 Apply to individual routes via `useMiddlewares`:
 
 ```ts
-export default defineRoute<MyAPI>()({
+export default defineRoute(MyAPI)({
   useMiddlewares: ["auth"],
   fn: async (req, res, ctx) => {
     // Only authenticated users reach here
@@ -82,7 +82,7 @@ export default defineRoute<MyAPI>()({
 You can also pass middleware functions directly:
 
 ```ts
-export default defineRoute<MyAPI>()({
+export default defineRoute(MyAPI)({
   useMiddlewares: [
     "rateLimit",
     async (req, res, next) => {
@@ -203,3 +203,53 @@ middlewares = {
   },
 }
 ```
+
+## Type-Safe Middlewares (`defineMiddleware`)
+
+Linebridge provides `defineMiddleware` to allow you to strongly type data injected by your middlewares into the request or response objects, so that subsequent handlers automatically inherit those types!
+
+```ts
+import { defineMiddleware } from "linebridge"
+
+// Define the properties this middleware will inject into `req`
+type ReqInjections = {
+  user: { id: string; role: string }
+}
+
+export const authMiddleware = defineMiddleware<ReqInjections>()(
+  async (req, res, next) => {
+    // req is fully typed, but we MUST provide req.user to satisfy TS
+    const token = req.headers["authorization"]
+    if (!token) {
+      return res.status(401).json({ error: "Unauthorized" })
+    }
+    
+    // Inject the data
+    req.user = await validateToken(token)
+    next()
+  }
+)
+```
+
+When you attach this middleware in a route, Linebridge's router will automatically extract these type injections and apply them to the `req` parameter inside the route handler:
+
+```ts
+import { authMiddleware } from "./middlewares"
+
+export default class MyAPI extends Server {
+  middlewares = {
+    auth: authMiddleware
+  }
+}
+
+// In your route:
+export default defineRoute(MyAPI)({
+  useMiddlewares: ["auth"],
+  fn: async (req, res) => {
+    // req.user is 100% typed as { id: string, role: string }!
+    console.log(req.user.id)
+  }
+})
+```
+
+You can also define Response injections as the second generic parameter: `defineMiddleware<ReqExt, ResExt>()`.

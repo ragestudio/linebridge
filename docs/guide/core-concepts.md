@@ -88,7 +88,7 @@ Engine type inference is driven by the `Server<EngineType>` generic. Each engine
 ```ts
 class MyAPI extends Server {  // defaults to EngineType = "neo"
   routes = {
-    "/hi": defineRoute<MyAPI>()({
+    "/hi": defineRoute(MyAPI)({
       fn: (req, res) => {
         res.sse       // ✅ typed as SSEventStream (Neo engine)
         req.sign("s")  // ✅ typed cookie signing (Neo engine)

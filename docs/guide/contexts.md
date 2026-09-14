@@ -37,8 +37,8 @@ So `ctx.server` is always available when requested.
 Request specific contexts via `useContexts`:
 
 ```ts
-export default defineRoute<MyAPI>()({
-  useContexts: ["db", "sum", "server"] as const,
+export default defineRoute(MyAPI)({
+  useContexts: ["db", "sum", "server"],
   fn: async (req, res, ctx) => {
     // ctx is typed as { db: Database, sum: Function, server: Server }
     const result = ctx.sum(5, 10)
@@ -56,7 +56,7 @@ The `as const` assertion preserves literal types for full type inference.
 The type system ensures you can only request contexts that exist:
 
 ```ts
-defineRoute<MyAPI>()({
+defineRoute(MyAPI)({
   useContexts: ["db", "nonexistent"], // TypeScript error!
   fn: async (req, res, ctx) => { /* ... */ },
 })

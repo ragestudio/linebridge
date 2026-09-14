@@ -26,9 +26,9 @@ Directory names in `[brackets]` become path parameters (`[id]` → `:id`). Use `
 // routes/users/get.ts
 import type MyAPI from "@/index"
 
-export default defineRoute<MyAPI>()({
+export default defineRoute(MyAPI)({
   useMiddlewares: ["auth"],
-  useContexts: ["db"] as const,
+  useContexts: ["db"],
   fn: async (req, res, ctx) => {
     const users = await ctx.db.users.find()
     return { users }
@@ -56,11 +56,11 @@ import { Server } from "linebridge"
 
 export default class MyAPI extends Server {
   routes = {
-    "/hi": defineRoute<MyAPI>()({
+    "/hi": defineRoute(MyAPI)({
       method: "get",
       fn: async () => ({ message: "hello" }),
     }),
-    "/events": defineRoute<MyAPI>()({
+    "/events": defineRoute(MyAPI)({
       method: "get",
       fn: (req, res) => {
         const stream = res.sse
@@ -207,7 +207,7 @@ type HttpHandlerFunction<
 ) => any
 ```
 
-When using `defineRoute<MyAPI>()`, `req` and `res` are automatically resolved to the engine-specific types (e.g. Neo engine methods like `res.sse`, `req.sign()`).
+When using `defineRoute(MyAPI)`, `req` and `res` are automatically resolved to the engine-specific types (e.g. Neo engine methods like `res.sse`, `req.sign()`).
 
 ### Return Value Behavior
 

@@ -36,6 +36,7 @@ export default class MyAPI extends Server {
   static routesPath = "./custom-routes"
   static wsRoutesPath = "./custom-ws-routes"
   static useMiddlewares = ["logs"]
+  static usePlugins = [MyPlugin]
 }
 ```
 
@@ -53,6 +54,7 @@ export default class MyAPI extends Server {
 | `routesPath` | `string` | `path.resolve(cwd, "routes")` | Directory for file-based HTTP routes |
 | `wsRoutesPath` | `string` | `path.resolve(cwd, "ws_routes")` | Directory for file-based WS events |
 | `useMiddlewares` | `string[] \| Function[]` | `[]` | Global middlewares to apply |
+| `usePlugins` | `Array<typeof Plugin>` | `[]` | Plugins to initialize |
 | `httpMethods` | `string[]` | `["get","post","put","patch","del","delete","trace","head","any","options","ws"]` | Supported HTTP methods |
 
 ### WebSocket Params
@@ -199,16 +201,16 @@ export default class MyAPI extends Server {
 
 ## Route Declarations
 
-HTTP routes and WebSocket events can be declared directly on the server. When using `defineRoute<MyAPI>()`, `req` and `res` are fully typed with engine-specific methods:
+HTTP routes and WebSocket events can be declared directly on the server. When using `defineRoute(MyAPI)`, `req` and `res` are fully typed with engine-specific methods:
 
 ```ts
 export default class MyAPI extends Server {
   routes = {
-    "/health": defineRoute<MyAPI>()({
+    "/health": defineRoute(MyAPI)({
       method: "get",
       fn: async (req, res) => ({ status: "ok" }),
     }),
-    "/events": defineRoute<MyAPI>()({
+    "/events": defineRoute(MyAPI)({
       method: "get",
       fn: (req, res) => {
         const stream = res.sse  // ✅ Neo engine SSE
@@ -226,6 +228,21 @@ export default class MyAPI extends Server {
   }
 }
 ```
+
+## Plugins
+
+Register plugins to extend server capabilities and automatically infer their `contexts`:
+
+```ts
+import { Server } from "linebridge"
+import AuthPlugin from "./plugins/auth"
+
+export default class MyAPI extends Server {
+  static usePlugins = [AuthPlugin]
+}
+```
+
+See the [Plugins Guide](/guide/plugins) for full details on authoring and using plugins.
 
 ## IPC Events
 

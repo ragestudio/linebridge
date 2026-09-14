@@ -2,7 +2,7 @@
 
 The `Response` object represents the outgoing HTTP response. It wraps a raw uWS `HttpResponse` and provides methods for status codes, headers, cookies (with signed cookie support), streaming, Server-Sent Events, redirects, and JSON/HTML shortcuts. It extends `stream.Writable`.
 
-When using `defineRoute<MyAPI>()`, `res` is automatically typed with the engine-specific `Response` class.
+When using `defineRoute(MyAPI)`, `res` is automatically typed with the engine-specific `Response` class.
 
 ## Import
 
