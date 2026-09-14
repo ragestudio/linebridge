@@ -1,6 +1,6 @@
 {
 	"name": "@linebridge/plugin-shmmap",
-	"version": "0.1.0-alpha",
+	"version": "0.3.0",
 	"gypfile": true,
 	"private": false,
 	"main": "build/out/index.js",
@@ -17,13 +17,11 @@
 		"build": "node-gyp build && tsc",
 		"clean": "node-gyp clean"
 	},
-	"dependencies": {
+	"devDependencies": {
+		"typescript": "^7.0.2",
 		"node-addon-api": "^8.8.0",
 		"node-api-headers": "^1.9.0",
 		"node-gyp": "^12.3.0"
-	},
-	"devDependencies": {
-		"typescript": "^7.0.2"
 	},
 	"peerDependencies": {
 		"linebridge": "workspace:*"
