@@ -6,7 +6,6 @@
 #include <v8.h>
 
 #include <memory>
-#include <string>
 
 using namespace v8;
 
@@ -80,7 +79,8 @@ void Connect(const FunctionCallbackInfo<Value> &args) {
 	String::Utf8Value name_v8(isolate, args[0]);
 
 	// POSIX requires shared memory names to start with "/"
-	std::string name = std::string("/") + *name_v8;
+	char name[256];
+	snprintf(name, sizeof(name), "/%s", *name_v8);
 
 	// Use size_t in case the caller needs >4GB segments
 	size_t size = static_cast<size_t>(
@@ -91,7 +91,7 @@ void Connect(const FunctionCallbackInfo<Value> &args) {
 	// O_CREAT: create if it doesn't exist
 	// O_RDWR:  open for reading and writing
 	// 0666:    permissions (subject to umask)
-	int fd = shm_open(name.c_str(), O_CREAT | O_RDWR, 0666);
+	int fd = shm_open(name, O_CREAT | O_RDWR, 0666);
 
 	if (fd == -1) {
 		isolate->ThrowException(Exception::Error(String::NewFromUtf8(isolate, "shm_open failed").ToLocalChecked()));
@@ -153,12 +153,13 @@ void Unlink(const FunctionCallbackInfo<Value> &args) {
 	String::Utf8Value name_v8(isolate, args[0]);
 
 	// POSIX shared memory names must be prefixed with "/"
-	std::string name = std::string("/") + *name_v8;
+	char name[256];
+	snprintf(name, sizeof(name), "/%s", *name_v8);
 
 	// Tell the kernel to remove the name from /dev/shm.
 	// The segment remains usable by existing mappings; only new
 	// shm_open() calls with this name will fail (ENOENT).
-	shm_unlink(name.c_str());
+	shm_unlink(name);
 }
 
 void Initialize(Local<Object> exports) {
