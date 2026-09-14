@@ -381,6 +381,9 @@ export class Server<EngineType extends string = "neo"> {
 			await this.engine.initialize()
 		}
 
+		// Load and initialize plugins.
+		await registerPlugins(this)
+
 		// Run all user-defined initialize tasks in parallel.
 		if (Array.isArray(this.initialize) && this.initialize.length > 0) {
 			await Promise.all(
@@ -475,9 +478,6 @@ export class Server<EngineType extends string = "neo"> {
 			console.info("Publishing to Gateway")
 			await registerGateway(this)
 		}
-
-		// Load and initialize plugins from LINEBRIDGE_PLUGINS env var.
-		await registerPlugins(this)
 
 		// ---- start listening ----
 		if (this.engine) {
