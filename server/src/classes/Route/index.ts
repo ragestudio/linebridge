@@ -1,10 +1,7 @@
-import Handler, {
-	HandlerKind,
-	HandlerParamsByKind,
-	MiddlewareHandlerFunction,
-} from "../Handler"
+import Handler, { HandlerKind } from "../Handler"
 import parsePathParameters from "../../utils/parsePathParameters"
 
+import type { ServerInstance } from "../../types"
 import type { Server } from "../../server"
 import type { HttpHandlerFunction } from "../Handler/http"
 import type { WebsocketHandlerFunction } from "../Handler/websocket"
@@ -30,7 +27,7 @@ export type RouteHttpMethods =
 	| "head"
 
 export interface RouteObject<
-	Child extends Server<any> = Server<any>,
+	Child = Server<any>,
 	SelectedCtx extends ContextsKeys<Child> = ContextsKeys<Child>,
 	Type extends RouteTypes = "http",
 	SelectedMw extends MiddlewaresKeys<Child> = MiddlewaresKeys<Child>,
@@ -49,15 +46,16 @@ export interface RouteObject<
 }
 
 export function defineRoute<
-	Child extends Server<any> = Server<any>,
+	Child = Server<any>,
 	Type extends RouteTypes = "http",
->() {
+>(serverClass?: Child) {
 	type Req = ServerRequest<Child>
 	type Res = ServerResponse<Child>
 
 	const define = <
-		UseContexts extends readonly ContextsKeys<Child>[] = readonly [],
-		UseMiddlewares extends readonly MiddlewaresKeys<Child>[] = readonly [],
+		const UseContexts extends readonly ContextsKeys<Child>[] = readonly [],
+		const UseMiddlewares extends readonly MiddlewaresKeys<Child>[] =
+			readonly [],
 	>(route: {
 		method?: RouteHttpMethods
 		useMiddlewares?: UseMiddlewares
@@ -81,17 +79,16 @@ export function defineRoute<
 }
 
 // routealike trys to match a RouteObject or a non-constructed Route or a constructed Route
-export type RouteAlike<TServer extends Server<any> = Server<any>> =
+export type RouteAlike<TServer = Server<any>> =
 	| Route<TServer>
 	| (new () => Route<TServer>)
 	| RouteObject
 
 export class Route<
-	TServer extends Server<any> = Server<any>,
-	TContextKeys extends ContextsKeys<TServer>[] =
-		ContextsKeys<TServer>[],
+	TServer = Server<any>,
+	TContextKeys extends ContextsKeys<TServer>[] = ContextsKeys<TServer>[],
 > {
-	server!: TServer
+	server!: Server<any> & ServerInstance<TServer>
 
 	kind: HandlerKind = HandlerKind.http
 	path: string = "/"
@@ -115,7 +112,7 @@ export class Route<
 	constructor() {}
 
 	_initialize = (
-		server: TServer,
+		server: Server<any> & ServerInstance<TServer>,
 		definitions?: Route<TServer, TContextKeys>,
 	) => {
 		if (!server) {
@@ -220,10 +217,7 @@ export class Route<
 		}
 	}
 
-	_to_handler = (
-		fn: any,
-		kind: HandlerKind,
-	): Handler<HandlerKind> => {
+	_to_handler = (fn: any, kind: HandlerKind): Handler<HandlerKind> => {
 		if (fn instanceof Handler) {
 			return fn
 		}
