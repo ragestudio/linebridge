@@ -2,7 +2,7 @@ import { Server } from "../src/index"
 import { defineRoute } from "../src/classes/Route/index"
 import { defineMiddleware } from "../src/classes/Handler/middleware"
 
-import OpenApiPlugin from "../../plugins/openapi/index"
+import OpenApiPlugin from "../../plugins/openapi/src/index"
 
 export default class ExampleAPI extends Server {
 	static useMiddlewares = ["logs"]
