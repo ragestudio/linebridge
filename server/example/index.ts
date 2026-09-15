@@ -1,16 +1,17 @@
 import "../../bootloader/index.d.ts"
 
 import { Server } from "../src/index"
-import { defineRoute } from "../src/classes/Route/index"
-import { defineMiddleware } from "../src/classes/Handler/middleware"
 
 import OpenApiPlugin from "../../plugins/openapi/src/index"
+import SharedMapPlugin from "../../plugins/shm_map/src/index.js"
+
+import injectTest from "./middlewares/injectTest.js"
 
 export default class ExampleAPI extends Server {
 	static useMiddlewares = ["logs"]
-	static usePlugins = [OpenApiPlugin]
+	static usePlugins = [OpenApiPlugin, SharedMapPlugin]
 
-	routes = {
+	routes: Record<string, any> = {
 		// basic route
 		"/hi": defineRoute(ExampleAPI)({
 			method: "get",
@@ -18,13 +19,6 @@ export default class ExampleAPI extends Server {
 				return {
 					message: "Hello world",
 				}
-			},
-		}),
-		"/get_test": defineRoute(ExampleAPI)({
-			method: "get",
-			useMiddlewares: ["injectTest"],
-			fn: async (req, res, ctx) => {
-				return req.test
 			},
 		}),
 		// get from context
@@ -61,16 +55,11 @@ export default class ExampleAPI extends Server {
 	}
 
 	middlewares = {
-		test: async (req, res, next) => {
+		injectTest,
+		test: async (req: any, res: any, next: any) => {
 			console.log("Hi! Im a middleware")
 			next()
 		},
-		injectTest: defineMiddleware<{ test: string }>()(
-			async (req, res, next) => {
-				req.test = "im a test!"
-				next()
-			},
-		),
 	}
 
 	contexts = {

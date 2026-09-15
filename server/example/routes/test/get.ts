@@ -1,14 +1,14 @@
 import API from "@/index"
-import { defineRoute } from "../../../src/classes/Route/index"
 
 export default defineRoute(API)({
-	useMiddlewares: ["test"],
-	useContexts: ["sum", "server"],
+	useMiddlewares: ["test", "injectTest"],
+	useContexts: ["sum", "server", "sharedMap"],
 	fn: (req, res, ctx) => {
 		const testSum = ctx.sum(5, 10)
 
 		return {
 			hello: "world",
+			test_value: req.test,
 			sum: testSum,
 			params: ctx.server.params,
 		}
