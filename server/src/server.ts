@@ -1,4 +1,5 @@
 import "./global"
+import "./vars"
 
 import { EventEmitter } from "tseep"
 
@@ -13,7 +14,6 @@ import registerPlugins from "./registers/plugins"
 import isExperimental from "./utils/isExperimental"
 import getHostAddress from "./utils/getHostAddress"
 
-import Vars from "./vars"
 import Engines, { type EnginesRegistry } from "./engines"
 import NatsAdapter from "./classes/Nats/adapter"
 import IPC from "./classes/IPC"
@@ -31,6 +31,7 @@ import { Route, RouteAlike, RouteObject } from "./classes/Route"
 import { HandlerKind } from "./classes/Handler"
 import { RtEngineContext, RtEngineSocket } from "./classes/RtEngine/types"
 import { Client } from "./classes/RtEngine/classes/client"
+import path from "node:path"
 
 export interface NatsParams {
 	address?: string
@@ -208,7 +209,7 @@ export class Server<EngineType extends string = "neo"> {
 		// Warn if running an experimental build.
 		if (isExperimental()) {
 			console.warn("\n🚧 This version of Linebridge is experimental! 🚧")
-			console.warn(`Version: ${Vars.libPkg.version}\n`)
+			console.warn(`Version: ${Vars.libPkg?.version}\n`)
 		}
 
 		// Merge user params on top of framework defaults.
@@ -329,6 +330,14 @@ export class Server<EngineType extends string = "neo"> {
 	run = async (): Promise<void> => {
 		// Record start time for the startup summary at the end.
 		const startHrTime = process.hrtime()
+
+		// Package metadata for the user's project (process.cwd()).
+		const projectPkg = await import(
+			path.resolve(process.cwd(), "package.json")
+		)
+
+		// Store the project package metadata for use in the server.
+		Vars.projectPkg = projectPkg
 
 		// Resolve the machine primary non-loopback IPv4 address.
 		this.localAddress = getHostAddress()

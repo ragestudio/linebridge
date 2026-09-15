@@ -8,12 +8,7 @@
  * Called during the server boot sequence (server.run()) before user routes.
  */
 
-import fs from "node:fs"
-import path from "node:path"
-
-import Vars from "../vars"
 import type Server from "../server"
-import type { Route } from "../classes/Route"
 
 import MainBaseRoute from "../baseRoutes/main"
 import MapBaseRoute from "../baseRoutes/map"

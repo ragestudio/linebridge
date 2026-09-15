@@ -32,7 +32,7 @@ import type Server from "../../server"
  * other services can call. also supports subscribing to global pubsub
  * channels for cross-service event broadcasting.
  */
-export default class NatsAdapter {
+export class NatsAdapter {
 	/** the linebridge server instance */
 	server: Server<any>
 	/** connection parameters for the NATS server */
@@ -211,3 +211,5 @@ export default class NatsAdapter {
 		sendToUserId: sendToUserId.bind(this),
 	}
 }
+
+export default NatsAdapter

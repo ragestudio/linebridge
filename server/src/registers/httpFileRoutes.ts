@@ -75,7 +75,7 @@ export default async (
 			path = `/${path}`
 
 			// load the handler module
-			let fileObj = require(absolutePath)
+			let fileObj = await import(absolutePath)
 
 			// support both default and named exports
 			fileObj = fileObj.default ?? fileObj

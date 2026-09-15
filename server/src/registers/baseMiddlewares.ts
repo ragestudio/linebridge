@@ -9,7 +9,6 @@
  */
 
 import composeMiddlewares from "../utils/composeMiddlewares"
-import Vars from "../vars"
 import type Server from "../server"
 
 /**

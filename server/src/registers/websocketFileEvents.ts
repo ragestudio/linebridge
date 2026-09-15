@@ -48,7 +48,7 @@ export default async (
 			relativePath = relativePath.split(".")[0]
 
 			const paths = relativePath.split("/")
-			let fileObj = require(absolutePath)
+			let fileObj = await import(absolutePath)
 
 			// handle both default and named exports
 			fileObj = fileObj.default ?? fileObj

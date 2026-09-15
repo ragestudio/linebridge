@@ -5,7 +5,7 @@ import invoke from "./invoke"
 
 import JSONCodec from "../Nats/codecs/json"
 
-class IPC {
+export class IPC {
 	constructor(server: any, nats: NatsConnection) {
 		if (!nats) {
 			throw new Error("NATS connection is not available")

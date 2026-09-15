@@ -1,9 +1,8 @@
-import Server from "./server"
+import { Server } from "./server"
 import { Plugin } from "./classes/Plugin"
-import Route from "./classes/Route"
-import IPC from "./classes/IPC"
-import NatsAdapter from "./classes/Nats/adapter"
-import registerBaseAliases from "./utils/registerAliases"
+import { Route } from "./classes/Route"
+import { IPC } from "./classes/IPC"
+import { NatsAdapter } from "./classes/Nats/adapter"
 
 import type {
 	ServerRequest as _ServerRequest,
@@ -19,11 +18,10 @@ import type {
 } from "./classes/Route"
 import type { defineMiddleware as _defineMiddleware } from "./classes/Handler/middleware"
 
-const version: string = require("../package.json").version
-
 export type { Client as RTEClient } from "./classes/RtEngine/classes/client"
+export type * from "./server"
 
-export { Server, Plugin, Route, registerBaseAliases, version }
+export { Server, Plugin, Route }
 
 declare global {
 	var OperationError: OperationErrorType
@@ -44,6 +42,9 @@ declare global {
 	type ServerResponse<T extends Server<any> = Server<any>> =
 		_ServerResponse<T>
 
-	function Boot(base_class: any): void
 	function ToBoolean(str: any): boolean
+	var isProduction: boolean
+	var b64Decode: (data: string) => string
+	var b64Encode: (data: string) => string
+	var nanoid: (t?: number) => string
 }

@@ -11,32 +11,13 @@ import path from "node:path"
 import loggerMiddleware from "./middlewares/logger/index"
 import corsMiddleware from "./middlewares/cors/index"
 
-// Root of the linebridge library installation (one level above this file).
-const rootLibPath: string = path.resolve(__dirname, "../")
+import LibPkg from "../package.json"
 
-// Package metadata for the library itself.
-const libPkg = require(path.resolve(rootLibPath, "package.json"))
+class VarsInstance {
+	rootLibPath: string = path.resolve(__dirname, "../")
+	libPath: string = __dirname
 
-// Package metadata for the user's project (process.cwd()).
-const projectPkg = require(path.resolve(process.cwd(), "package.json"))
-
-export interface VarsType {
-	rootLibPath: string
-	libPath: string
-	libPkg: any
-	projectPkg: any
-	defaultParams: ServerParams
-	baseHeaders: Record<string, string>
-	baseMiddlewares: Record<string, (...args: any[]) => void>
-	fixedHttpMethods: Record<string, string>
-}
-
-const Vars: VarsType = {
-	rootLibPath,
-	libPath: __dirname,
-	libPkg,
-	projectPkg,
-	defaultParams: {
+	defaultParams: ServerParams = {
 		refName: "linebridge",
 		listenIp: "0.0.0.0",
 		listenPort: process.env.LB_PORT ? parseInt(process.env.LB_PORT) : 3000,
@@ -62,21 +43,25 @@ const Vars: VarsType = {
 			"options",
 			"ws",
 		],
-	},
-	// Headers sent with every response by default.
-	baseHeaders: {
+	}
+	baseHeaders: Record<string, string> = {
 		server: "linebridge",
-		"lb-version": libPkg.version,
-	},
-	// Built-in middlewares registered by name.
-	baseMiddlewares: {
+		"lb-version": LibPkg.version,
+	}
+	baseMiddlewares: Record<string, (...args: any[]) => void> = {
 		logs: loggerMiddleware,
 		cors: corsMiddleware,
-	},
-	// Aliases for HTTP method names (e.g. "del" normalizes to "delete").
-	fixedHttpMethods: {
+	}
+	fixedHttpMethods: Record<string, string> = {
 		del: "delete",
-	},
+	}
+
+	libPkg: Record<string, any> = LibPkg
+	projectPkg?: Record<string, any>
 }
 
-export default Vars
+global.Vars = new VarsInstance()
+
+declare global {
+	var Vars: VarsInstance
+}

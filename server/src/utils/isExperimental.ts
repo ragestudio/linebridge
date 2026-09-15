@@ -9,8 +9,6 @@
 import fs from "node:fs"
 import path from "node:path"
 
-import Vars from "../vars"
-
 /**
  * Checks for the presence of a ".experimental" file in the library's
  * root directory (Vars.rootLibPath).

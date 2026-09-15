@@ -7,7 +7,6 @@
  */
 
 import Route from "../classes/Route"
-import Vars from "../vars"
 
 import type Server from "../server"
 import { HttpHandlerFunction } from "../classes/Handler"
@@ -27,7 +26,7 @@ export default class MainRoute extends Route<Server> {
 	fn: HttpHandlerFunction = async (req, res, ctx) => {
 		return {
 			name: ctx.server.params.refName ?? "unknown",
-			version: Vars.projectPkg.version,
+			version: Vars.projectPkg?.version,
 			engine: ctx.server.params.useEngine ?? "unknown",
 			lb_version: Vars.libPkg.version ?? "unknown",
 			experimental: ctx.server.experimental ? true : undefined,

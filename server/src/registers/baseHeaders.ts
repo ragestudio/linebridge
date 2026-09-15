@@ -8,7 +8,6 @@
  * Called during the server boot sequence.
  */
 
-import Vars from "../vars"
 import type Server from "../server"
 
 /**
