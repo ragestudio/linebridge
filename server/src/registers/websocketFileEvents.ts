@@ -51,7 +51,8 @@ export default async (
 			let fileObj = await import(absolutePath)
 
 			// handle both default and named exports
-			fileObj = fileObj.default ?? fileObj
+			fileObj =
+				fileObj["module.exports"]?.default ?? fileObj.default ?? fileObj
 
 			// join path segments with colons to form the event name
 			// e.g. "topic/subscribe" becomes "topic:subscribe"

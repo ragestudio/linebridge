@@ -13,11 +13,12 @@
  * Called during the server boot sequence.
  */
 
+import type Server from "../server"
+
 import fs from "node:fs"
 
 import Route, { RouteHttpMethods } from "../classes/Route"
 import RecursiveRegister from "../utils/recursiveRegister"
-import type Server from "../server"
 
 // matches [paramName] segments in directory names
 const parametersRegex = /\[([a-zA-Z0-9_]+)\]/g
@@ -78,7 +79,8 @@ export default async (
 			let fileObj = await import(absolutePath)
 
 			// support both default and named exports
-			fileObj = fileObj.default ?? fileObj
+			fileObj =
+				fileObj["module.exports"]?.default ?? fileObj.default ?? fileObj
 
 			if (typeof fileObj !== "function") {
 				if (typeof fileObj.fn !== "function") {
