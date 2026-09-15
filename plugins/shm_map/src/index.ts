@@ -1,5 +1,12 @@
 import Plugin from "./plugin"
-import SharedMap from "./shared-map"
+import SharedMapClass from "./shared-map"
 
-export { Plugin, SharedMap }
+global.SharedMap = SharedMapClass
+
+declare global {
+	var SharedMap: typeof SharedMapClass
+}
+
+export { Plugin, SharedMapClass as SharedMap }
+
 export default Plugin
