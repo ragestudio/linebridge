@@ -24,15 +24,15 @@ Directory names in `[brackets]` become path parameters (`[id]` → `:id`). Use `
 
 ```ts
 // routes/users/get.ts
-import type MyAPI from "@/index"
+import MyAPI from "@/index"
 
 export default defineRoute(MyAPI)({
-  useMiddlewares: ["auth"],
-  useContexts: ["db"],
-  fn: async (req, res, ctx) => {
-    const users = await ctx.db.users.find()
-    return { users }
-  },
+	useMiddlewares: ["auth"],
+	useContexts: ["db"],
+	fn: async (req, res, ctx) => {
+		const users = await ctx.db.users.find()
+		return { users }
+	},
 })
 ```
 
@@ -41,7 +41,7 @@ Or simpler, export a plain function:
 ```ts
 // routes/health/get.ts
 export default async (req, res) => {
-  return { status: "ok" }
+	return { status: "ok" }
 }
 ```
 
@@ -55,21 +55,21 @@ Define routes directly on the Server subclass using `defineRoute()`. Useful for 
 import { Server } from "linebridge"
 
 export default class MyAPI extends Server {
-  routes = {
-    "/hi": defineRoute(MyAPI)({
-      method: "get",
-      fn: async () => ({ message: "hello" }),
-    }),
-    "/events": defineRoute(MyAPI)({
-      method: "get",
-      fn: (req, res) => {
-        const stream = res.sse
-        if (!stream) return
-        stream.open()
-        // keep-alive with stream.send(...)
-      },
-    }),
-  }
+	routes = {
+		"/hi": defineRoute(MyAPI)({
+			method: "get",
+			fn: async () => ({ message: "hello" }),
+		}),
+		"/events": defineRoute(MyAPI)({
+			method: "get",
+			fn: (req, res) => {
+				const stream = res.sse
+				if (!stream) return
+				stream.open()
+				// keep-alive with stream.send(...)
+			},
+		}),
+	}
 }
 ```
 
@@ -100,14 +100,14 @@ or creating a extended `Route` class:
 
 ```ts
 class MyRoute extends Route {
-  path = "/users"
-  method = "get"
-  useMiddlewares = ["auth"]
-  useContexts = ["db"]
-  
-  handler = async (req, res, ctx) => {
-    return { users: await ctx.db.users.find() }
-  }
+	path = "/users"
+	method = "get"
+	useMiddlewares = ["auth"]
+	useContexts = ["db"]
+
+	handler = async (req, res, ctx) => {
+		return { users: await ctx.db.users.find() }
+	}
 }
 
 this.engine.register(MyRoute)
@@ -136,16 +136,16 @@ async onInitialize() {
 
 Supported HTTP methods:
 
-| Method | RouteHttpMethods | Notes |
-|--------|-----------------|-------|
-| GET | `"get"` | |
-| POST | `"post"` | |
-| PUT | `"put"` | |
-| PATCH | `"patch"` | |
-| DELETE | `"delete"` | Normalized to `"del"` for uWS compatibility |
-| OPTIONS | `"options"` | |
-| HEAD | `"head"` | |
-| ANY | `"any"` | Matches all methods |
+| Method  | RouteHttpMethods | Notes                                       |
+| ------- | ---------------- | ------------------------------------------- |
+| GET     | `"get"`          |                                             |
+| POST    | `"post"`         |                                             |
+| PUT     | `"put"`          |                                             |
+| PATCH   | `"patch"`        |                                             |
+| DELETE  | `"delete"`       | Normalized to `"del"` for uWS compatibility |
+| OPTIONS | `"options"`      |                                             |
+| HEAD    | `"head"`         |                                             |
+| ANY     | `"any"`          | Matches all methods                         |
 
 The special `"any"` method creates a catch-all route. The framework automatically maps `"delete"` to `"del"` internally.
 
@@ -167,8 +167,8 @@ Parameters are available via `req.params`:
 
 ```ts
 fn: async (req, res) => {
-  const { userId, postId } = req.params
-  // GET /users/42/posts/7 => { userId: "42", postId: "7" }
+	const { userId, postId } = req.params
+	// GET /users/42/posts/7 => { userId: "42", postId: "7" }
 }
 ```
 
@@ -197,14 +197,10 @@ route.path = "/api/*/status"
 
 ```ts
 type HttpHandlerFunction<
-  TCtx = Record<string, any>,
-  TReq extends Request = Request,
-  TRes extends Response = Response,
-> = (
-  req: TReq,
-  res: TRes,
-  ctx: TCtx,
-) => any
+	TCtx = Record<string, any>,
+	TReq extends Request = Request,
+	TRes extends Response = Response,
+> = (req: TReq, res: TRes, ctx: TCtx) => any
 ```
 
 When using `defineRoute(MyAPI)`, `req` and `res` are automatically resolved to the engine-specific types (e.g. Neo engine methods like `res.sse`, `req.sign()`).
@@ -213,20 +209,20 @@ When using `defineRoute(MyAPI)`, `req` and `res` are automatically resolved to t
 
 ```ts
 fn: async (req, res, ctx) => {
-  // Returning an object auto-sends it as JSON
-  return { hello: "world" }
+	// Returning an object auto-sends it as JSON
+	return { hello: "world" }
 }
 
 fn: async (req, res, ctx) => {
-  // Manual response control
-  res.status(201).json({ created: true })
+	// Manual response control
+	res.status(201).json({ created: true })
 }
 
 // SSE: no return value, stream stays open
 fn: (req, res) => {
-  const stream = res.sse
-  if (!stream) return
-  stream.open()
+	const stream = res.sse
+	if (!stream) return
+	stream.open()
 }
 ```
 
@@ -234,16 +230,16 @@ fn: (req, res) => {
 
 ```ts
 interface RouteObject<Child extends Server, SelectedCtx, Type> {
-  method?: RouteHttpMethods
-  useMiddlewares?: MiddlewaresKeys<Child>[]
-  useContexts?: readonly SelectedCtx[]
-  fn: Type extends "ws"
-    ? WebsocketHandlerFunction<Pick<Contexts<Child>, SelectedCtx>>
-    : HttpHandlerFunction<
-        Pick<Contexts<Child>, SelectedCtx>,
-        ServerRequest<Child>,
-        ServerResponse<Child>
-      >
+	method?: RouteHttpMethods
+	useMiddlewares?: MiddlewaresKeys<Child>[]
+	useContexts?: readonly SelectedCtx[]
+	fn: Type extends "ws"
+		? WebsocketHandlerFunction<Pick<Contexts<Child>, SelectedCtx>>
+		: HttpHandlerFunction<
+				Pick<Contexts<Child>, SelectedCtx>,
+				ServerRequest<Child>,
+				ServerResponse<Child>
+			>
 }
 ```
 
@@ -256,8 +252,10 @@ Middlewares can be specified by:
 
 ```ts
 route.useMiddlewares = [
-  "auth",                                // lookup by name
-  async (req, res, next) => { next() },  // inline function
+	"auth", // lookup by name
+	async (req, res, next) => {
+		next()
+	}, // inline function
 ]
 ```
 
@@ -293,5 +291,6 @@ For each incoming request:
 6. If no response was sent, the handler's return value is serialized as JSON
 
 Errors thrown during execution are caught:
+
 - `OperationError` instances return their status code and message
 - Unhandled errors return `500` with the error message
