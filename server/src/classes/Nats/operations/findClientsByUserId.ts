@@ -36,7 +36,9 @@ export default async function findClientsByUserId(
 	}
 
 	// convert raw socket data into NatsClient proxy objects
-	return sockets.map((client: any) => {
-		return synthesizeClient(client, this)
-	})
+	return Promise.all(
+		sockets.map((client: any) => {
+			return synthesizeClient(client, this)
+		}),
+	)
 }

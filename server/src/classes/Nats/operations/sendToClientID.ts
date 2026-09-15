@@ -6,9 +6,9 @@
  * receives the message and delivers it to the physical connection
  */
 
-import * as Serializers from "../serializers"
-import { headers } from "@nats-io/transport-node"
 import type NatsAdapter from "../adapter"
+import * as Serializers from "../serializers"
+import { nats } from "../../../lazyNats"
 
 /**
  * delivers an event directly to a specific client across the cluster
@@ -37,7 +37,7 @@ export default async function sendToClientID(
 	}
 
 	// build headers that route the message to the target socket
-	const clientHeaders = headers()
+	const clientHeaders = nats!.headers()
 
 	clientHeaders.append("socket_id", client_id)
 

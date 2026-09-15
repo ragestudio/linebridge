@@ -1,3 +1,7 @@
+import { loadLibs } from "../src/lazyNats"
+
+loadLibs()
+
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import IPC from "../src/classes/IPC/index"
 import Server from "../src/server"

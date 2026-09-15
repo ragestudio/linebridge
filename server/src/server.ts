@@ -337,7 +337,7 @@ export class Server<EngineType extends string = "neo"> {
 		)
 
 		// Store the project package metadata for use in the server.
-		Vars.projectPkg = projectPkg
+		Vars.projectPkg = projectPkg.default
 
 		// Resolve the machine primary non-loopback IPv4 address.
 		this.localAddress = getHostAddress()

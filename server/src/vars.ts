@@ -7,11 +7,14 @@
  */
 import type { ServerParams } from "./server"
 
+import fs from "node:fs"
 import path from "node:path"
 import loggerMiddleware from "./middlewares/logger/index"
 import corsMiddleware from "./middlewares/cors/index"
 
-import LibPkg from "../package.json"
+const LibPkg = JSON.parse(
+	fs.readFileSync(path.resolve(__dirname, "../package.json"), "utf8"),
+)
 
 class VarsInstance {
 	rootLibPath: string = path.resolve(__dirname, "../")

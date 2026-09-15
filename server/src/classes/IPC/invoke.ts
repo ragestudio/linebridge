@@ -1,6 +1,6 @@
 import type IPC from "./index"
 
-import { headers } from "@nats-io/transport-node"
+import { nats } from "../../lazyNats"
 
 export default async function (
 	this: IPC,
@@ -12,7 +12,7 @@ export default async function (
 		return null
 	}
 
-	const reqHeaders = headers()
+	const reqHeaders = nats!.headers()
 	reqHeaders.set("event", command)
 
 	const res = await this.nats.request(

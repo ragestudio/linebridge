@@ -5,9 +5,9 @@
  * objects from the bare context fields returned by a remote service
  */
 
-import { headers } from "@nats-io/transport-node"
-import NatsClient from "./client"
 import type NatsAdapter from "./adapter"
+import NatsClient from "./client"
+import { nats } from "../../lazyNats"
 
 /**
  * input shape expected when synthesizing a client from external data
@@ -41,13 +41,16 @@ interface ClientInput {
  * @returns a fully constructed NatsClient proxy
  * @throws {Error} if socket_id is missing
  */
-export default (client: ClientInput, adapter: NatsAdapter): NatsClient => {
+export default async (
+	client: ClientInput,
+	adapter: NatsAdapter,
+): Promise<NatsClient> => {
 	if (!client.socket_id) {
 		throw new Error("Socket ID is required")
 	}
 
 	// build nats headers that will identify the remote socket
-	const clientHeaders: any = headers()
+	const clientHeaders: any = nats!.headers()
 
 	clientHeaders.append("socket_id", client.socket_id)
 

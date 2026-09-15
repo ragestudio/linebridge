@@ -7,8 +7,9 @@
  * distributed cluster where clients can be connected to any instance.
  */
 
-import * as nats from "@nats-io/transport-node"
-import { jetstream, jetstreamManager } from "@nats-io/jetstream"
+import type * as natsType from "@nats-io/transport-node"
+
+import { loadLibs } from "../../lazyNats"
 import * as Serializers from "./serializers"
 
 import JSONCodec from "./codecs/json"
@@ -48,7 +49,7 @@ export class NatsAdapter {
 	codec = new JSONCodec()
 
 	/** underlying NATS connection instance */
-	connection: nats.NatsConnection | null = null
+	connection: natsType.NatsConnection | null = null
 	/** JetStream client for durable messaging */
 	jetstream: JetStreamClient | null = null
 	/** JetStream consumer messages iterator for ipc messages */
@@ -76,6 +77,8 @@ export class NatsAdapter {
 	 * through handleUpstream
 	 */
 	initialize = async (): Promise<void> => {
+		const { nats, jetstream, jetstreamManager } = await loadLibs()
+
 		this.connection = await nats.connect({
 			servers: `nats://${this.params.address ?? "localhost"}:${this.params.port ?? 4222}`,
 		})
