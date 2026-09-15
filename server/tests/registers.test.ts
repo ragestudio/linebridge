@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import "../src/vars"
 import path from "node:path"
 import net from "node:net"
 
@@ -11,7 +12,6 @@ import gatewayRegister from "../src/registers/gateway"
 import ipcServiceRegister from "../src/registers/ipcService"
 
 import getRoutes from "../src/utils/getRoutes"
-import Vars from "../src/vars"
 import Route from "../src/classes/Route"
 
 vi.mock("node:net", () => {
