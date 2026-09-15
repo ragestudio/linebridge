@@ -3,9 +3,9 @@ import "../../bootloader/index.d.ts"
 import { Server } from "../src/index"
 
 import OpenApiPlugin from "../../plugins/openapi/src/index"
-import SharedMapPlugin from "../../plugins/shm_map/src/index.js"
+import SharedMapPlugin from "../../plugins/shm_map/build/out/index"
 
-import injectTest from "./middlewares/injectTest.js"
+import injectTest from "./middlewares/injectTest"
 
 export default class ExampleAPI extends Server {
 	static useMiddlewares = ["logs"]
