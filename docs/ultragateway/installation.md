@@ -55,10 +55,10 @@ my-project/
 
 ```bash
 cd my-project
-npm install linebridge
+npm install linebridge @linebridge/bootloader
 ```
 
-The gateway auto-discovers the bootloader at `node_modules/linebridge/bootloader/bin`. No additional Node.js tooling is needed — the gateway spawns each service's bootloader as a child process.
+The gateway auto-discovers the bootloader at `node_modules/@linebridge/bootloader/bin`. No additional Node.js tooling is needed — the gateway spawns each service's bootloader as a child process.
 
 ## Starting
 

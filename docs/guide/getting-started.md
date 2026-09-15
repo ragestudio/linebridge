@@ -15,7 +15,7 @@ Also is needed to run on GLibc-based systems, MUSL-based systems (Alpine Linux..
 ## Installation
 
 ```bash
-npm install linebridge
+npm install linebridge @linebridge/bootloader
 ```
 
 ## Your First Server
@@ -23,11 +23,12 @@ npm install linebridge
 Create an `index.ts` file:
 
 ```ts
+import "@linebridge/bootloader"
 import { Server } from "linebridge"
 
 export default class MyAPI extends Server {
-  static refName = "my-api"
-  static listenPort = 3000
+	static refName = "my-api"
+	static listenPort = 3000
 }
 
 Boot(MyAPI)
@@ -62,14 +63,12 @@ my-project/
 
 ## Bootloader
 
-The bootloader (`linebridge-boot`) handles `.env` loading, TypeScript/ESM JIT transpilation via Sucrase, path aliases (`@`, `@classes`, etc.), and global utilities (`Boot()`, `ToBoolean()`, `nanoid()`). See the [Bootloader guide](./bootloader) for the full reference.
+The bootloader (`linebridge-boot`) handles `.env` loading, TypeScript/ESM JIT transpilation via Sucrase, path aliases (`@`, `@classes`, etc.). See the [Bootloader guide](./bootloader) for the full reference.
 
 ### Path Aliases
 
 The bootloader automatically registers these aliases. See the [Bootloader guide](./bootloader#path-aliases) for the complete list.
 
-| Alias | Resolves to |
-|-------|------------|
-| `@` | `src/` directory |
-
-You can also use `registerBaseAliases()` manually if not using the bootloader.
+| Alias | Resolves to      |
+| ----- | ---------------- |
+| `@`   | `src/` directory |

@@ -106,7 +106,11 @@ Linebridge sets up several globals during initialization:
 |--------|------------|
 | `OperationError` | Error class for HTTP error responses |
 | `defineRoute` | Type-safe route definition helper |
-| `Boot(baseClass)` | Function to instantiate and run a server |
+| `defineMiddleware` | Type-safe middleware definition helper |
+| `isProduction` | Boolean, `true` when `NODE_ENV=production` |
+| `nanoid(length?)` | Generates a cryptographically random ID |
+| `b64Encode(data)` | Base64 encodes a string |
+| `b64Decode(data)` | Base64 decodes a string |
 | `ToBoolean(value)` | Converts string/boolean to boolean |
 | `__linebridge` | Internal reference to vars and params |
 | `nats` | NATS adapter instance *(gateway mode)* |

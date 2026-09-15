@@ -7,6 +7,7 @@ The `Server` class is the foundation of every Linebridge application. You extend
 ## Basic Usage
 
 ```ts
+import "@linebridge/bootloader"
 import { Server } from "linebridge"
 
 export default class MyAPI extends Server {
@@ -274,7 +275,7 @@ export default class MyAPI extends Server {
 
 ## `Boot()` Function
 
-The global `Boot()` function instantiates your server class and calls `run()`:
+The global `Boot()` function instantiates your server class and calls `run()`. It is automatically exposed when you run your app via `linebridge-boot` or when you add `import "@linebridge/bootloader"` in your main file:
 
 ```ts
 Boot(MyAPI)
