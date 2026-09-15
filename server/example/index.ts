@@ -1,3 +1,5 @@
+import "../../bootloader/index.d.ts"
+
 import { Server } from "../src/index"
 import { defineRoute } from "../src/classes/Route/index"
 import { defineMiddleware } from "../src/classes/Handler/middleware"
@@ -48,6 +50,12 @@ export default class ExampleAPI extends Server {
 					b: req.params.value2,
 					result: req.params.value1 + req.params.value2,
 				}
+			},
+		}),
+		"/vars": defineRoute(ExampleAPI)({
+			method: "get",
+			fn: async (req, res, ctx) => {
+				return Vars
 			},
 		}),
 	}
