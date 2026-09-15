@@ -1,6 +1,7 @@
 import "./global"
 import "./vars"
 
+import fs from "node:fs"
 import { EventEmitter } from "tseep"
 
 import registerBaseRoutes from "./registers/baseRoutes"
@@ -332,12 +333,15 @@ export class Server<EngineType extends string = "neo"> {
 		const startHrTime = process.hrtime()
 
 		// Package metadata for the user's project (process.cwd()).
-		const projectPkg = await import(
-			path.resolve(process.cwd(), "package.json")
-		)
-
-		// Store the project package metadata for use in the server.
-		Vars.projectPkg = projectPkg.default
+		try {
+			const pkgContent = await fs.promises.readFile(
+				path.resolve(process.cwd(), "package.json"),
+				"utf8"
+			)
+			Vars.projectPkg = JSON.parse(pkgContent)
+		} catch (error) {
+			// Ignore error if package.json doesn't exist
+		}
 
 		// Resolve the machine primary non-loopback IPv4 address.
 		this.localAddress = getHostAddress()

@@ -9,16 +9,28 @@ import type { ServerParams } from "./server"
 
 import fs from "node:fs"
 import path from "node:path"
+import { fileURLToPath } from "node:url"
+
 import loggerMiddleware from "./middlewares/logger/index"
 import corsMiddleware from "./middlewares/cors/index"
 
+const getDirname = () => {
+	if (typeof __dirname !== "undefined") return __dirname
+	const match = new Error().stack?.match(
+		/at\s+(?:.*\s+)?(file:\/\/.+):\d+:\d+/,
+	)
+	if (match) return path.dirname(fileURLToPath(match[1]))
+	return process.cwd()
+}
+const _dirname = getDirname()
+
 const LibPkg = JSON.parse(
-	fs.readFileSync(path.resolve(__dirname, "../package.json"), "utf8"),
+	fs.readFileSync(path.resolve(_dirname, "../package.json"), "utf8"),
 )
 
 class VarsInstance {
-	rootLibPath: string = path.resolve(__dirname, "../")
-	libPath: string = __dirname
+	rootLibPath: string = path.resolve(_dirname, "../")
+	libPath: string = _dirname
 
 	defaultParams: ServerParams = {
 		refName: "linebridge",
