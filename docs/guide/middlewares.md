@@ -206,40 +206,46 @@ middlewares = {
 
 ## Type-Safe Middlewares (`defineMiddleware`)
 
-Linebridge provides `defineMiddleware` to allow you to strongly type data injected by your middlewares into the request or response objects, so that subsequent handlers automatically inherit those types!
+Linebridge provides `defineMiddleware` to strongly type your middlewares. It allows you to:
+1. Access contexts (including plugin contexts) effortlessly.
+2. Inject new properties into `req` and `res` so that subsequent handlers automatically inherit those types!
+
+### Option 1: Context-Aware Middleware (Recommended)
+
+To write a middleware that depends on server or plugin contexts, pass your server class (`typeof API`) as the generic parameter. This enables autocompletion for `useContexts` and injects them directly into the fourth `ctx` parameter.
 
 ```ts
 import { defineMiddleware } from "linebridge"
+import type MyAPI from "../index" // Your Server subclass
 
-// Define the properties this middleware will inject into `req`
-type ReqInjections = {
-  user: { id: string; role: string }
-}
-
-export const authMiddleware = defineMiddleware<ReqInjections>()(
-  async (req, res, next) => {
-    // req is fully typed, but we MUST provide req.user to satisfy TS
+export const authMiddleware = defineMiddleware<typeof MyAPI>()({
+  useContexts: ["db", "sharedMap"], // Fully autocompleted!
+  
+  // Define properties this middleware will inject into `req`
+  injectReq: {} as { user: { id: string; role: string } },
+  
+  fn: async (req, res, next, ctx) => {
     const token = req.headers["authorization"]
-    if (!token) {
-      return res.status(401).json({ error: "Unauthorized" })
-    }
+    if (!token) return res.status(401).json({ error: "Unauthorized" })
     
-    // Inject the data
-    req.user = await validateToken(token)
+    // ctx.db is 100% typed!
+    const user = await ctx.db.getUserByToken(token)
+    if (!user) return res.status(401).json({ error: "Invalid token" })
+
+    // Inject the data for routes to use
+    req.user = user
     next()
   }
-)
+})
 ```
 
-When you attach this middleware in a route, Linebridge's router will automatically extract these type injections and apply them to the `req` parameter inside the route handler:
+When you attach this middleware in a route, Linebridge's router will automatically extract the injected types and apply them to the `req` parameter inside the route handler:
 
 ```ts
 import { authMiddleware } from "./middlewares"
 
 export default class MyAPI extends Server {
-  middlewares = {
-    auth: authMiddleware
-  }
+  middlewares = { auth: authMiddleware }
 }
 
 // In your route:
@@ -252,4 +258,22 @@ export default defineRoute(MyAPI)({
 })
 ```
 
-You can also define Response injections as the second generic parameter: `defineMiddleware<ReqExt, ResExt>()`.
+### Option 2: Agnostic Middleware
+
+If your middleware doesn't need contexts and you just want to inject types into `req` or `res`, you can use the simple signature by omitting the generic:
+
+```ts
+import { defineMiddleware } from "linebridge"
+
+// Define Req and Res injections as generics
+type ReqExt = { requestId: string }
+type ResExt = { sendCustomError: (msg: string) => void }
+
+export const trackingMiddleware = defineMiddleware()<ReqExt, ResExt>(
+  async (req, res, next) => {
+    req.requestId = crypto.randomUUID()
+    res.sendCustomError = (msg) => res.status(400).json({ error: msg })
+    next()
+  }
+)
+```
