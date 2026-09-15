@@ -1,10 +1,12 @@
-import { Server } from "linebridge"
+import type Stream from "stream"
+
+import "@linebridge/bootloader"
+import { Server } from "linebridge/dist/server"
 import LiveDirectory from "live-directory"
 
 class DocsServer extends Server {
 	static baseRoutes = false
-	static useMiddlewares = ["logs"]
-	static bypassCors = true
+	static useMiddlewares = ["logs", "cors"]
 
 	routes = {
 		"/*": {
@@ -24,7 +26,8 @@ class DocsServer extends Server {
 				const fileParts = file.path.split(".")
 				const extension = fileParts[fileParts.length - 1]
 
-				let content = file.content
+				let content: Buffer<ArrayBufferLike> | Stream.Readable =
+					file.content
 
 				if (!content) {
 					content = file.stream()

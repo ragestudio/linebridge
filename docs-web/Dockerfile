@@ -1,48 +1,44 @@
-FROM ragestudio/ultragateway:latest AS build
+FROM node:24-trixie-slim AS build
 
-# Install dependencies
-RUN apt update -y
-RUN apt install -y curl nscd git ssh build-essential
-RUN curl -sf https://gobinaries.com/tj/node-prune | sh
+# Install build dependencies
+RUN apt-get update && apt-get install -y python3 make g++ git && rm -rf /var/lib/apt/lists/*
 
-# Create workdir
-RUN mkdir -p /app
-WORKDIR /app
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME/bin:$PATH"
+RUN corepack enable
 
-# Copy Files
-COPY . .
+WORKDIR /base
 
-# Fix permissions
-RUN chmod -R 777 /app
-RUN chown -R node:node /app
+COPY docs /base/docs
+COPY docs-web /base/web
 
-# Set user to node
-USER node
+# Install vue at root so docs can resolve it
+RUN pnpm add vue@^3.5.42 @vue/server-renderer@^3.5.42
+RUN printf "packages:\n  - 'web'\n  - 'docs'\nblockExoticSubdeps: false\n" > pnpm-workspace.yaml
 
-# Install modules
-RUN IS_ACTION_RUNNER=true npm install
-RUN npm run docs:build
-RUN npm cache clean --force
-RUN rm package-lock.json
+WORKDIR /base/web
 
-RUN node-prune
+# Install all dependencies & build the docs
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --no-frozen-lockfile
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm run docs:build
 
-FROM ragestudio/ultragateway:latest AS runtime
+# Clean up massive unnecessary binaries in uWebSockets.js
+RUN find node_modules -name "uws_darwin_*.node" -type f -delete && \
+    find node_modules -name "uws_win32_*.node" -type f -delete
 
-# Create app workdir
-RUN mkdir -p /app
-WORKDIR /app
+#### RUNTIME
+FROM node:24-trixie-slim AS runtime
 
-# copy app dir
-COPY --from=build /app /app
-
-# Fix permissions
-RUN chmod -R 777 /app
-RUN chown -R node:node /app
-
-# Set user to node
-USER node
-
-# Start app
+# Set environment
 ENV NODE_ENV=production
+
+# Set user for security
+USER node
+
+# Copy the app from the build stage
+COPY --from=build --chown=node:node /base /app
+
+WORKDIR /app/web
+
+# Start server
 CMD ["npm", "run", "docs:serve"]

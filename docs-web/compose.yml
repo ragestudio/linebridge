@@ -1,5 +1,7 @@
 services:
   docs:
-    build: .
+    build:
+      context: ..
+      dockerfile: ./docs-web/Dockerfile
     ports:
       - "${LISTEN_PORT:-3000}:3000"
