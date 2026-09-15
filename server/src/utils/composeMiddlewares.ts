@@ -8,20 +8,23 @@
  * throwing an error if one is missing.
  */
 
-import type { MiddlewareHandlerFunction } from "../classes/Handler"
+import type {
+	MiddlewareHandlerFunction,
+	MiddlewareObj,
+} from "../classes/Handler/middleware"
 
 /**
  * Takes a map of available middlewares and a list of selectors, and returns
  * an array of resolved middleware functions in the same order as the selectors.
  *
- * @param middlewares - map of middleware keys to handler functions
+ * @param middlewares - map of middleware keys to handler functions or middleware objects
  * @param selectors   - ordered list of middleware names (strings) or
  *                      direct function references to resolve
  * @returns an array of resolved middleware handler functions
  * @throws {Error} if a named middleware is not found in the map
  */
 export default (
-	middlewares: Record<string, MiddlewareHandlerFunction>,
+	middlewares: Record<string, MiddlewareHandlerFunction | MiddlewareObj>,
 	selectors: Array<MiddlewareHandlerFunction | string>,
 ): MiddlewareHandlerFunction[] => {
 	// return empty if there's nothing to resolve
@@ -41,7 +44,18 @@ export default (
 
 		// resolve by name from the middlewares map
 		if (typeof middlewareKey === "string") {
-			item = middlewares[middlewareKey]
+			const resolved = middlewares[middlewareKey]
+
+			// if it's a MiddlewareObj, extract the fn
+			if (
+				resolved &&
+				typeof resolved === "object" &&
+				typeof (resolved as MiddlewareObj).fn === "function"
+			) {
+				item = (resolved as MiddlewareObj).fn
+			} else {
+				item = resolved as MiddlewareHandlerFunction
+			}
 		}
 
 		// use the function reference directly
@@ -51,9 +65,7 @@ export default (
 
 		// if resolution failed, report the error immediately
 		if (!item) {
-			throw new Error(
-				`Failed to find required middleware [${middlewareKey}]`,
-			)
+			throw new Error(`Failed to find required middleware [${middlewareKey}]`)
 		}
 
 		execs.push(item)

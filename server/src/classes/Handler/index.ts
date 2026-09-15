@@ -144,7 +144,7 @@ export class Handler<K extends HandlerKind = HandlerKind> {
 
 	/**
 	 * Executes a middleware function.
-	 * Middlewares receive (req, res, next). If next() is never called,
+	 * Middlewares receive (req, res, next, ctx). If next() is never called,
 	 * the request pipeline stops at this middleware.
 	 */
 	async executeAsMiddleware(
@@ -155,7 +155,7 @@ export class Handler<K extends HandlerKind = HandlerKind> {
 		const fn = this.fn as MiddlewareHandlerFunction
 
 		try {
-			await fn(req, res, next)
+			await fn(req, res, next, this.ctx ?? {})
 		} catch (error: any) {
 			if (error instanceof OperationError) {
 				return res.status(error.code).json({ error: error.message })

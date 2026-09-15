@@ -144,9 +144,7 @@ export class Route<
 		}
 
 		if (!this.handler && !this.fn) {
-			throw new Error(
-				`Route [${this.path}] does not have a handler or fn`,
-			)
+			throw new Error(`Route [${this.path}] does not have a handler or fn`)
 		}
 
 		this.pathParametersKey = parsePathParameters(this.path)
@@ -181,6 +179,7 @@ export class Route<
 				}
 
 				let middleware
+				let middlewareCtx: Record<string, any> | undefined
 
 				// if is a string, lookup on the server
 				if (typeof key === "string") {
@@ -192,6 +191,28 @@ export class Route<
 					middleware = key
 				}
 
+				// if middleware is an object with a fn property (MiddlewareObj), extract the fn and resolve contexts
+				if (
+					middleware &&
+					typeof middleware === "object" &&
+					typeof middleware.fn === "function"
+				) {
+					// resolve useContexts for this middleware
+					if (
+						Array.isArray(middleware.useContexts) &&
+						middleware.useContexts.length > 0
+					) {
+						middlewareCtx = {}
+						for (const ctxKey of middleware.useContexts) {
+							if (ctxKey in allContexts) {
+								middlewareCtx[ctxKey] = allContexts[ctxKey]
+							}
+						}
+					}
+
+					middleware = middleware.fn
+				}
+
 				// skip if cannot find a valid fn
 				if (typeof middleware !== "function") {
 					console.warn(
@@ -200,14 +221,16 @@ export class Route<
 					continue
 				}
 
-				middleware = this._to_handler(
-					middleware,
-					HandlerKind.middleware,
-				)
+				const handler = this._to_handler(middleware, HandlerKind.middleware)
 
-				if (middleware) {
+				if (handler) {
+					// assign resolved contexts to the middleware handler
+					if (middlewareCtx) {
+						handler.ctx = middlewareCtx
+					}
+
 					// push the middleware in that order
-					this.middlewares.push(middleware)
+					this.middlewares.push(handler)
 				}
 			}
 		}

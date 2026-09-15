@@ -39,8 +39,7 @@ declare global {
 	type ContextsKeys<T extends Server<any>> = _ContextsKeys<T>
 
 	type ServerRequest<T extends Server<any> = Server<any>> = _ServerRequest<T>
-	type ServerResponse<T extends Server<any> = Server<any>> =
-		_ServerResponse<T>
+	type ServerResponse<T extends Server<any> = Server<any>> = _ServerResponse<T>
 
 	function ToBoolean(str: any): boolean
 	var isProduction: boolean

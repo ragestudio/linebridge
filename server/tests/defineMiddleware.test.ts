@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { defineMiddleware } from "../src/classes/Handler/middleware"
 import { expectTypeOf } from "vitest"
+import { Server } from "../src/index"
 
 describe("defineMiddleware", () => {
 	it("should return a definition function when called", () => {
@@ -33,15 +34,13 @@ describe("defineMiddleware Type Inference", () => {
 		})
 	})
 
-	it("should correctly infer extended request and response parameters", () => {
-		// Define a middleware that injects 'user' into the request
-		// and a 'customSend' function into the response
+	it("should correctly infer extended request and response parameters via simple signature", () => {
 		type ReqExt = { user: { id: string; role: string } }
 		type ResExt = { customSend: (data: string) => void }
 
-		const define = defineMiddleware<ReqExt, ResExt>()
+		const define = defineMiddleware()
 
-		const mw = define((req, res, next) => {
+		const mw = define<ReqExt, ResExt>((req, res, next) => {
 			// Base properties should exist
 			expectTypeOf(req.method).toBeString()
 			expectTypeOf(res.json).toBeFunction()
@@ -56,5 +55,27 @@ describe("defineMiddleware Type Inference", () => {
 
 		// The resulting middleware should be correctly typed
 		expectTypeOf(mw).toBeFunction()
+	})
+
+	it("should correctly infer extended parameters and contexts via object signature", () => {
+		class MockServer extends Server<"neo"> {
+			contexts = {
+				db: { query: () => "mock" },
+			}
+		}
+
+		const define = defineMiddleware<typeof MockServer>()
+
+		const mw = define({
+			useContexts: ["db"],
+			injectReq: {} as { user: string },
+			fn: (req, res, next, ctx) => {
+				expectTypeOf(req.user).toBeString()
+				expectTypeOf(ctx.db.query).toBeFunction()
+			},
+		})
+
+		expectTypeOf(mw.fn).toBeFunction()
+		expect(mw.useContexts).toContain("db")
 	})
 })

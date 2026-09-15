@@ -96,10 +96,12 @@ function _fastPath(
 ): any {
 	const runMiddlewares = () => {
 		if (this.middlewares.length === 1) {
-			const mwResult = this.middlewares[0].fn(
+			const mw = this.middlewares[0]
+			const mwResult = mw.fn(
 				request,
 				response,
 				EMPTY_NEXT,
+				mw.ctx ?? {},
 			)
 
 			// wait for async middleware to finish before calling the handler

@@ -22,7 +22,7 @@ import IPC from "./classes/IPC"
 import LoggerMiddleware from "./middlewares/logger"
 import CorsMiddleware from "./middlewares/cors"
 
-import type { MiddlewareHandlerFunction } from "./classes/Handler/middleware"
+import type { MiddlewareHandlerFunction, MiddlewareObj } from "./classes/Handler/middleware"
 import type { WebsocketHandlerFunction } from "./classes/Handler/websocket"
 import type { EngineAdaptor } from "./classes/EngineAdaptor"
 import type { IPCEvents } from "./types"
@@ -67,8 +67,8 @@ export interface ServerParams {
 	useMiddlewares: Array<string | MiddlewareHandlerFunction>
 	/** Recognized HTTP method names. */
 	httpMethods: string[]
-	/** Plugins to load at startup. */
-	usePlugins: Array<typeof Plugin>
+	/** Array of Plugin classes to initialize. */
+	usePlugins: Array<new (server: any) => Plugin<any>>
 }
 
 /** Shape passed to the engine for registering a single HTTP route. */
@@ -100,7 +100,7 @@ export class Server<EngineType extends string = "neo"> {
 	static refName?: string
 	static useEngine?: string
 	static useMiddlewares?: Array<string | MiddlewareHandlerFunction>
-	static usePlugins?: Array<typeof Plugin>
+	static usePlugins?: Array<new (server: any) => Plugin<any>>
 
 	static listenIp?: string
 	static listenPort?: string | number
@@ -129,7 +129,7 @@ export class Server<EngineType extends string = "neo"> {
 	contexts!: Record<string, any>
 
 	/** User-defined middlewares (merged with base_middlewares at route init). */
-	middlewares!: Record<string, MiddlewareHandlerFunction<any, any, any, any>>
+	middlewares!: Record<string, MiddlewareHandlerFunction<any, any, any, any> | MiddlewareObj<any, any, any>>
 
 	// ---- runtime state ----
 

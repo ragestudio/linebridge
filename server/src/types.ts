@@ -129,7 +129,9 @@ export type ExtractReqExt<
 	K extends any
 		? AllMiddlewares<Child>[K] extends { _reqExt?: infer ReqExt }
 			? NonNullable<ReqExt>
-			: {}
+			: AllMiddlewares<Child>[K] extends { fn: { _reqExt?: infer ReqExt } }
+				? NonNullable<ReqExt>
+				: {}
 		: never
 >
 
@@ -140,6 +142,8 @@ export type ExtractResExt<
 	K extends any
 		? AllMiddlewares<Child>[K] extends { _resExt?: infer ResExt }
 			? NonNullable<ResExt>
-			: {}
+			: AllMiddlewares<Child>[K] extends { fn: { _resExt?: infer ResExt } }
+				? NonNullable<ResExt>
+				: {}
 		: never
 >
