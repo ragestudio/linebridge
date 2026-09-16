@@ -2,18 +2,18 @@
  * Core TypeScript types used throughout the framework.
  */
 import type { Server } from "./server"
+import type { Request, Response } from "./classes/Handler/http"
+
 import type NeoRequest from "./engines/neo/request"
 import type NeoResponse from "./engines/neo/response"
 
 export type ServerRequest<T = Server<any>> =
 	ServerInstance<T> extends Server<"neo">
 		? NeoRequest
-		: import("./classes/Handler/http").Request & { [key: string]: any }
+		: Request & { [key: string]: any }
 
 export type ServerResponse<T = Server<any>> =
-	ServerInstance<T> extends Server<"neo">
-		? NeoResponse
-		: import("./classes/Handler/http").Response
+	ServerInstance<T> extends Server<"neo"> ? NeoResponse : Response
 
 /**
  * Extracts the known keys from a type, excluding string-index and
@@ -129,7 +129,9 @@ export type ExtractReqExt<
 	K extends any
 		? AllMiddlewares<Child>[K] extends { _reqExt?: infer ReqExt }
 			? NonNullable<ReqExt>
-			: AllMiddlewares<Child>[K] extends { fn: { _reqExt?: infer ReqExt } }
+			: AllMiddlewares<Child>[K] extends {
+						fn: { _reqExt?: infer ReqExt }
+				  }
 				? NonNullable<ReqExt>
 				: {}
 		: never
@@ -142,7 +144,9 @@ export type ExtractResExt<
 	K extends any
 		? AllMiddlewares<Child>[K] extends { _resExt?: infer ResExt }
 			? NonNullable<ResExt>
-			: AllMiddlewares<Child>[K] extends { fn: { _resExt?: infer ResExt } }
+			: AllMiddlewares<Child>[K] extends {
+						fn: { _resExt?: infer ResExt }
+				  }
 				? NonNullable<ResExt>
 				: {}
 		: never

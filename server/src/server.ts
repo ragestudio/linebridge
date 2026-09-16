@@ -28,7 +28,12 @@ import type {
 } from "./classes/Handler/middleware"
 import type { WebsocketHandlerFunction } from "./classes/Handler/websocket"
 import type { EngineAdaptor } from "./classes/EngineAdaptor"
-import type { IPCEvents } from "./types"
+import type {
+	ServerResponse,
+	ContextsKeys,
+	MiddlewaresKeys,
+	IPCEvents,
+} from "./types"
 
 import { Plugin } from "./classes/Plugin"
 import { Route, RouteAlike, RouteObject } from "./classes/Route"

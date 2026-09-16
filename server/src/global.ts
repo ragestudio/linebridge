@@ -1,47 +1,31 @@
-import { webcrypto as crypto } from "node:crypto"
-import { Buffer } from "node:buffer"
+import { OperationError as M_OperationError } from "./classes/OperationError"
+import { defineRoute as M_DefineRoute } from "./classes/Route"
+import { defineMiddleware as M_DefineMiddleware } from "./classes/Handler/middleware"
 
-import { OperationError } from "./classes/OperationError"
-import { defineRoute } from "./classes/Route"
-import { defineMiddleware } from "./classes/Handler/middleware"
+import M_nanoid from "./utils/nanoid"
+import M_toBoolean from "./utils/toBoolean"
+import M_base64 from "./utils/base64"
 
-global.OperationError = OperationError
-global.defineRoute = defineRoute
-global.defineMiddleware = defineMiddleware
+declare global {
+	var isProduction: boolean
+	var OperationError: typeof M_OperationError
+	var defineRoute: typeof M_DefineRoute
+	var defineMiddleware: typeof M_DefineMiddleware
+	var nanoid: typeof M_nanoid
+	var ToBoolean: typeof M_toBoolean
+	var b64Decode: typeof M_base64.decode
+	var b64Encode: typeof M_base64.encode
+}
 
 global.isProduction = process.env.NODE_ENV === "production"
 
-global.b64Decode = (data) => {
-	return Buffer.from(data, "base64").toString("utf-8")
-}
-global.b64Encode = (data) => {
-	return Buffer.from(data, "utf-8").toString("base64")
-}
+global.OperationError = M_OperationError
+global.defineRoute = M_DefineRoute
+global.defineMiddleware = M_DefineMiddleware
+global.nanoid = M_nanoid
+global.ToBoolean = M_toBoolean
 
-global.nanoid = (t = 21) =>
-	crypto
-		.getRandomValues(new Uint8Array(t))
-		.reduce(
-			(t, e) =>
-				(t +=
-					(e &= 63) < 36
-						? e.toString(36)
-						: e < 62
-							? (e - 26).toString(36).toUpperCase()
-							: e > 62
-								? "-"
-								: "_"),
-			"",
-		)
+global.b64Decode = M_base64.decode
+global.b64Encode = M_base64.encode
 
-global.ToBoolean = (value) => {
-	if (typeof value === "boolean") {
-		return value
-	}
-
-	if (typeof value === "string") {
-		return value.toLowerCase() === "true"
-	}
-
-	return false
-}
+export {}
