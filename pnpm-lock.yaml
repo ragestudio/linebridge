@@ -149,9 +149,6 @@ importers:
       '@types/node':
         specifier: ^26.5.0
         version: 26.5.1
-      '@vitest/ui':
-        specifier: 4.1.11
-        version: 4.1.11(vitest@4.1.11)
       tsc-alias:
         specifier: ^1.9.5
         version: 1.9.5
@@ -1822,7 +1819,8 @@ snapshots:
 
   '@oxc-project/types@0.149.0': {}
 
-  '@polka/url@1.0.0-next.29': {}
+  '@polka/url@1.0.0-next.29':
+    optional: true
 
   '@rolldown/binding-android-arm-eabi@1.2.8':
     optional: true
@@ -2196,6 +2194,7 @@ snapshots:
       tinyglobby: 0.2.17
       tinyrainbow: 3.1.1
       vitest: 4.1.11(@types/node@26.5.1)(@vitest/ui@4.1.11)(vite@8.3.0(@types/node@26.5.1))
+    optional: true
 
   '@vitest/utils@4.1.11':
     dependencies:
@@ -2334,13 +2333,15 @@ snapshots:
     optionalDependencies:
       picomatch: 4.0.7
 
-  fflate@0.8.3: {}
+  fflate@0.8.3:
+    optional: true
 
   fill-range@7.1.1:
     dependencies:
       to-regex-range: 5.0.1
 
-  flatted@3.4.4: {}
+  flatted@3.4.4:
+    optional: true
 
   fsevents@2.3.3:
     optional: true
@@ -2466,7 +2467,8 @@ snapshots:
 
   module-alias@2.3.4: {}
 
-  mrmime@2.0.1: {}
+  mrmime@2.0.1:
+    optional: true
 
   mylas@2.1.14: {}
 
@@ -2581,6 +2583,7 @@ snapshots:
       '@polka/url': 1.0.0-next.29
       mrmime: 2.0.1
       totalist: 3.0.1
+    optional: true
 
   slash@3.0.0: {}
 
@@ -2633,7 +2636,8 @@ snapshots:
     dependencies:
       is-number: 7.0.0
 
-  totalist@3.0.1: {}
+  totalist@3.0.1:
+    optional: true
 
   ts-interface-checker@0.1.13: {}
 
