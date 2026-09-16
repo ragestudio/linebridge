@@ -144,7 +144,9 @@ export class Route<
 		}
 
 		if (!this.handler && !this.fn) {
-			throw new Error(`Route [${this.path}] does not have a handler or fn`)
+			throw new Error(
+				`Route [${this.path}] does not have a handler or fn`,
+			)
 		}
 
 		this.pathParametersKey = parsePathParameters(this.path)
@@ -221,7 +223,10 @@ export class Route<
 					continue
 				}
 
-				const handler = this._to_handler(middleware, HandlerKind.middleware)
+				const handler = this._to_handler(
+					middleware,
+					HandlerKind.middleware,
+				)
 
 				if (handler) {
 					// assign resolved contexts to the middleware handler
