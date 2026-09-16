@@ -1,15 +1,10 @@
-import "../../bootloader/index.d.ts"
+import "@linebridge/bootloader"
 
-import { Server } from "../src/index"
-
-import OpenApiPlugin from "../../plugins/openapi/src/index"
-import SharedMapPlugin from "../../plugins/shm_map/build/out/index"
-
+import { Server } from "linebridge"
 import injectTest from "./middlewares/injectTest"
 
 export default class ExampleAPI extends Server {
 	static useMiddlewares = ["logs"]
-	static usePlugins = [OpenApiPlugin, SharedMapPlugin]
 
 	routes: Record<string, any> = {
 		// basic route

@@ -1,4 +1,11 @@
 {
 	"version": "0.0.0",
-	"name": "example"
+	"name": "example",
+	"scripts": {
+		"start": "linebridge-boot index.ts"
+	},
+	"dependencies": {
+		"linebridge": "link:../dist",
+		"@linebridge/bootloader": "link:../../bootloader"
+	}
 }

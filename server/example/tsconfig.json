@@ -1,9 +1,10 @@
 {
 	"$schema": "http://json.schemastore.org/tsconfig",
 	"compilerOptions": {
-		"target": "ESNext",
-		"module": "ESNext",
+		"module": "es2022",
+		"moduleResolution": "bundler",
 		"allowSyntheticDefaultImports": true,
+		"esModuleInterop": true,
 		"strict": false,
 		"noImplicitAny": false,
 		"skipLibCheck": true,
@@ -11,6 +12,5 @@
 			"@/*": ["./*"],
 		},
 	},
-	"files": ["../src/index.ts", "../src/global.ts"],
 	"include": ["**/*.ts"],
 }

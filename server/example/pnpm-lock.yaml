@@ -1,0 +1,16 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      '@linebridge/bootloader':
+        specifier: link:../../bootloader
+        version: link:../../bootloader
+      linebridge:
+        specifier: link:../dist
+        version: link:../dist

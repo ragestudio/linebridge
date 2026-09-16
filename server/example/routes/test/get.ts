@@ -2,7 +2,7 @@ import API from "@/index"
 
 export default defineRoute(API)({
 	useMiddlewares: ["test", "injectTest"],
-	useContexts: ["sum", "server", "sharedMap"],
+	useContexts: ["sum", "server"],
 	fn: (req, res, ctx) => {
 		const testSum = ctx.sum(5, 10)
 

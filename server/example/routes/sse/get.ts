@@ -1,5 +1,4 @@
 import API from "@/index"
-import { defineRoute } from "../../../src/classes/Route/index"
 
 export default defineRoute(API)({
 	fn: (req, res) => {
