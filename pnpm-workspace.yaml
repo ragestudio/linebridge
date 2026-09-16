@@ -1,0 +1,6 @@
+packages:
+  - "bootloader"
+  - "engines/*"
+  - "client"
+  - "server"
+  - "plugins/*"
