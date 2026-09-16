@@ -23,7 +23,7 @@ cp package.json $OUT_DIR/package.json
 cp README.md $OUT_DIR/README.md
 
 # now, must update the main/type fields in the dist package.json
-jq '.main = "./index.js" | .types = "./index.d.ts"' "$OUT_DIR/package.json" > "$OUT_DIR/package.json.tmp"
+jq '.main = "./lib/index.js" | .types = "./lib/index.d.ts"' "$OUT_DIR/package.json" > "$OUT_DIR/package.json.tmp"
 APPLY_TEMP_JSON
 
 # add or update "type": "module" to the dist package.json
@@ -35,7 +35,7 @@ jq 'del(.scripts)' "$OUT_DIR/package.json" > "$OUT_DIR/package.json.tmp"
 APPLY_TEMP_JSON
 
 # update the exports field in the dist package.json
-jq '.exports |= map_values(sub("^\\./src/"; "./") | sub("\\.ts$"; ".js"))' "$OUT_DIR/package.json" > "$OUT_DIR/package.json.tmp"
+jq '.exports |= map_values(sub("^\\./src/"; "./lib/") | sub("\\.ts$"; ".js"))' "$OUT_DIR/package.json" > "$OUT_DIR/package.json.tmp"
 APPLY_TEMP_JSON
 
 ls -la $OUT_DIR
