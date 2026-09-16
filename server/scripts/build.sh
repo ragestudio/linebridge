@@ -27,8 +27,8 @@ jq '.main = "./index.js" | .types = "./index.d.ts"' "$OUT_DIR/package.json" > "$
 APPLY_TEMP_JSON
 
 # add or update "type": "module" to the dist package.json
-jq '.type = "module"' $OUT_DIR/package.json > "$OUT_DIR/package.json.tmp"
-APPLY_TEMP_JSON
+# jq '.type = "module"' $OUT_DIR/package.json > "$OUT_DIR/package.json.tmp"
+# APPLY_TEMP_JSON
 
 # remove scripts fields
 jq 'del(.scripts)' "$OUT_DIR/package.json" > "$OUT_DIR/package.json.tmp"
