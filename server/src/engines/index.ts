@@ -17,4 +17,8 @@ export const Engines: Engines = {
 	neo: neo,
 }
 
+export function registerEngine(name: string, engine: typeof EngineAdaptor) {
+	Engines[name] = engine
+}
+
 export default Engines
