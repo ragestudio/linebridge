@@ -22,7 +22,10 @@ import IPC from "./classes/IPC"
 import LoggerMiddleware from "./middlewares/logger"
 import CorsMiddleware from "./middlewares/cors"
 
-import type { MiddlewareHandlerFunction, MiddlewareObj } from "./classes/Handler/middleware"
+import type {
+	MiddlewareHandlerFunction,
+	MiddlewareObj,
+} from "./classes/Handler/middleware"
 import type { WebsocketHandlerFunction } from "./classes/Handler/websocket"
 import type { EngineAdaptor } from "./classes/EngineAdaptor"
 import type { IPCEvents } from "./types"
@@ -64,7 +67,9 @@ export interface ServerParams {
 	/** Filesystem path scanned for WebSocket event files. */
 	wsRoutesPath: string
 	/** Middlewares to apply globally (by name or function). */
-	useMiddlewares: Array<string | MiddlewareHandlerFunction>
+	useMiddlewares: Array<
+		string | MiddlewareHandlerFunction | MiddlewareObj<any, any, any>
+	>
 	/** Recognized HTTP method names. */
 	httpMethods: string[]
 	/** Array of Plugin classes to initialize. */
@@ -76,7 +81,9 @@ export interface HttpRegisterObj {
 	method: string
 	route: string
 	filePath?: string
-	middlewares?: Array<string | MiddlewareHandlerFunction>
+	middlewares?: Array<
+		string | MiddlewareHandlerFunction | MiddlewareObj<any, any, any>
+	>
 	fn: (req: Request, res: Response) => Promise<void>
 }
 
@@ -99,7 +106,9 @@ export class Server<EngineType extends string = "neo"> {
 	// These are read in the constructor and merged into this.params.
 	static refName?: string
 	static useEngine?: string
-	static useMiddlewares?: Array<string | MiddlewareHandlerFunction>
+	static useMiddlewares?: Array<
+		string | MiddlewareHandlerFunction | MiddlewareObj<any, any, any>
+	>
 	static usePlugins?: Array<new (server: any) => Plugin<any>>
 
 	static listenIp?: string
@@ -129,7 +138,11 @@ export class Server<EngineType extends string = "neo"> {
 	contexts!: Record<string, any>
 
 	/** User-defined middlewares (merged with base_middlewares at route init). */
-	middlewares!: Record<string, MiddlewareHandlerFunction<any, any, any, any> | MiddlewareObj<any, any, any>>
+	middlewares!: Record<
+		string,
+		| MiddlewareHandlerFunction<any, any, any, any>
+		| MiddlewareObj<any, any, any>
+	>
 
 	// ---- runtime state ----
 
@@ -336,7 +349,7 @@ export class Server<EngineType extends string = "neo"> {
 		try {
 			const pkgContent = await fs.promises.readFile(
 				path.resolve(process.cwd(), "package.json"),
-				"utf8"
+				"utf8",
 			)
 			Vars.projectPkg = JSON.parse(pkgContent)
 		} catch (error) {

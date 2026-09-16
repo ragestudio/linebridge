@@ -24,9 +24,14 @@ import type {
  * @throws {Error} if a named middleware is not found in the map
  */
 export default (
-	middlewares: Record<string, MiddlewareHandlerFunction | MiddlewareObj>,
-	selectors: Array<MiddlewareHandlerFunction | string>,
-): MiddlewareHandlerFunction[] => {
+	middlewares: Record<
+		string,
+		MiddlewareHandlerFunction | MiddlewareObj<any, any, any>
+	>,
+	selectors: Array<
+		MiddlewareHandlerFunction | MiddlewareObj<any, any, any> | string
+	>,
+): Array<MiddlewareHandlerFunction | MiddlewareObj<any, any, any>> => {
 	// return empty if there's nothing to resolve
 	if (!middlewares || !selectors) {
 		return []
@@ -37,35 +42,32 @@ export default (
 		selectors = [selectors]
 	}
 
-	const execs: MiddlewareHandlerFunction[] = []
+	const execs: Array<
+		MiddlewareHandlerFunction | MiddlewareObj<any, any, any>
+	> = []
 
 	selectors.forEach((middlewareKey) => {
-		let item!: MiddlewareHandlerFunction
+		let item!: MiddlewareHandlerFunction | MiddlewareObj<any, any, any>
 
 		// resolve by name from the middlewares map
 		if (typeof middlewareKey === "string") {
 			const resolved = middlewares[middlewareKey]
-
-			// if it's a MiddlewareObj, extract the fn
-			if (
-				resolved &&
-				typeof resolved === "object" &&
-				typeof (resolved as MiddlewareObj).fn === "function"
-			) {
-				item = (resolved as MiddlewareObj).fn
-			} else {
-				item = resolved as MiddlewareHandlerFunction
-			}
+			item = resolved as any
 		}
 
-		// use the function reference directly
-		if (typeof middlewareKey === "function") {
+		// use the function/object reference directly
+		if (
+			typeof middlewareKey === "function" ||
+			typeof middlewareKey === "object"
+		) {
 			item = middlewareKey
 		}
 
 		// if resolution failed, report the error immediately
 		if (!item) {
-			throw new Error(`Failed to find required middleware [${middlewareKey}]`)
+			throw new Error(
+				`Failed to find required middleware [${middlewareKey}]`,
+			)
 		}
 
 		execs.push(item)

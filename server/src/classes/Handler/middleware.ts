@@ -92,20 +92,6 @@ export function defineMiddleware<Child = Server<any>>(): {
 	>
 } {
 	return ((definition: any) => {
-		if (typeof definition === "function") {
-			return definition
-		}
-
-		const handler = async (req: any, res: any, next: () => void, ctx: any) => {
-			return await definition.fn(req, res, next, ctx)
-		}
-
-		handler.useMiddlewares = definition.useMiddlewares ?? []
-		handler.useContexts = definition.useContexts ?? []
-
-		handler._reqExt = definition.injectReq
-		handler._resExt = definition.injectRes
-
-		return handler
+		return definition
 	}) as any
 }
