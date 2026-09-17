@@ -1,11 +1,11 @@
 {
-  "name": "linebridge-monorepo",
-  "private": true,
-  "scripts": {
-    "test": "pnpm -r test",
-    "build": "pnpm -r build"
-  },
-  "devDependencies": {
-    "@linebridge/engine-neo": "workspace:*"
-  }
+	"name": "linebridge-monorepo",
+	"private": true,
+	"scripts": {
+		"test": "pnpm -r test",
+		"build": "pnpm -r build"
+	},
+	"devDependencies": {
+		"@linebridge/engine-neo": "workspace:*"
+	}
 }
