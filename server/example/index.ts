@@ -1,6 +1,3 @@
-import "@linebridge/bootloader"
-import "@linebridge/engine-neo/declare"
-
 import { Server } from "linebridge"
 import injectTest from "./middlewares/injectTest"
 
