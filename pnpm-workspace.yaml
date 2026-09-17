@@ -4,5 +4,6 @@ packages:
   - "client"
   - "server"
   - "plugins/*"
+
 allowBuilds:
   esbuild: true
