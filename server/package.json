@@ -33,13 +33,9 @@
 	"peerDependencies": {
 		"@nats-io/jetstream": "^3.4.0",
 		"@nats-io/kv": "^3.4.0",
-		"@nats-io/transport-node": "^3.4.0",
-		"@linebridge/engine-neo": "workspace:*"
+		"@nats-io/transport-node": "^3.4.0"
 	},
 	"peerDependenciesMeta": {
-		"@linebridge/engine-neo": {
-			"optional": true
-		},
 		"@nats-io/transport-node": {
 			"optional": true
 		},
