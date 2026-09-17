@@ -4,7 +4,7 @@ Linebridge applications can be packaged as Docker containers for both standalone
 
 > **glibc required**: uWebSockets.js (the Neo engine) links against glibc and is **not compatible with musl libc**. Alpine-based images (`node:*-alpine`) will fail at runtime. Always use Debian-based images (`node:24`, `node:24-slim`, or `ragestudio/ultragateway`). The `ragestudio/ultragateway` image is based on Debian Trixie Slim and includes Node.js + ultragateway pre-installed.
 
-> **Bootloader in containers**: Define an npm script (`"prod": "linebridge-boot index.ts"`) and use `CMD ["npm", "run", "prod"]`. The bootloader (should be at `node_modules/.bin/linebridge-boot`) handles `.env` loading, TypeScript/ESM JIT transpilation via Sucrase, and path aliases — your TypeScript source runs without a build step. See the [Bootloader guide](./bootloader).
+> **Bootloader in containers**: Define an npm script (`"prod": "linebridge-boot index.ts"`) and use `CMD ["npm", "run", "prod"]`. The bootloader (should be at `node_modules/.bin/linebridge-boot`) handles `.env` loading, TypeScript/ESM JIT transpilation via `tsx` (esbuild), and path aliases — your TypeScript source runs without a build step. See the [Bootloader guide](./bootloader).
 
 ## Base Images
 

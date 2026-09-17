@@ -37,7 +37,7 @@ Each service process receives these environment variables:
 The bootloader:
 1. Loads `.env`
 2. Sets up path aliases
-3. Registers the Sucrase transpiler
+3. Registers the `tsx` transpiler (using `esbuild`)
 4. Executes the service's `index.ts`
 
 The gateway captures both `stdout` and `stderr` and prefixes each line with a color-coded service ID:

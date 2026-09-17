@@ -7,7 +7,6 @@ The `Server` class is the foundation of every Linebridge application. You extend
 ## Basic Usage
 
 ```ts
-import "@linebridge/bootloader"
 import { Server } from "linebridge"
 
 export default class MyAPI extends Server {
@@ -48,7 +47,7 @@ export default class MyAPI extends Server {
 | `refName` | `string` | `"linebridge"` | Unique name for this service instance |
 | `listenIp` | `string` | `"0.0.0.0"` | IP address to bind to |
 | `listenPort` | `number` | `3000` | Port to listen on |
-| `useEngine` | `string` | `"neo"` | Engine to use for HTTP/WS |
+| `useEngine` | `string` | `"neo"` | Engine to use for HTTP/WS. *Linebridge will automatically `import("@linebridge/engine-{name}/register")` at runtime.* |
 | `websockets` | `boolean \| WebsocketParams` | `false` | Enable WebSocket support |
 | `nats` | `NatsParams \| null` | `null` | NATS connection settings |
 | `baseRoutes` | `boolean` | `true` | Register `/` and `/_map` endpoints |
@@ -275,7 +274,7 @@ export default class MyAPI extends Server {
 
 ## `Boot()` Function
 
-The global `Boot()` function instantiates your server class and calls `run()`. It is automatically exposed when you run your app via `linebridge-boot` or when you add `import "@linebridge/bootloader"` in your main file:
+The global `Boot()` function instantiates your server class and calls `run()`. It is automatically exposed when you run your app via `linebridge-boot`. For TypeScript to recognize it globally without importing it in your source code, ensure you have `import "@linebridge/bootloader"` in your project's `env.d.ts` file:
 
 ```ts
 Boot(MyAPI)

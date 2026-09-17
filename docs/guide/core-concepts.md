@@ -54,11 +54,11 @@ When `server.run()` is called, the following sequence executes:
 
 ## Engines
 
-Engines are the transport layer. Linebridge ships with one engine:
+Engines are the transport layer. Linebridge delegates the actual HTTP and WebSocket networking to an engine package.
 
-### Neo Engine (default)
+### Neo Engine (Recommended Default)
 
-Based on **uWebSockets.js**, the Neo engine provides:
+The Neo engine is available via the `@linebridge/engine-neo` package. Based on **uWebSockets.js**, it provides:
 
 - HTTP/HTTPS server with automatic SSL detection
 - WebSocket support with pub/sub via MQTT-style topics
@@ -71,7 +71,7 @@ Based on **uWebSockets.js**, the Neo engine provides:
 
 > **Platform note**: The Neo engine and Gateway are designed for Linux and macOS. Unix socket mode is not available on Windows. Use [WSL](https://learn.microsoft.com/en-us/windows/wsl/) for Windows development.
 
-To add a custom engine, implement the `EngineAdaptor` interface and register it in `src/engines/index.ts`.
+To create a custom engine, implement the `EngineAdaptor` class and register it by calling `registerEngine('my-engine', MyEngineClass)` from `linebridge/engines`.
 
 ## TypeScript Type Safety
 

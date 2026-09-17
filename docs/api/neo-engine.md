@@ -2,14 +2,23 @@
 
 The Neo engine is the default HTTP/WS engine, built on **uWebSockets.js v20.68.0**. It extends `EngineAdaptor` and provides the full transport layer.
 
-## Import
+## Setup & Import
 
-```ts
-// The engine is automatically instantiated by the Server
-// To use it, set: static useEngine = "neo"
+The Neo engine is available as an external package. Install it:
+
+```bash
+npm install @linebridge/engine-neo
 ```
 
-The engine is registered in `src/engines/index.ts` and selected via the `useEngine` server param.
+Once installed, it is automatically instantiated by the Server when using `static useEngine = "neo"` (which is the default). Linebridge will dynamically `import("@linebridge/engine-neo/register")` to load it.
+
+To gain full TypeScript inference for `NeoRequest` and `NeoResponse`, add a global `env.d.ts` file to your project:
+
+```ts
+// env.d.ts
+import "@linebridge/bootloader"
+import "@linebridge/engine-neo"
+```
 
 ## Constructor
 

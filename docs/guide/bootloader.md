@@ -5,7 +5,7 @@
 > **Note:** The bootloader has been extracted into its own package. You must install it alongside Linebridge:
 >
 > ```bash
-> npm install linebridge @linebridge/bootloader
+> npm install linebridge @linebridge/bootloader @linebridge/engine-neo
 > ```
 
 ## Usage
@@ -45,21 +45,20 @@ When you run `linebridge-boot`, the bootloader executes these steps in order:
 1. **`.env` loading** — reads `.env` from the working directory via `dotenv`
 2. **Path resolution** — resolves the main module to an absolute path
 3. **Alias setup** — registers path aliases for clean imports
-4. **Sucrase transpiler** — registers `sucrase/register` for JIT compilation
+4. **TSX transpiler** — registers `tsx` for JIT compilation using `esbuild`
 5. **Module execution** — runs your main module via `Module.runMain()`
 
 ## JIT Transpilation
 
-The bootloader uses [Sucrase](https://github.com/alangpierce/sucrase) to transpile TypeScript and ESM on-the-fly. This means:
+The bootloader uses [tsx](https://github.com/privatenumber/tsx) (powered by `esbuild`) to transpile TypeScript and ESM on-the-fly. This means:
 
 - **No build step needed** — write `.ts` files directly
 - **ESM and CommonJS** — both module systems work
 - **TypeScript syntax** — types are stripped, JS is executed directly
-- **Instant startup** — no `tsc` compilation, no `ts-node` overhead
+- **Instant startup** — extremely fast execution thanks to `esbuild`
 
 ```ts
 // index.ts — runs directly without compilation
-import "@linebridge/bootloader"
 import { Server } from "linebridge"
 
 export default class API extends Server {

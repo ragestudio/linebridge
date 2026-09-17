@@ -744,7 +744,8 @@ button[title="Copy Code"].copy {
 				.clicky();
 				opacity: 0.85;
 
-				> .text {
+				> .link { padding-left: 32px; }
+							> .text {
 					display: flex;
 					align-items: center;
 					font-size: 1rem;
@@ -758,7 +759,7 @@ button[title="Copy Code"].copy {
 				}
 			}
 
-			> .items > .VPSidebarItem {
+			> .items > li > .VPSidebarItem {
 				padding-left: 20px;
 				border-left: 1px solid @mauve-600;
 				border-radius: 12px;
@@ -766,7 +767,7 @@ button[title="Copy Code"].copy {
 
 				// TOC items
 				&:not(.collapsible),
-				&.collapsible > .items > .VPSidebarItem {
+				&.collapsible > .items > li > .VPSidebarItem {
 					&:hover,
 					&:focus,
 					&.is-active.has-active {
@@ -801,7 +802,8 @@ button[title="Copy Code"].copy {
 						&:focus {
 							background-color: var(--vp-c-brand-nav-active);
 
-							> h3 {
+							> .link { padding-left: 32px; }
+							> .text {
 								color: var(--vp-c-brand) !important;
 							}
 
@@ -814,8 +816,10 @@ button[title="Copy Code"].copy {
 							transform: translateX(16px);
 						}
 
-						> h3 {
+						> .link { padding-left: 32px; }
+							> .text {
 							font-weight: 400;
+								padding-left: 32px;
 						}
 
 						&:has(.link) {
@@ -827,7 +831,8 @@ button[title="Copy Code"].copy {
 									background-color: var(--vp-c-brand);
 								}
 
-								> .link > h3 {
+								> .link > .link { padding-left: 32px; }
+							> .text {
 									color: var(--vp-c-brand) !important;
 								}
 							}
@@ -838,6 +843,8 @@ button[title="Copy Code"].copy {
 						padding-right: @spacing-2;
 						background-color: var(--vp-c-brand-nav-active);
 						border-color: var(--vp-c-brand-nav-active) !important;
+							> .link .text { color: var(--vp-c-brand) !important; }
+							> .link { padding-left: 32px; }
 
 						> .indicator {
 							transform: translateX(16px);
@@ -854,7 +861,7 @@ button[title="Copy Code"].copy {
 						border: 0;
 						padding-left: 0;
 
-						> .VPSidebarItem {
+						> li > .VPSidebarItem {
 							border-left: 1px solid @mauve-600;
 							padding-left: @spacing-4;
 							min-height: @spacing-8;
@@ -872,12 +879,14 @@ button[title="Copy Code"].copy {
 		}
 
 		// Sidebar section icon gradients
-		> .VPSidebarItem > .item > .text {
+		> .VPSidebarItem > .item > .link { padding-left: 32px; }
+							> .text {
 			position: relative;
 			padding-left: 44px;
 		}
 
-		&:nth-child(n + 1) > .VPSidebarItem > .item > .text {
+		&:nth-child(n + 1) > .VPSidebarItem > .item > .link { padding-left: 32px; }
+							> .text {
 			//background-color: red;
 		}
 
@@ -888,7 +897,8 @@ button[title="Copy Code"].copy {
 			}
 		}
 
-		&:nth-child(n + 1) > .VPSidebarItem > .item > .text {
+		&:nth-child(n + 1) > .VPSidebarItem > .item > .link { padding-left: 32px; }
+							> .text {
 			/*
 			&::before {
 				position: absolute;
@@ -920,7 +930,8 @@ button[title="Copy Code"].copy {
 			}
 		}
 
-		&:nth-child(2) > .VPSidebarItem > .item > .text {
+		&:nth-child(2) > .VPSidebarItem > .item > .link { padding-left: 32px; }
+							> .text {
 			&::after {
 				background-image: linear-gradient(
 					to bottom right,
@@ -930,13 +941,15 @@ button[title="Copy Code"].copy {
 			}
 		}
 
-		&:nth-child(3) > .VPSidebarItem > .item > .text {
+		&:nth-child(3) > .VPSidebarItem > .item > .link { padding-left: 32px; }
+							> .text {
 			&::after {
 				background-image: linear-gradient(to bottom right, #2dd4bf, #60a5fa);
 			}
 		}
 
-		&:nth-child(4) > .VPSidebarItem > .item > .text {
+		&:nth-child(4) > .VPSidebarItem > .item > .link { padding-left: 32px; }
+							> .text {
 			&::after {
 				background-image: linear-gradient(
 					to bottom right,
@@ -946,31 +959,36 @@ button[title="Copy Code"].copy {
 			}
 		}
 
-		&:nth-child(5) > .VPSidebarItem > .item > .text {
+		&:nth-child(5) > .VPSidebarItem > .item > .link { padding-left: 32px; }
+							> .text {
 			&::after {
 				background-image: linear-gradient(to bottom right, #818cf8, #d946ef);
 			}
 		}
 
-		&:nth-child(6) > .VPSidebarItem > .item > .text {
+		&:nth-child(6) > .VPSidebarItem > .item > .link { padding-left: 32px; }
+							> .text {
 			&::after {
 				background-image: linear-gradient(to bottom right, #a78bfa, #fb7185);
 			}
 		}
 
-		&:nth-child(7) > .VPSidebarItem > .item > .text {
+		&:nth-child(7) > .VPSidebarItem > .item > .link { padding-left: 32px; }
+							> .text {
 			&::after {
 				background-image: linear-gradient(to bottom right, #f472b6, #fb923c);
 			}
 		}
 
-		&:nth-child(8) > .VPSidebarItem > .item > .text {
+		&:nth-child(8) > .VPSidebarItem > .item > .link { padding-left: 32px; }
+							> .text {
 			&::after {
 				background-image: linear-gradient(to bottom right, #f87171, #facc15);
 			}
 		}
 
-		&:nth-child(9) > .VPSidebarItem > .item > .text {
+		&:nth-child(9) > .VPSidebarItem > .item > .link { padding-left: 32px; }
+							> .text {
 			&::after {
 				background-image: linear-gradient(to bottom right, #fb923c, #fbbf24);
 			}
@@ -1032,7 +1050,7 @@ button[title="Copy Code"].copy {
 			overflow: hidden;
 			padding-top: @spacing-9;
 
-			> .VPSidebarItem {
+			> li > .VPSidebarItem {
 				cursor: pointer;
 			}
 		}
@@ -1058,7 +1076,7 @@ button[title="Copy Code"].copy {
 		> .items {
 			padding-top: @spacing-8;
 
-			> .VPSidebarItem {
+			> li > .VPSidebarItem {
 				cursor: pointer;
 			}
 		}
@@ -1173,6 +1191,7 @@ button[title="Copy Code"].copy {
 			> p {
 				font-size: 0.75rem;
 				font-weight: 400;
+								padding-left: 32px;
 			}
 
 			> p {

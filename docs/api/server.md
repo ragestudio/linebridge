@@ -206,6 +206,8 @@ type MyRes = ServerResponse<MyAPI>  // NeoResponse<MyAPI>
 
 These types map the `EngineType` generic (default: `"neo"`) to the corresponding engine's Request/Response classes, exposing all engine-specific methods like `res.sse`, `req.sign()`, `res.cookie()`, etc.
 
+> **Note:** To make the `ServerRequest` and `ServerResponse` successfully map `"neo"` to the `NeoRequest` classes, you must include a global `env.d.ts` file in your project containing `import "@linebridge/engine-neo"` (and typically `import "@linebridge/bootloader"`).
+
 ## EngineType Generic
 
 The `Server` class accepts an optional `EngineType` generic parameter that controls which engine's Request/Response types are inferred by `defineRoute()`:

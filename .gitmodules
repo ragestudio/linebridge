@@ -1,3 +1,6 @@
 [submodule "linebridge-gateway"]
 	path = linebridge-gateway
 	url = https://git.ragestudio.net/RageStudio/linebridge-gateway
+[submodule "engines/neo/uWebSockets"]
+	path = engines/neo/uWebSockets
+	url = https://github.com/uNetworking/uWebSockets
