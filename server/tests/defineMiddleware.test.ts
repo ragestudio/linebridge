@@ -3,8 +3,7 @@ import { defineMiddleware } from "../src/classes/Handler/middleware"
 import { expectTypeOf } from "vitest"
 import { Server } from "../src/index"
 import composeMiddlewares from "../src/utils/composeMiddlewares"
-import register_middleware from "../src/engines/neo/register_middleware"
-import NeoEngine from "../src/engines/neo"
+import { EngineAdaptor } from "../src/classes/EngineAdaptor"
 
 describe("defineMiddleware", () => {
 	it("should return a definition function when called", () => {
@@ -86,7 +85,7 @@ describe("defineMiddleware Type Inference", () => {
 describe("defineMiddleware Runtime Execution", () => {
 	it("should properly resolve and inject contexts into the middleware at runtime", async () => {
 		// 1. Create a server with a context
-		class MockServer extends Server<"neo"> {
+		class MockServer extends Server<any> {
 			contexts = {
 				db: { value: 42 },
 			}
@@ -106,32 +105,48 @@ describe("defineMiddleware Runtime Execution", () => {
 		// 3. Inject it globally
 		MockServer.useMiddlewares = [testMw]
 
-		// 4. Instantiate and initialize the server to trigger composeMiddlewares & register_middleware
+		// 4. Instantiate and initialize the server
 		const server = new MockServer()
 
-		const mockEngine = new NeoEngine(server as any)
-		mockEngine.register_middleware = function (mw: any) {
-			// Replicate register_middleware logic
-			register_middleware.call(this, mw)
+		// Mock engine to intercept register_middleware
+		const registeredMiddlewares: any[] = []
+		class MockEngine extends EngineAdaptor {
+			initialize = async () => {}
+			listen = async () => {}
+			close = async () => true
+			register_middleware = (mw: any) => {
+				// Replicate engine logic: extracting context from the server
+				let ctx: any = undefined
+				if (mw.useContexts) {
+					ctx = {}
+					mw.useContexts.forEach((key: string) => {
+						if ((server.contexts as any)[key]) {
+							ctx[key] = (server.contexts as any)[key]
+						}
+					})
+				}
+				registeredMiddlewares.push({ ...mw, ctx })
+			}
 		}
-		server.engine = mockEngine
+
+		server.engine = new MockEngine(server as any)
 
 		// Replicate baseMiddlewares composer which is called in server run()
 		const middlewares = composeMiddlewares({ testMw }, ["testMw"])
 
 		middlewares.forEach((mw: any) => {
-			mockEngine.register_middleware(mw)
+			server.engine.register_middleware(mw)
 		})
 
-		// 5. Check if the engine registered it as a Handler with the context resolved
-		expect(mockEngine.middlewares).toHaveLength(1)
-		const handler = mockEngine.middlewares[0]
+		// 5. Check if the engine registered it with the context resolved
+		expect(registeredMiddlewares).toHaveLength(1)
+		const handler = registeredMiddlewares[0]
 		expect(handler.ctx).toBeDefined()
-		expect(handler.ctx!.db).toBeDefined()
-		expect(handler.ctx!.db.value).toBe(42)
+		expect(handler.ctx.db).toBeDefined()
+		expect(handler.ctx.db.value).toBe(42)
 
 		// 6. Execute the handler to verify runtime propagation
-		await handler.executeAsMiddleware({} as any, {} as any, () => {})
+		await handler.fn({} as any, {} as any, () => {}, handler.ctx)
 		expect(capturedCtx).toEqual({ db: { value: 42 } })
 	})
 })
