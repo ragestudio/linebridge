@@ -1,6 +1,6 @@
 {
 	"name": "@linebridge/bootloader",
-	"version": "2.0.0",
+	"version": "2.0.1",
 	"author": "ragestudio",
 	"license": "MIT",
 	"description": "Bootloader for Linebridge",
@@ -17,9 +17,7 @@
 	"dependencies": {
 		"chokidar": "^5.0.0",
 		"dotenv": "^17.4.2",
-		"esbuild": "^0.28.2",
 		"minimatch": "^10.2.6",
-		"module-alias": "^2.3.4",
 		"tsx": "^4.23.13"
 	},
 	"peerDependencies": {
