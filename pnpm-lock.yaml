@@ -6,6 +6,12 @@ settings:
 
 importers:
 
+  .:
+    devDependencies:
+      '@linebridge/engine-neo':
+        specifier: workspace:*
+        version: link:engines/neo
+
   bootloader:
     dependencies:
       '@infisical/sdk':
@@ -112,9 +118,6 @@ importers:
 
   server:
     dependencies:
-      '@linebridge/engine-neo':
-        specifier: workspace:*
-        version: link:../engines/neo
       '@nats-io/jetstream':
         specifier: ^3.4.0
         version: 3.4.0
