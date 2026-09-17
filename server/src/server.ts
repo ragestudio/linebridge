@@ -46,7 +46,7 @@ import { Client } from "./classes/RtEngine/classes/client"
 import path from "node:path"
 
 try {
-	const neo = await import("@linebridge/engine-neo")
+	const neo = await import("@linebridge/engine-neo/engine")
 	registerEngine("neo", neo.default)
 } catch {
 	// Ignore if the package is not installed
