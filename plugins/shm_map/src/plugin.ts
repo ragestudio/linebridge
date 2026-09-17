@@ -1,4 +1,4 @@
-import { Plugin } from "linebridge/src"
+import { Plugin } from "linebridge"
 import SharedMap from "./shared-map"
 
 export class ShmMapPlugin extends Plugin {
