@@ -35,6 +35,10 @@ APPLY_TEMP_JSON
 jq 'del(.scripts)' "$OUT_DIR/package.json" > "$OUT_DIR/package.json.tmp"
 APPLY_TEMP_JSON
 
+# remove devDependencies (they contain workspace:* which can't resolve outside the monorepo)
+jq 'del(.devDependencies)' "$OUT_DIR/package.json" > "$OUT_DIR/package.json.tmp"
+APPLY_TEMP_JSON
+
 # update the exports field in the dist package.json
 jq '.exports |= map_values(sub("^\\./src/"; "./lib/") | sub("\\.ts$"; ".js"))' "$OUT_DIR/package.json" > "$OUT_DIR/package.json.tmp"
 APPLY_TEMP_JSON
