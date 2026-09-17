@@ -5,17 +5,11 @@
 
 import type EngineAdaptor from "../classes/EngineAdaptor"
 
-import neo from "./neo"
-
-export interface EnginesRegistry {
-	neo: typeof neo
-}
+export interface EnginesRegistry {}
 
 export type Engines = EnginesRegistry & Record<string, typeof EngineAdaptor>
 
-export const Engines: Engines = {
-	neo: neo,
-}
+export const Engines: Engines = {} as Engines
 
 export function registerEngine(name: string, engine: typeof EngineAdaptor) {
 	Engines[name] = engine

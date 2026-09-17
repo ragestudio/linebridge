@@ -34,7 +34,7 @@ export class EngineAdaptor {
 	register!: (route: RouteAlike) => void
 
 	/** Registers a global middleware. */
-	register_middleware!: (middleware: MiddlewareHandlerFunction) => void
+	register_middleware!: (middleware: MiddlewareHandlerFunction | import("../Handler").MiddlewareObj<any, any, any>) => void
 
 	/** Async init - sets up SSL, creates the underlying server app, etc. */
 	initialize!: () => Promise<void>

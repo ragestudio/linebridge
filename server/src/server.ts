@@ -15,7 +15,10 @@ import registerPlugins from "./registers/plugins"
 import isExperimental from "./utils/isExperimental"
 import getHostAddress from "./utils/getHostAddress"
 
-import Engines, { type EnginesRegistry } from "./engines"
+import Engines, {
+	registerEngine,
+	type EnginesRegistry,
+} from "linebridge/engines"
 import NatsAdapter from "./classes/Nats/adapter"
 import IPC from "./classes/IPC"
 
@@ -41,6 +44,13 @@ import { HandlerKind } from "./classes/Handler"
 import { RtEngineContext, RtEngineSocket } from "./classes/RtEngine/types"
 import { Client } from "./classes/RtEngine/classes/client"
 import path from "node:path"
+
+try {
+	const neo = await import("@linebridge/engine-neo")
+	registerEngine("neo", neo.default)
+} catch {
+	// Ignore if the package is not installed
+}
 
 export interface NatsParams {
 	address?: string
@@ -107,6 +117,7 @@ export type ConstructorParams = Partial<ServerParams>
 export type ExtendedServer<T extends Server<any>> = Server<any> & T
 
 export class Server<EngineType extends string = "neo"> {
+	declare readonly __engine_type: EngineType
 	// ---- static properties: subclass overrides for default params ----
 	// These are read in the constructor and merged into this.params.
 	static refName?: string

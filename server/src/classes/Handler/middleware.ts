@@ -43,7 +43,7 @@ export function defineMiddleware<Child = Server<any>>(): {
 		ReqExt = {},
 		ResExt = {},
 		const UseContexts extends readonly ContextsKeys<Child>[] = readonly [],
-		const UseMiddlewares extends readonly MiddlewaresKeys<Server<any>>[] =
+		const UseMiddlewares extends readonly MiddlewaresKeys<Child>[] =
 			readonly [],
 	>(definition: {
 		useContexts?: UseContexts
@@ -53,11 +53,11 @@ export function defineMiddleware<Child = Server<any>>(): {
 		/** Helper property to inject types into `res` without explicit generics */
 		injectRes?: ResExt
 		fn: (
-			req: ServerRequest<Server<any>> &
-				ExtractReqExt<Server<any>, UseMiddlewares[number]> &
+			req: ServerRequest<Child> &
+				ExtractReqExt<Child, UseMiddlewares[number]> &
 				ReqExt,
-			res: ServerResponse<Server<any>> &
-				ExtractResExt<Server<any>, UseMiddlewares[number]> &
+			res: ServerResponse<Child> &
+				ExtractResExt<Child, UseMiddlewares[number]> &
 				ResExt,
 			next: () => void,
 			ctx: UseContexts extends readonly [any, ...any[]]
@@ -65,8 +65,8 @@ export function defineMiddleware<Child = Server<any>>(): {
 				: unknown,
 		) => any
 	}): MiddlewareObj<
-		Server<any>,
-		UseContexts[number] extends ContextsKeys<Server<any>>
+		Child,
+		UseContexts[number] extends ContextsKeys<Child>
 			? UseContexts[number]
 			: any,
 		UseMiddlewares[number]
@@ -80,13 +80,13 @@ export function defineMiddleware<Child = Server<any>>(): {
 	}
 	<ReqExt = {}, ResExt = {}>(
 		fn: (
-			req: ServerRequest<Server<any>> & ReqExt,
-			res: ServerResponse<Server<any>> & ResExt,
+			req: ServerRequest<Child> & ReqExt,
+			res: ServerResponse<Child> & ResExt,
 			next: () => void,
 		) => any,
 	): MiddlewareHandlerFunction<
-		ServerRequest<Server<any>>,
-		ServerResponse<Server<any>>,
+		ServerRequest<Child>,
+		ServerResponse<Child>,
 		ReqExt,
 		ResExt
 	>

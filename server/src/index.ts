@@ -36,6 +36,8 @@ declare global {
 }
 
 export type { Client as RTEClient } from "./classes/RtEngine/classes/client"
+export type { EnginesRegistry } from "./engines"
+export type { EnginesRequests, EnginesResponses } from "./types"
 export type * from "./server"
 
 export { Server, Plugin, Route }

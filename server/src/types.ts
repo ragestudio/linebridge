@@ -4,16 +4,22 @@
 import type { Server } from "./server"
 import type { Request, Response } from "./classes/Handler/http"
 
-import type NeoRequest from "./engines/neo/request"
-import type NeoResponse from "./engines/neo/response"
+export interface EnginesRequests<T = any> {}
+export interface EnginesResponses<T = any> {}
 
 export type ServerRequest<T = Server<any>> =
-	ServerInstance<T> extends Server<"neo">
-		? NeoRequest
+	ServerInstance<T> extends { __engine_type: infer E }
+		? E extends keyof import("linebridge/types").EnginesRequests<T>
+			? import("linebridge/types").EnginesRequests<T>[E]
+			: Request & { [key: string]: any }
 		: Request & { [key: string]: any }
 
 export type ServerResponse<T = Server<any>> =
-	ServerInstance<T> extends Server<"neo"> ? NeoResponse : Response
+	ServerInstance<T> extends { __engine_type: infer E }
+		? E extends keyof import("linebridge/types").EnginesResponses<T>
+			? import("linebridge/types").EnginesResponses<T>[E]
+			: Response & { [key: string]: any }
+		: Response & { [key: string]: any }
 
 /**
  * Extracts the known keys from a type, excluding string-index and

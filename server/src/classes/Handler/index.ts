@@ -13,12 +13,13 @@ import { Client } from "../RtEngine/classes/client"
 
 import type { Request, Response, HttpHandlerFunction } from "./http"
 import type { WebsocketHandlerFunction } from "./websocket"
-import type { MiddlewareHandlerFunction } from "./middleware"
+import type { MiddlewareHandlerFunction, MiddlewareObj } from "./middleware"
 
 export type {
 	HttpHandlerFunction,
 	WebsocketHandlerFunction,
 	MiddlewareHandlerFunction,
+	MiddlewareObj,
 }
 
 export enum HandlerKind {
