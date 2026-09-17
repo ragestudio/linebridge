@@ -1,9 +1,5 @@
-import BootFN from "./boot_function.cjs"
-
-declare function Boot(server: any): Promise<void>
-
 declare global {
-	var Boot: Boot
+	var Boot: (server: any) => Promise<void>
 }
 
-export default Boot
+export {}

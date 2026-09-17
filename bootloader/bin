@@ -1,2 +1,6 @@
 #!/usr/bin/env node
-require("./run.cjs")
+import { registerHooks } from "node:module"
+
+registerHooks("tsx", import.meta.url)
+
+await import("./bin.mjs")

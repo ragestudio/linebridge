@@ -1,4 +1,4 @@
-const InfisicalLib = require("./libs/infisical.cjs")
+import InfisicalLib from "./libs/infisical.mjs"
 
 async function Boot(main) {
 	if (!main) {
@@ -45,4 +45,4 @@ async function Boot(main) {
 	return instance
 }
 
-module.exports = Boot
+export default Boot

@@ -1,5 +1,5 @@
-const chokidar = require("chokidar")
-const { minimatch } = require("minimatch")
+import chokidar from "chokidar"
+import { minimatch } from "minimatch"
 
 const defaultIgnored = [
 	"**/.cache/**",
@@ -9,10 +9,12 @@ const defaultIgnored = [
 ]
 
 class Watcher {
-	static create = async (fromPath, { onReload }) => {
+	instance = null
+
+	constructor(fromPath, { onReload }) {
 		console.log("[WATCHER] Starting watching path >", fromPath)
 
-		global._watcher = chokidar.watch(fromPath, {
+		this.instance = chokidar.watch(fromPath, {
 			ignored: (path) =>
 				defaultIgnored.some((pattern) => minimatch(path, pattern)),
 			persistent: true,
@@ -20,7 +22,7 @@ class Watcher {
 			awaitWriteFinish: true,
 		})
 
-		global._watcher.on("all", (event, filePath) => {
+		this.instance.on("all", (event, filePath) => {
 			console.log(`[WATCHER] Event [${event}] > ${filePath}`)
 
 			if (typeof onReload === "function") {
@@ -30,4 +32,4 @@ class Watcher {
 	}
 }
 
-module.exports = Watcher
+export default Watcher

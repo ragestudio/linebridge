@@ -1,18 +1,17 @@
 class InfisicalLib {
-	static get client() {
-		try {
-			const mod = require("@infisical/sdk")
-
-			return mod.InfisicalSDK
-		} catch (e) {
-			return null
-		}
-	}
-
 	static LoadFromEnv = async () => {
-		if (!InfisicalLib.client) {
+		let sdk = null
+
+		try {
+			sdk = await import("@infisical/sdk")
+			sdk = client.InfisicalSDK
+		} catch (err) {
+			// not installed
+		}
+
+		if (!sdk) {
 			console.warn(
-				"WARN: Infisical client not found, skipping env injection...",
+				"WARN: Infisical client not found or installed, skipping env injection...",
 			)
 			return null
 		}
@@ -24,7 +23,7 @@ class InfisicalLib {
 			`[BOOT] 🔑 Injecting env variables from INFISICAL in [${envMode}] mode...`,
 		)
 
-		const client = new InfisicalLib.client()
+		const client = new sdk.client()
 
 		await client.auth().universalAuth.login({
 			clientId: process.env.INFISICAL_CLIENT_ID,
@@ -48,4 +47,4 @@ class InfisicalLib {
 	}
 }
 
-module.exports = InfisicalLib
+export default InfisicalLib

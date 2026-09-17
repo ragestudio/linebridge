@@ -1,11 +1,11 @@
 {
 	"name": "@linebridge/bootloader",
-	"version": "1.0.2",
+	"version": "2.0.0",
 	"author": "ragestudio",
 	"license": "MIT",
 	"description": "Bootloader for Linebridge",
-	"type": "commonjs",
-	"main": "./index.cjs",
+	"type": "module",
+	"main": "./index.mjs",
 	"types": "./index.d.ts",
 	"private": false,
 	"publishConfig": {
@@ -16,17 +16,17 @@
 	},
 	"exports": {
 		".": {
-			"import": "./index.cjs",
-			"require": "./index.cjs",
+			"import": "./index.mjs",
 			"types": "./index.d.ts"
 		}
 	},
 	"dependencies": {
 		"chokidar": "^5.0.0",
 		"dotenv": "^17.4.2",
+		"esbuild": "^0.28.2",
 		"minimatch": "^10.2.6",
 		"module-alias": "^2.3.4",
-		"sucrase": "^3.35.1"
+		"tsx": "^4.23.13"
 	},
 	"peerDependencies": {
 		"@infisical/sdk": "^5.0.2"
