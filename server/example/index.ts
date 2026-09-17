@@ -1,4 +1,5 @@
 import "@linebridge/bootloader"
+import "@linebridge/engine-neo/declare"
 
 import { Server } from "linebridge"
 import injectTest from "./middlewares/injectTest"
@@ -63,9 +64,7 @@ export default class ExampleAPI extends Server {
 		},
 	}
 
-	async onInitialize() {
-		console.log("Server initialized!")
-	}
+	async onInitialize() {}
 
 	async onClose() {
 		console.log("Server closed!")

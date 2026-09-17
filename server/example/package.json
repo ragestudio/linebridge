@@ -1,11 +1,13 @@
 {
 	"version": "0.0.0",
 	"name": "example",
+	"type": "module",
 	"scripts": {
 		"start": "linebridge-boot index.ts"
 	},
 	"dependencies": {
-		"linebridge": "link:../dist",
-		"@linebridge/bootloader": "link:../../bootloader"
+		"linebridge": "link:../",
+		"@linebridge/bootloader": "link:../../bootloader",
+		"@linebridge/engine-neo": "link:../../engines/neo"
 	}
 }
