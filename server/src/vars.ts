@@ -14,15 +14,10 @@ import { fileURLToPath } from "node:url"
 import loggerMiddleware from "./middlewares/logger/index"
 import corsMiddleware from "./middlewares/cors/index"
 
-const getDirname = () => {
+const _dirname = (() => {
 	if (typeof __dirname !== "undefined") return __dirname
-	const match = new Error().stack?.match(
-		/at\s+(?:.*\s+)?(file:\/\/.+):\d+:\d+/,
-	)
-	if (match) return path.dirname(fileURLToPath(match[1]))
-	return process.cwd()
-}
-const _dirname = getDirname()
+	return path.dirname(fileURLToPath(import.meta.url))
+})()
 
 const LibPkg = JSON.parse(
 	fs.readFileSync(path.resolve(_dirname, "../package.json"), "utf8"),
