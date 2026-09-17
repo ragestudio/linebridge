@@ -12,8 +12,8 @@ importers:
         specifier: link:../../bootloader
         version: link:../../bootloader
       '@linebridge/engine-neo':
-        specifier: link:../../engines/neo
-        version: link:../../engines/neo
+        specifier: link:../../engines/neo/build/out
+        version: link:../../engines/neo/build/out
       linebridge:
-        specifier: link:../
-        version: link:..
+        specifier: link:../dist
+        version: link:../dist
