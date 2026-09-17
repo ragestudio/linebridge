@@ -14,12 +14,6 @@
 	"bin": {
 		"linebridge-boot": "./bin"
 	},
-	"exports": {
-		".": {
-			"import": "./index.mjs",
-			"types": "./index.d.ts"
-		}
-	},
 	"dependencies": {
 		"chokidar": "^5.0.0",
 		"dotenv": "^17.4.2",
