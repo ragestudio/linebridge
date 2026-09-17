@@ -6,8 +6,8 @@
 		"start": "linebridge-boot index.ts"
 	},
 	"dependencies": {
-		"linebridge": "link:../",
+		"linebridge": "link:../dist",
 		"@linebridge/bootloader": "link:../../bootloader",
-		"@linebridge/engine-neo": "link:../../engines/neo"
+		"@linebridge/engine-neo": "link:../../engines/neo/build/out"
 	}
 }
