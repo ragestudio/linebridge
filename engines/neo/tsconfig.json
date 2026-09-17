@@ -1,0 +1,23 @@
+{
+	"$schema": "http://json.schemastore.org/tsconfig",
+	"compilerOptions": {
+		"target": "es2022",
+		"module": "es2022",
+		"moduleResolution": "bundler",
+		"strict": true,
+		"esModuleInterop": true,
+		"allowJs": true,
+		"checkJs": false,
+		"declaration": true,
+		"declarationMap": false,
+		"sourceMap": false,
+		"outDir": "build/out/lib",
+		"rootDir": "src",
+		"types": ["node"],
+		"skipLibCheck": true,
+		"forceConsistentCasingInFileNames": true,
+		"resolveJsonModule": true,
+		"isolatedModules": true,
+	},
+	"include": ["src/**/*.ts"],
+}
