@@ -46,6 +46,7 @@ import { Client } from "./classes/RtEngine/classes/client"
 import path from "node:path"
 
 try {
+	// @ts-ignore: engine-neo is an optional dependency
 	const neo = await import("@linebridge/engine-neo/engine")
 	registerEngine("neo", neo.default)
 } catch {
