@@ -1,6 +1,6 @@
 {
 	"name": "linebridge",
-	"version": "2.3.1",
+	"version": "2.3.2",
 	"type": "module",
 	"license": "MIT",
 	"description": "Multiproposal framework to build fast, scalable, and secure servers.",
