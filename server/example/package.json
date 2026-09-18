@@ -8,6 +8,6 @@
 	"dependencies": {
 		"linebridge": "link:../dist",
 		"@linebridge/bootloader": "link:../../bootloader",
-		"@linebridge/engine-neo": "link:../../engines/neo/build/out"
+		"@linebridge/engine-neo": "link:../../engines/neo/dist"
 	}
 }
