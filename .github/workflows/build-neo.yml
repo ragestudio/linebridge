@@ -1,0 +1,79 @@
+name: Build Engine Neo Binaries
+
+on:
+  push:
+    tags:
+      - "engine-neo-v*"
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Native Modules
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [x64, arm64]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 11
+
+      - name: Install dependencies
+        run: pnpm install --ignore-scripts
+
+      - name: Install ARM64 Cross-Compiler
+        if: matrix.arch == 'arm64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+
+      - name: Configure and Build
+        working-directory: ./modules/linebridge/engines/neo
+        run: |
+          pnpm run init
+          pnpm run build:${{ matrix.arch }}
+
+      - name: Rename Binary for Release
+        working-directory: ./modules/linebridge/engines/neo
+        run: |
+          mv build/Release/uws-wrapper-${{ matrix.arch }}.node uws-wrapper-linux-${{ matrix.arch }}.node
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: uws-wrapper-linux-${{ matrix.arch }}
+          path: ./modules/linebridge/engines/neo/uws-wrapper-linux-${{ matrix.arch }}.node
+
+  release:
+    name: Release Binaries
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./binaries
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ./binaries/**/*.node
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

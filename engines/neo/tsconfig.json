@@ -11,7 +11,7 @@
 		"declaration": true,
 		"declarationMap": false,
 		"sourceMap": false,
-		"outDir": "build/out/lib",
+		"outDir": "dist/lib",
 		"rootDir": "src",
 		"types": ["node"],
 		"skipLibCheck": true,

@@ -18,9 +18,11 @@
 		"./register": "./src/register.ts"
 	},
 	"scripts": {
-		"install": "npm run init && npm run build",
-		"init": "node-gyp configure -- -f compile_commands_json && cp build/Release/compile_commands.json . && node-gyp configure",
-		"build": "./scripts/build.sh && node-gyp build",
+		"install": "node install.mjs",
+		"configure": "./scripts/configure.sh",
+		"build": "./scripts/build.sh x64",
+		"build:x64": "./scripts/build.sh x64",
+		"build:arm64": "./scripts/build.sh arm64",
 		"clean": "node-gyp clean",
 		"typecheck": "tsc --noEmit",
 		"test": "vitest"
