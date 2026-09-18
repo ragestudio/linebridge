@@ -11,6 +11,11 @@
 		"dist/**/**",
 		"./package.json"
 	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/ragestudio/linebridge.git",
+		"directory": "client"
+	},
 	"publishConfig": {
 		"access": "public"
 	},
