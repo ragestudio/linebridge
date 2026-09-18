@@ -39,7 +39,7 @@ export default async function (this: Engine): Promise<void> {
 				resolve()
 			} else {
 				reject(
-					"Server.listen(): No Socket Received From uWebsockets.js likely due to an invalid host or busy port.",
+					"Server.listen(): No Socket Received From uWebsockets likely due to an invalid host or busy port.",
 				)
 			}
 		}

@@ -13,7 +13,8 @@ import mime_types from "mime-types"
 
 import SSEventStream from "./SSEventStream"
 
-import type { HttpResponse } from "uWebSockets.js"
+import type { uWebsockets } from "./uws"
+type HttpResponse = uWebsockets.HttpResponse
 import type { EngineAdaptor } from "linebridge/classes/EngineAdaptor/index"
 import type { Route } from "linebridge/classes/Route/index"
 import type { Server } from "linebridge/server"

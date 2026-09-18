@@ -10,7 +10,9 @@ import * as cookie from "cookie"
 import querystring from "fast-querystring"
 import signature from "cookie-signature"
 
-import type { HttpRequest, HttpResponse } from "uWebSockets.js"
+import type { uWebsockets } from "./uws"
+type HttpRequest = uWebsockets.HttpRequest
+type HttpResponse = uWebsockets.HttpResponse
 import type { Request as BaseHttpRequest } from "linebridge/classes/Handler/http"
 import type { EngineAdaptor } from "linebridge/classes/EngineAdaptor/index"
 import type { Route } from "linebridge/classes/Route/index"

@@ -3,7 +3,7 @@
  * and closes the TCP/unix listen socket.
  */
 
-import uWebsockets from "uWebSockets.js"
+import uWebsockets from "./uws"
 import type Engine from "./engine"
 
 /**

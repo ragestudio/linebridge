@@ -4,7 +4,9 @@
  * Supports passing a Route instance or a Route constructor. Normalizes method names
  * for uWS compatibility (e.g. "delete" → "del").
  */
-import type { HttpRequest, HttpResponse } from "uWebSockets.js"
+import type { uWebsockets } from "./uws"
+type HttpRequest = uWebsockets.HttpRequest
+type HttpResponse = uWebsockets.HttpResponse
 import type Engine from "./engine"
 
 import {

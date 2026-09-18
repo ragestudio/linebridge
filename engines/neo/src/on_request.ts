@@ -8,11 +8,10 @@
 import Request from "./request"
 import Response from "./response"
 
-import type {
-	us_socket_context_t,
-	HttpRequest,
-	HttpResponse,
-} from "uWebSockets.js"
+import type { uWebsockets } from "./uws"
+type us_socket_context_t = uWebsockets.us_socket_context_t
+type HttpRequest = uWebsockets.HttpRequest
+type HttpResponse = uWebsockets.HttpResponse
 import type { Route } from "linebridge/classes/Route/index"
 import type Engine from "./engine"
 

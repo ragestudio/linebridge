@@ -1,4 +1,4 @@
-import uWebsockets from "uWebSockets.js"
+import uWebsockets from "../uws"
 
 import Websocket from "./Websocket"
 import { wrap_object, array_buffer_to_string } from "../utils"
@@ -9,7 +9,7 @@ export default class WebsocketRoute {
 	options = {
 		idle_timeout: 32,
 		message_type: "String",
-		compression: uWebsockets.DISABLED,
+		compression: uWebsockets?.DISABLED ?? false,
 		max_backpressure: 1024 * 1024,
 		max_payload_length: 32 * 1024,
 	}

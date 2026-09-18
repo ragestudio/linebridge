@@ -1,5 +1,5 @@
 /**
- * @fileoverview Neo engine - the uWebSockets.js engine adaptor for Linebridge.
+ * @fileoverview Neo engine - the uWebSockets engine adaptor for Linebridge.
  *
  * This engine creates a uWS app (plain or SSL), optionally attaches a WebSocket
  * server via RTEngine, and manages the HTTP request/response lifecycle.
@@ -12,11 +12,10 @@ import type { Server } from "linebridge/server"
 import type { Handler, HandlerKind } from "linebridge/classes/Handler/index"
 import type Request from "./request"
 import type Response from "./response"
-import type * as UWS from "./uws"
+import uws_wrapper, { type uWebsockets } from "./uws"
 
 import fs from "node:fs"
 import fs_promises from "node:fs/promises"
-import { createRequire } from "node:module"
 
 import toBoolean from "linebridge/utils/toBoolean"
 import RTEngine from "linebridge/classes/RtEngine/index"
@@ -30,24 +29,6 @@ import listen from "./listen"
 import close from "./close"
 import on_request from "./on_request"
 import request_iterator from "./request_iterator"
-
-let uWebsockets: any
-try {
-	// Try loading from the root (when executing from build/out/lib/index.js)
-	uWebsockets = createRequire(import.meta.url)("../uws-wrapper.node")
-} catch (e) {
-	try {
-		// Try loading from build/Release (when executing from src/index.ts in monorepo)
-		uWebsockets = createRequire(import.meta.url)(
-			"../build/Release/uws-wrapper.node",
-		)
-	} catch (e2) {
-		// Try loading from build/out (when executing from src/index.ts in monorepo if already packaged)
-		uWebsockets = createRequire(import.meta.url)(
-			"../build/out/uws-wrapper.node",
-		)
-	}
-}
 
 /**
  * Options that control the engine's behaviour.
@@ -67,14 +48,14 @@ export type EngineOptions = {
  * etc. via bracket notation - needed because uWS itself uses dynamic methods
  * for route registration.
  */
-type uwsEngine = UWS.TemplatedApp & {
-	[K in keyof UWS.TemplatedApp]?: UWS.TemplatedApp[K]
+type uwsEngine = uWebsockets.TemplatedApp & {
+	[K in keyof uWebsockets.TemplatedApp]?: uWebsockets.TemplatedApp[K]
 } & {
 	[key: string]: (...args: any[]) => any
 }
 
 /**
- * The Neo engine is the uWebSockets.js adaptor.
+ * The Neo engine is the uWebSockets adaptor.
  *
  * It handles app construction (plain or SSL), WebSocket setup, route registration,
  * middleware registration, and the request/response pipeline.
@@ -83,7 +64,7 @@ export class NeoEngine extends EngineAdaptor {
 	/** WebSocket engine instance, set when websockets are enabled. */
 	declare ws: RTEngine | null
 	/** The underlying uWS listen socket handle. */
-	declare listen_socket: UWS.us_listen_socket | null
+	declare listen_socket: uWebsockets.us_listen_socket | null
 	/** The uWS app instance (plain or SSL). */
 	declare uws: uwsEngine | null
 
@@ -105,7 +86,7 @@ export class NeoEngine extends EngineAdaptor {
 	/** Listening host, defaults to "0.0.0.0". */
 	host: string = "0.0.0.0"
 	/** Engine-level options merged with uWS constructor options. */
-	options: EngineOptions & UWS.AppOptions = {
+	options: EngineOptions & uWebsockets.AppOptions = {
 		is_ssl: false,
 		auto_close: true,
 		trust_proxy: false,
@@ -158,13 +139,13 @@ export class NeoEngine extends EngineAdaptor {
 
 		// initialize the uWebsockets app depending on SSL mode
 		if (this.options.is_ssl) {
-			this.uws = uWebsockets.SSLApp({
+			this.uws = uws_wrapper.SSLApp({
 				...this.options,
 				key_file_name: this.server.ssl.key,
 				cert_file_name: this.server.ssl.cert,
 			}) as uwsEngine
 		} else {
-			this.uws = uWebsockets.App(this.options) as uwsEngine
+			this.uws = uws_wrapper.App(this.options) as uwsEngine
 		}
 
 		// if socket mode is enabled, use a unix socket path
@@ -255,8 +236,8 @@ export class NeoEngine extends EngineAdaptor {
 	 * You cannot publish using wildcards, only fully specified topics.
 	 */
 	public publish(
-		topic: UWS.RecognizedString,
-		message: UWS.RecognizedString,
+		topic: uWebsockets.RecognizedString,
+		message: uWebsockets.RecognizedString,
 		is_binary?: boolean,
 		compress?: boolean,
 	) {
@@ -266,7 +247,7 @@ export class NeoEngine extends EngineAdaptor {
 	/**
 	 * Returns the number of subscribers to a topic across all WebSocket connections on this Server instance.
 	 */
-	public num_of_subscribers(topic: UWS.RecognizedString) {
+	public num_of_subscribers(topic: uWebsockets.RecognizedString) {
 		return this.uws?.numSubscribers(topic)
 	}
 
@@ -299,5 +280,7 @@ export class NeoEngine extends EngineAdaptor {
 		res.status(404).json({ error: "Not found" })
 	}
 }
+
+export { uws_wrapper as uWebsockets }
 
 export default NeoEngine
