@@ -40,13 +40,13 @@ jobs:
           sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
 
       - name: Configure and Build
-        working-directory: ./modules/linebridge/engines/neo
+        working-directory: ./engines/neo
         run: |
           pnpm run init
           pnpm run build:${{ matrix.arch }}
 
       - name: Rename Binary for Release
-        working-directory: ./modules/linebridge/engines/neo
+        working-directory: ./engines/neo
         run: |
           mv build/Release/uws-wrapper-${{ matrix.arch }}.node uws-wrapper-linux-${{ matrix.arch }}.node
 
@@ -54,7 +54,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: uws-wrapper-linux-${{ matrix.arch }}
-          path: ./modules/linebridge/engines/neo/uws-wrapper-linux-${{ matrix.arch }}.node
+          path: ./engines/neo/uws-wrapper-linux-${{ matrix.arch }}.node
 
   release:
     name: Release Binaries
