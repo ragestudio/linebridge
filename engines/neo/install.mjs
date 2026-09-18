@@ -52,7 +52,7 @@ function downloadBinary(url, dest) {
 
 async function main() {
 	if (
-		fs.existsSync(path.join(__dirname), ".experimental") &&
+		fs.existsSync(path.join(__dirname, ".experimental")) &&
 		!process.argv.includes("--force")
 	)
 		return
