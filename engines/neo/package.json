@@ -6,6 +6,11 @@
 	},
 	"author": "ragestudio",
 	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/ragestudio/linebridge.git",
+		"directory": "engines/neo"
+	},
 	"type": "module",
 	"main": "./src/index.ts",
 	"types": "./src/index.ts",
