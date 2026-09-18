@@ -74,7 +74,9 @@
 				"-Wl,--strip-all",
 				"-Wl,--as-needed",
 				"-Wl,--build-id=none",
-				"-Wl,--hash-style=gnu"
+				"-Wl,--hash-style=gnu",
+				"-static-libstdc++",
+				"-static-libgcc"
 			]
 		},
 		{
@@ -151,7 +153,9 @@
 				"-Wl,--strip-all",
 				"-Wl,--as-needed",
 				"-Wl,--build-id=none",
-				"-Wl,--hash-style=gnu"
+				"-Wl,--hash-style=gnu",
+				"-static-libstdc++",
+				"-static-libgcc"
 			]
 		}
 	]
