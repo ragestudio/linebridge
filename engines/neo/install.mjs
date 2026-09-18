@@ -16,7 +16,8 @@ const pkgJson = JSON.parse(
 const REPO = "ragestudio/linebridge"
 const VERSION = process.env.npm_package_version || pkgJson.version
 
-const BIN_NAME = `uws-wrapper-${platform}-${arch}.node`
+const nodeMajor = process.versions.node.split(".")[0]
+const BIN_NAME = `uws-wrapper-${platform}-${arch}-node${nodeMajor}.node`
 const DOWNLOAD_URL = `https://github.com/${REPO}/releases/download/engine-neo-v${VERSION}/${BIN_NAME}`
 const DEST_FILE = path.join(__dirname, "uws-wrapper.node")
 
