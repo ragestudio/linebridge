@@ -30,7 +30,7 @@ jq '.main = "./lib/index.js" | .types = "./lib/index.d.ts"' "$OUT_DIR/package.js
 APPLY_TEMP_JSON
 
 # remove useless scripts fields
-jq '.scripts |= { install }' "$OUT_DIR/package.json" > "$OUT_DIR/package.json.tmp"
+jq '.scripts |= { postinstall }' "$OUT_DIR/package.json" > "$OUT_DIR/package.json.tmp"
 APPLY_TEMP_JSON
 
 # remove devDependencies (they contain workspace:* which can't resolve outside the monorepo)

@@ -23,7 +23,7 @@
 		"./register": "./src/register.ts"
 	},
 	"scripts": {
-		"install": "node install.mjs",
+		"postinstall": "node install.mjs",
 		"configure": "./scripts/configure.sh",
 		"build": "./scripts/build.sh x64",
 		"build:x64": "./scripts/build.sh x64",
