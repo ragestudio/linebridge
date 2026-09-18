@@ -19,7 +19,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          submodules: recursive
+          sparse-checkout: |
+            gateway
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -45,7 +46,7 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: ./
+          context: ./gateway
           platforms: linux/amd64,linux/arm64
           cache-to: type=inline
           tags: ${{ steps.meta.outputs.tags }}
