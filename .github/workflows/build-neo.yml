@@ -42,7 +42,7 @@ jobs:
       - name: Configure and Build
         working-directory: ./engines/neo
         run: |
-          pnpm run init
+          pnpm run configure
           pnpm run build:${{ matrix.arch }}
 
       - name: Rename Binary for Release
