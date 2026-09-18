@@ -51,7 +51,11 @@ function downloadBinary(url, dest) {
 }
 
 async function main() {
-	if (fs.existsSync(path.join(__dirname), ".experimental")) return
+	if (
+		fs.existsSync(path.join(__dirname), ".experimental") &&
+		!process.argv.includes("--force")
+	)
+		return
 
 	try {
 		console.log("Downloading engine binary...", {
@@ -60,6 +64,7 @@ async function main() {
 		})
 		await downloadBinary(DOWNLOAD_URL, DEST_FILE)
 		console.log("Successfully downloaded pre-built binary.")
+		process.exit(0)
 	} catch (err) {
 		console.error("❌ Failed to download engine binary:", err.message)
 	}
