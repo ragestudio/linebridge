@@ -17,6 +17,7 @@ jobs:
     strategy:
       matrix:
         arch: [x64, arm64]
+        node: [24, 26]
 
     steps:
       - name: Checkout repository
@@ -27,7 +28,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "24"
+          node-version: ${{ matrix.node }}
 
       - name: Install pnpm
         uses: pnpm/action-setup@v3
@@ -52,16 +53,16 @@ jobs:
       - name: Rename Binary for Release
         working-directory: ./engines/neo
         run: |
-          mv build/Release/uws-wrapper-${{ matrix.arch }}.node uws-wrapper-linux-${{ matrix.arch }}.node
+          mv build/Release/uws-wrapper-${{ matrix.arch }}.node uws-wrapper-linux-${{ matrix.arch }}-node${{ matrix.node }}.node
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: uws-wrapper-linux-${{ matrix.arch }}
-          path: ./engines/neo/uws-wrapper-linux-${{ matrix.arch }}.node
+          name: uws-wrapper-linux-${{ matrix.arch }}-node${{ matrix.node }}
+          path: ./engines/neo/uws-wrapper-linux-${{ matrix.arch }}-node${{ matrix.node }}.node
 
       - name: Upload NPM Package Dist
-        if: matrix.arch == 'x64'
+        if: matrix.arch == 'x64' && matrix.node == 24
         uses: actions/upload-artifact@v4
         with:
           name: neo-npm-package
