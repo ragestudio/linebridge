@@ -72,7 +72,7 @@ jobs:
         with:
           files: ./binaries/**/*.node
           name: ${{ github.ref_name }}
-          generate_release_notes: true
+          generate_release_notes: false
           draft: false
           prerelease: false
         env:
