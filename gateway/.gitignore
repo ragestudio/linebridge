@@ -1,0 +1,4 @@
+build
+bin
+nats-data
+.npmrc
