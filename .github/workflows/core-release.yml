@@ -1,10 +1,10 @@
-name: Release Neo Engine
+name: Release Core Framework
 
 on:
   workflow_dispatch:
   push:
     tags:
-      - "engine-neo-v*"
+      - "v*"
 
 permissions:
   contents: write
@@ -12,12 +12,8 @@ permissions:
 
 jobs:
   build:
-    name: Build Native Modules
+    name: Build
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        arch: [x64, arm64]
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -37,35 +33,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --ignore-scripts
 
-      - name: Install ARM64 Cross-Compiler
-        if: matrix.arch == 'arm64'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-
       - name: Configure and Build
-        working-directory: ./engines/neo
+        working-directory: ./server
         run: |
-          pnpm run configure
-          pnpm run build:${{ matrix.arch }}
-
-      - name: Rename Binary for Release
-        working-directory: ./engines/neo
-        run: |
-          mv build/Release/uws-wrapper-${{ matrix.arch }}.node uws-wrapper-linux-${{ matrix.arch }}.node
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: uws-wrapper-linux-${{ matrix.arch }}
-          path: ./engines/neo/uws-wrapper-linux-${{ matrix.arch }}.node
+          pnpm run build
 
       - name: Upload NPM Package Dist
         if: matrix.arch == 'x64'
         uses: actions/upload-artifact@v4
         with:
-          name: neo-npm-package
-          path: ./engines/neo/dist
+          name: dist
+          path: ./server/dist
 
   release:
     name: Release Binaries
@@ -83,9 +61,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          files: ./binaries/**/*.node
           name: ${{ github.ref_name }}
-          generate_release_notes: false
+          generate_release_notes: true
           draft: false
           prerelease: false
 
@@ -101,4 +78,4 @@ jobs:
           version: 11
 
       - name: Publish to NPM via Trusted Publishing
-        run: pnpm publish --no-git-checks --provenance ./binaries/neo-npm-package
+        run: pnpm publish --no-git-checks --provenance ./binaries/dist

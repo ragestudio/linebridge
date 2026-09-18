@@ -1,0 +1,53 @@
+name: Release Gateway to Docker Hub
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "gateway-v*"
+
+permissions:
+  id-token: write
+  attestations: write
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: https://github.com/actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Set up QEMU
+        uses: https://github.com/docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: https://github.com/docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: https://github.com/docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: https://github.com/docker/metadata-action@v5
+        with:
+          images: ragestudio/ultragateway
+          tags: |
+            type=semver,pattern={{github.ref_name}}
+            type=raw,value=latest
+
+      - name: Build and push Docker image
+        uses: https://github.com/docker/build-push-action@v5
+        with:
+          context: ./
+          platforms: linux/amd64,linux/arm64
+          cache-to: type=inline
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          push: true
