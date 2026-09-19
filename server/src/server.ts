@@ -49,8 +49,9 @@ try {
 	// @ts-ignore: engine-neo is an optional dependency
 	const neo = await import("@linebridge/engine-neo/engine")
 	registerEngine("neo", neo.default)
-} catch {
+} catch (err) {
 	// Ignore if the package is not installed
+	if (err instanceof Error) console.warn(err)
 }
 
 export interface NatsParams {
