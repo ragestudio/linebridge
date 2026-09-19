@@ -47,22 +47,18 @@ BUILD_ARCH=${1:-}
 
 printf "Compiling uws binary for [$BUILD_ARCH]\n"
 
-if [ "$BUILD_ARCH" == "arm64" ]; then
-    export CC=aarch64-linux-gnu-gcc
-    export CXX=aarch64-linux-gnu-g++
-    export npm_config_arch=arm64
-
-    JOBS=max $NODE_GYP_BIN configure --arch=arm64
-    JOBS=max $NODE_GYP_BIN build
+if [ "$(uname -s)" == "Linux" ]; then
+    if [ "$BUILD_ARCH" == "arm64" ]; then
+        export CC=aarch64-linux-gnu-gcc
+        export CXX=aarch64-linux-gnu-g++
+    elif [ "$BUILD_ARCH" == "x64" ]; then
+        export CC=x86_64-linux-gnu-gcc
+        export CXX=x86_64-linux-gnu-g++
+    fi
 fi
 
-if [ "$BUILD_ARCH" == "x64" ]; then
-    export CC=x86_64-linux-gnu-gcc
-    export CXX=x86_64-linux-gnu-g++
-    export npm_config_arch=x64
-
-    JOBS=max $NODE_GYP_BIN configure --arch=x64
-    JOBS=max $NODE_GYP_BIN build
-fi
+export npm_config_arch=$BUILD_ARCH
+JOBS=max $NODE_GYP_BIN configure --arch=$BUILD_ARCH
+JOBS=max $NODE_GYP_BIN build
 
 printf "✅ Build completed.\n"

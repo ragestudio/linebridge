@@ -13,11 +13,18 @@ permissions:
 jobs:
   build:
     name: Build Native Modules
-    runs-on: ubuntu-latest
     strategy:
       matrix:
+        os: [ubuntu-latest, macos-latest]
         arch: [x64, arm64]
         node: [24, 26]
+        include:
+          - os: ubuntu-latest
+            os_name: linux
+          - os: macos-latest
+            os_name: darwin
+
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout repository
@@ -39,7 +46,7 @@ jobs:
         run: pnpm install --ignore-scripts
 
       - name: Install ARM64 Cross-Compiler
-        if: matrix.arch == 'arm64'
+        if: matrix.os == 'ubuntu-latest' && matrix.arch == 'arm64'
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
@@ -53,16 +60,16 @@ jobs:
       - name: Rename Binary for Release
         working-directory: ./engines/neo
         run: |
-          mv build/Release/uws-wrapper-${{ matrix.arch }}.node uws-wrapper-linux-${{ matrix.arch }}-node${{ matrix.node }}.node
+          mv build/Release/uws-wrapper-${{ matrix.arch }}.node uws-wrapper-${{ matrix.os_name }}-${{ matrix.arch }}-node${{ matrix.node }}.node
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: uws-wrapper-linux-${{ matrix.arch }}-node${{ matrix.node }}
-          path: ./engines/neo/uws-wrapper-linux-${{ matrix.arch }}-node${{ matrix.node }}.node
+          name: uws-wrapper-${{ matrix.os_name }}-${{ matrix.arch }}-node${{ matrix.node }}
+          path: ./engines/neo/uws-wrapper-${{ matrix.os_name }}-${{ matrix.arch }}-node${{ matrix.node }}.node
 
       - name: Upload NPM Package Dist
-        if: matrix.arch == 'x64' && matrix.node == 24
+        if: matrix.os == 'ubuntu-latest' && matrix.arch == 'x64' && matrix.node == 24
         uses: actions/upload-artifact@v4
         with:
           name: neo-npm-package

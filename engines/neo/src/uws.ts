@@ -13,21 +13,16 @@
  */
 
 import { createRequire } from "node:module"
+import os from "node:os"
 
 let uws_wrapper: typeof uWebsockets
 
 try {
 	uws_wrapper = createRequire(import.meta.url)("../uws-wrapper.node")
 } catch (e) {
-	try {
-		uws_wrapper = createRequire(import.meta.url)(
-			"../build/Release/uws-wrapper.node",
-		)
-	} catch (e2) {
-		uws_wrapper = createRequire(import.meta.url)(
-			"../build/out/uws-wrapper.node",
-		)
-	}
+	uws_wrapper = createRequire(import.meta.url)(
+		`../build/Release/uws-wrapper-${os.arch()}.node`,
+	)
 }
 
 export default uws_wrapper as typeof uWebsockets
