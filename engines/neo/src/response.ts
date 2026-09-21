@@ -6,15 +6,13 @@
  * Server-Sent Events, redirects, and JSON/HTML shortcuts.
  */
 
-import * as cookie from "cookie"
-import signature from "cookie-signature"
 import { STATUS_CODES } from "http"
+import * as cookie from "cookie"
+import { sign } from "./cookie"
 import mime_types from "mime-types"
-
 import SSEventStream from "./SSEventStream"
 
 import type { uWebsockets } from "./uws"
-type HttpResponse = uWebsockets.HttpResponse
 import type { EngineAdaptor } from "linebridge/classes/EngineAdaptor/index"
 import type { Route } from "linebridge/classes/Route/index"
 import type { Server } from "linebridge/server"
@@ -60,7 +58,7 @@ export default class Response<
 	/** The uWS upgrade socket (WebSocket upgrade requests only). */
 	_upgrade_socket!: any
 	/** The raw uWS HttpResponse object. */
-	_raw_response!: HttpResponse | null
+	_raw_response!: uWebsockets.HttpResponse | null
 	/** HTTP status code (defaults to 200). */
 	_status_code!: number
 	/** Custom status message (overrides the default from STATUS_CODES). */
@@ -97,7 +95,7 @@ export default class Response<
 	 * fires abort/close event listeners.
 	 */
 	static create<TServer extends Server<any>>(
-		raw_response: HttpResponse,
+		raw_response: uWebsockets.HttpResponse,
 		route: Route<TServer>,
 		request: any,
 		socket: any,
@@ -299,7 +297,7 @@ export default class Response<
 
 		if (sign_cookie && typeof options.secret === "string") {
 			options.encode = false
-			value = signature.sign(value as string, options.secret) as string
+			value = sign(value as string, options.secret) as string
 		}
 
 		if (this._cookies === null) {
@@ -670,7 +668,7 @@ export default class Response<
 	/**
 	 * The raw uWS HttpResponse.
 	 */
-	get raw(): HttpResponse | null {
+	get raw(): uWebsockets.HttpResponse | null {
 		return this._raw_response
 	}
 

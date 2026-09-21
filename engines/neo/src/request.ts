@@ -7,12 +7,10 @@
  */
 
 import * as cookie from "cookie"
+import { sign, unsign } from "./cookie"
 import querystring from "fast-querystring"
-import signature from "cookie-signature"
 
 import type { uWebsockets } from "./uws"
-type HttpRequest = uWebsockets.HttpRequest
-type HttpResponse = uWebsockets.HttpResponse
 import type { Request as BaseHttpRequest } from "linebridge/classes/Handler/http"
 import type { EngineAdaptor } from "linebridge/classes/EngineAdaptor/index"
 import type { Route } from "linebridge/classes/Route/index"
@@ -27,9 +25,7 @@ import type Response from "./response"
  *
  * @typeParam TServer - The server type this request belongs to.
  */
-export default class Request<
-	TServer = Server<any>,
-> implements BaseHttpRequest {
+export default class Request<TServer = Server<any>> implements BaseHttpRequest {
 	constructor() {}
 	/** Per-request local storage for middleware communication. */
 	_locals!: any
@@ -54,9 +50,9 @@ export default class Request<
 	/** Parsed query string parameters (lazy). */
 	_query_parameters!: any
 	/** The raw uWS HttpRequest object. */
-	_raw_request!: HttpRequest
+	_raw_request!: uWebsockets.HttpRequest
 	/** The raw uWS HttpResponse object (needed for `onData` and `getRemoteAddress`). */
-	_raw_response!: HttpResponse
+	_raw_response!: uWebsockets.HttpResponse
 	/** Request headers extracted synchronously. */
 	_headers!: Record<string, string>
 
@@ -89,8 +85,8 @@ export default class Request<
 	 */
 	static create<TServer extends Server<any>>(
 		route: Route<TServer>,
-		raw_request: HttpRequest,
-		raw_response: HttpResponse,
+		raw_request: uWebsockets.HttpRequest,
+		raw_response: uWebsockets.HttpResponse,
 	): Request<TServer> {
 		const req = new Request<TServer>()
 
@@ -138,7 +134,7 @@ export default class Request<
 	/**
 	 * The raw uWS HttpRequest.
 	 */
-	get raw(): HttpRequest {
+	get raw(): uWebsockets.HttpRequest {
 		return this._raw_request
 	}
 
@@ -174,19 +170,14 @@ export default class Request<
 	}
 
 	/**
-	 * Signs a string with a secret using the same algorithm as `cookie-signature`.
+	 * Signs a string with a secret
 	 */
-	sign(string: string, secret: string) {
-		return signature.sign(string, secret)
-	}
+	sign = sign
 
 	/**
 	 * Unsigns a signed value. Returns the original string or `undefined` on failure.
 	 */
-	unsign(signed_value: string, secret: string) {
-		const unsigned_value = signature.unsign(signed_value, secret)
-		return unsigned_value !== false ? unsigned_value : undefined
-	}
+	unsign = unsign
 
 	/**
 	 * Starts the body parser by registering a uWS `onData` callback.

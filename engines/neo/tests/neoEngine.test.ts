@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 
 import { Server } from "linebridge"
-import NeoEngine from "../src/index"
+import NeoEngine from "../src/engine"
 import { HandlerKind, Handler } from "linebridge/classes/Handler/index"
 import { Route } from "linebridge/classes/Route/index"
 

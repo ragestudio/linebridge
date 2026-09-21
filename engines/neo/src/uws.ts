@@ -12,17 +12,29 @@
  * limitations under the License.
  */
 
-import { createRequire } from "node:module"
 import os from "node:os"
 
 let uws_wrapper: typeof uWebsockets
 
-try {
-	uws_wrapper = createRequire(import.meta.url)("../uws-wrapper.node")
-} catch (e) {
-	uws_wrapper = createRequire(import.meta.url)(
-		`../build/Release/uws-wrapper-${os.arch()}.node`,
-	)
+if (process.env.IS_BUNDLED) {
+	// @ts-ignore
+	const mod = await import("../uws-wrapper.node")
+	uws_wrapper = mod.default ?? mod
+} else {
+	try {
+		uws_wrapper = await import(import.meta.resolve("../uws-wrapper.node"))
+	} catch (e) {
+		uws_wrapper = await import(
+			import.meta.resolve(
+				`../build/Release/uws-wrapper-${os.arch()}.node`,
+			)
+		)
+	}
+
+	if (uws_wrapper) {
+		// @ts-ignore
+		uws_wrapper = uws_wrapper.default ?? uws_wrapper
+	}
 }
 
 export default uws_wrapper as typeof uWebsockets
