@@ -38,8 +38,19 @@ export async function gatewayExec(gatewayBin, argv) {
 }
 
 export async function exec(argv) {
+	let gatewayBin = null
+
+	if (argv.flags.install) {
+		console.log(
+			await installGateway({
+				force: argv.flags.force,
+			}),
+		)
+		process.exit(0)
+	}
+
 	// search on usr bin path
-	let gatewayBin = await searchBinary("ultragateway")
+	gatewayBin = await searchBinary("ultragateway")
 
 	// if no gateway in the system
 	if (!gatewayBin) {
@@ -63,7 +74,9 @@ export async function exec(argv) {
 				}
 			}
 
-			gatewayBin = await installGateway()
+			gatewayBin = await installGateway({
+				force: argv.flags.force,
+			})
 		} catch (err) {
 			console.error("\n❌ Failed to install gateway binary:", err.message)
 			process.exit(1)
@@ -79,6 +92,16 @@ export default command(
 		name: "gateway",
 		description: "Start project in Gateway mode (microservices)",
 		flags: {
+			install: {
+				type: Boolean,
+				default: false,
+				description:
+					"Only download & install the latest gateway binary into your system",
+			},
+			force: {
+				type: Boolean,
+				default: false,
+			},
 			"no-interactive": {
 				type: Boolean,
 				default: false,

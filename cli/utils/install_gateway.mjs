@@ -8,12 +8,16 @@ import searchRelease from "./search_release.mjs"
 const platform = os.platform()
 const arch = os.arch()
 
-async function installGateway() {
+async function installGateway({ force } = { force: false }) {
 	const binName = "ultragateway"
 	const destPath = path.join(os.homedir(), ".local", "bin", binName)
 
 	if (fs.existsSync(destPath)) {
-		return destPath
+		if (force) {
+			await fs.promises.rm(destPath)
+		} else {
+			return destPath
+		}
 	} else {
 		fs.mkdirSync(path.dirname(destPath), { recursive: true })
 	}
