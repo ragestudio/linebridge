@@ -49,7 +49,7 @@ func (context *Instance) SendToUserId(_ *gws.Conn, _ *structs.WSConnectionCtx, m
 
 	for _, connID := range connIDs {
 		if conn, ok := context.Connections.GetConn(connID); ok {
-			_ = broadcaster.Broadcast(conn)
+			_ = broadcaster.Broadcast(conn, nil)
 		}
 	}
 

@@ -1,8 +1,8 @@
 BINARY_NAME="ultragateway"
 
-BIN_LINUX_AMD64v1="${BINARY_NAME}_linux_x86_64"
-BIN_LINUX_AMD64v3="${BINARY_NAME}_linux_v3_x86_64"
-BIN_LINUX_ARM64="${BINARY_NAME}_linux_aarch64"
+BIN_LINUX_AMD64v1="${BINARY_NAME}-linux-x64"
+BIN_LINUX_AMD64v3="${BINARY_NAME}-linux-x64v3"
+BIN_LINUX_ARM64="${BINARY_NAME}-linux-arm64"
 
 GIT_REPO="https://git.ragestudio.net/RageStudio/linebridge-gateway"
 DL_URL="$GIT_REPO/releases/download/latest"

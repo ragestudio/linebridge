@@ -28,7 +28,7 @@ func (context *Instance) TopicSubscribe(conn *gws.Conn, connCtx *structs.WSConne
 	subscriber := NewSubscriber(conn)
 	context.PubSub.Subscribe(subscriber, op.Data.Topic, func(msg any) {
 		broadcaster := msg.(*gws.Broadcaster)
-		broadcaster.Broadcast(conn)
+		broadcaster.Broadcast(conn, nil)
 	})
 
 	if IsDebug {

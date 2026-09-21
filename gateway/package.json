@@ -1,8 +1,13 @@
 {
-	"name": "linebridge-gateway",
+	"name": "@linebridge/gateway",
 	"version": "0.17.0",
 	"description": "High-performance http/websocket hybrid gateway for linebridge microservices",
 	"author": "RageStudio <support@ragestudio.net>",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/ragestudio/linebridge.git",
+		"directory": "gateway"
+	},
 	"publishConfig": {
 		"access": "public"
 	},

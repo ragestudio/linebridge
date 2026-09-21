@@ -122,8 +122,8 @@ func (manager *Instance) StartHeartbeat() {
 					continue
 				}
 
-				frameBroadcaster.Broadcast(conn)
-				jsonBroadcaster.Broadcast(conn)
+				frameBroadcaster.Broadcast(conn, nil)
+				jsonBroadcaster.Broadcast(conn, nil)
 			}
 		}()
 	}
