@@ -19,7 +19,10 @@ class Watcher {
 				defaultIgnored.some((pattern) => minimatch(path, pattern)),
 			persistent: true,
 			ignoreInitial: true,
-			awaitWriteFinish: true,
+			awaitWriteFinish: {
+				stabilityThreshold: 200,
+				pollInterval: 100,
+			},
 		})
 
 		this.instance.on("all", (event, filePath) => {

@@ -1,6 +1,11 @@
 #!/usr/bin/env node
 import { registerHooks } from "node:module"
-
 registerHooks("tsx", import.meta.url)
 
-await import("./bin.mjs")
+import { boot } from "./commands/boot.mjs"
+
+boot({
+	_: {
+		mainFile: process.argv[2],
+	},
+})

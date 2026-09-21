@@ -1,0 +1,17 @@
+#!/usr/bin/env node
+import { registerHooks } from "node:module"
+registerHooks("tsx", import.meta.url)
+
+import { cli } from "cleye"
+
+import bootCommand from "./commands/boot.mjs"
+import gatewayCommand from "./commands/gateway.mjs"
+
+const argv = cli({
+	name: "linebridge",
+	commands: [bootCommand, gatewayCommand],
+})
+
+if (!argv.command) {
+	argv.showHelp()
+}

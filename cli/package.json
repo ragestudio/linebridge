@@ -1,9 +1,14 @@
 {
-	"name": "@linebridge/bootloader",
-	"version": "2.0.1",
+	"name": "@linebridge/cli",
+	"version": "3.0.0",
 	"author": "ragestudio",
 	"license": "MIT",
-	"description": "Bootloader for Linebridge",
+	"description": "Command-line interface for Linebridge",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/ragestudio/linebridge.git",
+		"directory": "cli"
+	},
 	"type": "module",
 	"main": "./index.mjs",
 	"types": "./index.d.ts",
@@ -12,11 +17,13 @@
 		"access": "public"
 	},
 	"bin": {
-		"linebridge-boot": "./bin"
+		"linebridge": "./bin",
+		"linebridge-boot": "./bin-boot"
 	},
 	"dependencies": {
 		"chokidar": "^5.0.0",
-		"dotenv": "^17.4.2",
+		"cleye": "^2.6.0",
+		"esbuild": "^0.28.2",
 		"minimatch": "^10.2.6",
 		"tsx": "^4.23.13"
 	},
