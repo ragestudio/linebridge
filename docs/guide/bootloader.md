@@ -1,11 +1,11 @@
 # Bootloader
 
-`linebridge-boot` is the default command to start a Linebridge service. It handles environment setup, JIT transpilation, and path aliases so you can write TypeScript, ESM, or CommonJS without a build step.
+`linebridge boot` is the default command to start a Linebridge service. It handles environment setup, JIT transpilation, and path aliases so you can write TypeScript, ESM, or CommonJS without a build step.
 
-> **Note:** The bootloader has been extracted into its own package. You must install it alongside Linebridge:
+> **Note:** The bootloader has been extracted into its own package withing the CLI. You must install it alongside Linebridge:
 >
 > ```bash
-> npm install linebridge @linebridge/bootloader @linebridge/engine-neo
+> npm install linebridge @linebridge/cli @linebridge/engine-neo
 > ```
 
 ## Usage
@@ -17,6 +17,17 @@ The recommended approach is to define npm scripts in your `package.json`:
 	"scripts": {
 		"dev": "linebridge-boot index.ts --watch",
 		"prod": "linebridge-boot index.ts"
+	}
+}
+```
+
+or you can use the `linebridge boot` CLI command directly:
+
+```json
+{
+	"scripts": {
+		"dev": "linebridge boot index.ts --watch",
+		"prod": "linebridge boot index.ts"
 	}
 }
 ```
@@ -35,7 +46,7 @@ LB_PORT=8080 npm run prod
 Using npm scripts ensures the bootloader is resolved from the local `node_modules/.bin` and keeps the startup command consistent across environments. You can also invoke it directly:
 
 ```bash
-npx linebridge-boot index.ts
+npx linebridge boot index.ts
 ```
 
 ## What It Does
@@ -46,7 +57,7 @@ When you run `linebridge-boot`, the bootloader executes these steps in order:
 2. **Path resolution** — resolves the main module to an absolute path
 3. **Alias setup** — registers path aliases for clean imports
 4. **TSX transpiler** — registers `tsx` for JIT compilation using `esbuild`
-5. **Module execution** — runs your main module via `Module.runMain()`
+5. **Module execution** — runs your main module and fires the Server
 
 ## JIT Transpilation
 
@@ -64,8 +75,6 @@ import { Server } from "linebridge"
 export default class API extends Server {
 	static refName = "api"
 }
-
-Boot(API)
 ```
 
 ## Path Aliases
@@ -110,6 +119,8 @@ The bootloader injects these globals:
 
 ### `Boot(ServerClass)`
 
+> Is recommended to just only export the main class by default, so that the bootloader can find and instantiate it without calling Boot()
+
 Instantiates and starts a server:
 
 ```ts
@@ -119,20 +130,19 @@ Boot(MyAPI)
 // instance.run()
 ```
 
-
 ## File Watcher (`--watch`)
 
 The `--watch` flag enables hot-reload during development:
 
 ```bash
-npx linebridge-boot index.ts --watch
+npx linebridge boot index.ts --watch
 ```
 
 When enabled:
 
 1. The bootloader forks a child process running your service
 2. A file watcher monitors the main module's directory for changes
-3. On file change, the child process is killed and restarted (300ms debounce)
+3. On file change, the child process is killed and restarted
 4. Ignores `node_modules`, `.cache`, `dist`, hidden files, and temp files
 
 ## Environment Variables
@@ -148,7 +158,7 @@ When enabled:
 
 ## Standalone vs Gateway
 
-- **Standalone**: `linebridge-boot index.ts` — service listens on a TCP port
+- **Standalone**: `linebridge boot index.ts` — service listens on a TCP port
 - **Gateway mode**: The gateway spawns `linebridge-boot` for each service, setting `LB_GATEWAY_SOCKET` and `LB_SOCKET_MODE=true`. Services listen on Unix sockets instead of TCP.
 
 In both cases, the bootloader provides the same environment: aliases, transpiler, and globals.

@@ -10,11 +10,9 @@ The `Server` class is the foundation of every Linebridge application. You extend
 import { Server } from "linebridge"
 
 export default class MyAPI extends Server {
-  static refName = "my-api"
-  static listenPort = 3000
+	static refName = "my-api"
+	static listenPort = 3000
 }
-
-Boot(MyAPI)
 ```
 
 ## Configuration
@@ -25,29 +23,29 @@ Configuration can be set via **static properties** on the class or **constructor
 import { Server } from "linebridge"
 
 export default class MyAPI extends Server {
-  // --- Static configuration (takes precedence) ---
-  static refName = "my-service"
-  static useEngine = "neo"
-  static listenIp = "0.0.0.0"
-  static listenPort = 8080
-  static websockets = { enabled: true, path: "/ws" }
-  static nats = { address: "127.0.0.1", port: 4222 }
-  static baseRoutes = true
-  static routesPath = "./custom-routes"
-  static wsRoutesPath = "./custom-ws-routes"
-  static useMiddlewares = ["logs"]
-  static usePlugins = [MyPlugin]
+	// --- Static configuration (takes precedence) ---
+	static refName = "my-service"
+	static useEngine = "neo"
+	static listenIp = "0.0.0.0"
+	static listenPort = 8080
+	static websockets = { enabled: true, path: "/ws" }
+	static nats = { address: "127.0.0.1", port: 4222 }
+	static baseRoutes = true
+	static routesPath = "./custom-routes"
+	static wsRoutesPath = "./custom-ws-routes"
+	static useMiddlewares = ["logs"]
+	static usePlugins = [MyPlugin]
 }
 ```
 
 ### All Parameters
 
 | Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
+| --- | --- | --- | --- |
 | `refName` | `string` | `"linebridge"` | Unique name for this service instance |
 | `listenIp` | `string` | `"0.0.0.0"` | IP address to bind to |
 | `listenPort` | `number` | `3000` | Port to listen on |
-| `useEngine` | `string` | `"neo"` | Engine to use for HTTP/WS. *Linebridge will automatically `import("@linebridge/engine-{name}/register")` at runtime.* |
+| `useEngine` | `string` | `"neo"` | Engine to use for HTTP/WS. _Linebridge will automatically `import("@linebridge/engine-{name}/register")` at runtime._ |
 | `websockets` | `boolean \| WebsocketParams` | `false` | Enable WebSocket support |
 | `nats` | `NatsParams \| null` | `null` | NATS connection settings |
 | `baseRoutes` | `boolean` | `true` | Register `/` and `/_map` endpoints |
@@ -61,8 +59,8 @@ export default class MyAPI extends Server {
 
 ```ts
 interface WebsocketParams {
-  enabled: boolean
-  path?: string  // default: `/${refName}`
+	enabled: boolean
+	path?: string // default: `/${refName}`
 }
 ```
 
@@ -70,8 +68,8 @@ interface WebsocketParams {
 
 ```ts
 interface NatsParams {
-  address?: string  // default: "127.0.0.1"
-  port?: number     // default: 4222
+	address?: string // default: "127.0.0.1"
+	port?: number // default: 4222
 }
 ```
 
@@ -81,12 +79,12 @@ To enable HTTPS, define an `ssl` property on your server:
 
 ```ts
 export default class SecureAPI extends Server {
-  static listenPort = 443
+	static listenPort = 443
 
-  ssl = {
-    key: "/path/to/privkey.pem",
-    cert: "/path/to/fullchain.pem",
-  }
+	ssl = {
+		key: "/path/to/privkey.pem",
+		cert: "/path/to/fullchain.pem",
+	}
 }
 ```
 
@@ -98,20 +96,20 @@ Override these methods in your Server subclass to hook into the lifecycle:
 
 ```ts
 export default class MyAPI extends Server {
-  // Runs BEFORE routes are registered and the server listens
-  async onInitialize() {
-    // Connect to database, load config, etc.
-  }
+	// Runs BEFORE routes are registered and the server listens
+	async onInitialize() {
+		// Connect to database, load config, etc.
+	}
 
-  // Runs AFTER the server is listening
-  async afterInitialize() {
-    console.log("Server is ready to accept connections")
-  }
+	// Runs AFTER the server is listening
+	async afterInitialize() {
+		console.log("Server is ready to accept connections")
+	}
 
-  // Runs when the server is shutting down
-  onClose() {
-    // Close database connections, cleanup, etc.
-  }
+	// Runs when the server is shutting down
+	onClose() {
+		// Close database connections, cleanup, etc.
+	}
 }
 ```
 
@@ -121,10 +119,14 @@ For parallel initialization tasks, use the `initialize` array:
 
 ```ts
 export default class MyAPI extends Server {
-  initialize = [
-    async () => { /* connect to DB */ },
-    async () => { /* warm up cache */ },
-  ]
+	initialize = [
+		async () => {
+			/* connect to DB */
+		},
+		async () => {
+			/* warm up cache */
+		},
+	]
 }
 ```
 
@@ -134,23 +136,23 @@ When WebSockets are enabled, you can hook into the connection lifecycle:
 
 ```ts
 export default class MyAPI extends Server {
-  // Called during WebSocket upgrade (before connection is established)
-  // Return without calling res.upgrade() to reject
-  async handleWsUpgrade(context: any, token: string, res: any) {
-    // Validate token, set user context, etc.
-    context.user = await validateToken(token)
-    res.upgrade(context)
-  }
+	// Called during WebSocket upgrade (before connection is established)
+	// Return without calling res.upgrade() to reject
+	async handleWsUpgrade(context: any, token: string, res: any) {
+		// Validate token, set user context, etc.
+		context.user = await validateToken(token)
+		res.upgrade(context)
+	}
 
-  // Called when a WebSocket connection is opened
-  async handleWsConnection(socket: any) {
-    console.log("Client connected")
-  }
+	// Called when a WebSocket connection is opened
+	async handleWsConnection(socket: any) {
+		console.log("Client connected")
+	}
 
-  // Called when a WebSocket connection is closed
-  async handleWsDisconnect(socket: any, client?: any) {
-    console.log("Client disconnected")
-  }
+	// Called when a WebSocket connection is closed
+	async handleWsDisconnect(socket: any, client?: any) {
+		console.log("Client disconnected")
+	}
 }
 ```
 
@@ -160,14 +162,14 @@ Define named middlewares on your server. They can be referenced by name in route
 
 ```ts
 export default class MyAPI extends Server {
-  middlewares = {
-    auth: async (req, res, next) => {
-      const token = req.headers["authorization"]
-      if (!token) return res.status(401).json({ error: "Unauthorized" })
-      req.ctx.user = await validateToken(token)
-      next()
-    },
-  }
+	middlewares = {
+		auth: async (req, res, next) => {
+			const token = req.headers["authorization"]
+			if (!token) return res.status(401).json({ error: "Unauthorized" })
+			req.ctx.user = await validateToken(token)
+			next()
+		},
+	}
 }
 ```
 
@@ -177,11 +179,11 @@ Contexts are injectable values or functions available to route handlers. They ar
 
 ```ts
 export default class MyAPI extends Server {
-  contexts = {
-    db: databaseConnection,
-    sum: (a: number, b: number) => a + b,
-    config: { maxUploadSize: 10 * 1024 * 1024 },
-  }
+	contexts = {
+		db: databaseConnection,
+		sum: (a: number, b: number) => a + b,
+		config: { maxUploadSize: 10 * 1024 * 1024 },
+	}
 }
 ```
 
@@ -191,11 +193,11 @@ The `eventBus` is an internal EventEmitter. You can declare event handlers:
 
 ```ts
 export default class MyAPI extends Server {
-  events = {
-    "user:created": (user: any) => {
-      console.log("New user:", user)
-    },
-  }
+	events = {
+		"user:created": (user: any) => {
+			console.log("New user:", user)
+		},
+	}
 }
 ```
 
@@ -205,27 +207,27 @@ HTTP routes and WebSocket events can be declared directly on the server. When us
 
 ```ts
 export default class MyAPI extends Server {
-  routes = {
-    "/health": defineRoute(MyAPI)({
-      method: "get",
-      fn: async (req, res) => ({ status: "ok" }),
-    }),
-    "/events": defineRoute(MyAPI)({
-      method: "get",
-      fn: (req, res) => {
-        const stream = res.sse  // ✅ Neo engine SSE
-        if (!stream) return
-        stream.open()
-        // keep-alive with stream.send(...)
-      },
-    }),
-  }
+	routes = {
+		"/health": defineRoute(MyAPI)({
+			method: "get",
+			fn: async (req, res) => ({ status: "ok" }),
+		}),
+		"/events": defineRoute(MyAPI)({
+			method: "get",
+			fn: (req, res) => {
+				const stream = res.sse // ✅ Neo engine SSE
+				if (!stream) return
+				stream.open()
+				// keep-alive with stream.send(...)
+			},
+		}),
+	}
 
-  wsEvents = {
-    "chat:message": async (client, data) => {
-      await client.toTopic("chat", "chat:message", data)
-    },
-  }
+	wsEvents = {
+		"chat:message": async (client, data) => {
+			await client.toTopic("chat", "chat:message", data)
+		},
+	}
 }
 ```
 
@@ -238,7 +240,7 @@ import { Server } from "linebridge"
 import AuthPlugin from "./plugins/auth"
 
 export default class MyAPI extends Server {
-  static usePlugins = [AuthPlugin]
+	static usePlugins = [AuthPlugin]
 }
 ```
 
@@ -250,18 +252,18 @@ For inter-process communication via NATS:
 
 ```ts
 export default class MyAPI extends Server {
-  ipcEvents = {
-    "getUserCount": async (contexts, data) => {
-      return await contexts.db.users.count()
-    },
-  }
+	ipcEvents = {
+		getUserCount: async (contexts, data) => {
+			return await contexts.db.users.count()
+		},
+	}
 }
 ```
 
 ## Properties
 
 | Property | Type | Description |
-|----------|------|-------------|
+| --- | --- | --- |
 | `params` | `ServerParams` | Resolved configuration parameters |
 | `eventBus` | `EventEmitter` | Internal event bus |
 | `engine` | `EngineAdaptor` | The active engine instance |
@@ -271,14 +273,3 @@ export default class MyAPI extends Server {
 | `localAddress` | `string` | Resolved local private IP |
 | `experimental` | `boolean` | Whether running an experimental build |
 | `hasSSL` | `boolean` | Whether SSL is configured |
-
-## `Boot()` Function
-
-The global `Boot()` function instantiates your server class and calls `run()`. It is automatically exposed when you run your app via `linebridge-boot`. For TypeScript to recognize it globally without importing it in your source code, ensure you have `import "@linebridge/bootloader"` in your project's `env.d.ts` file:
-
-```ts
-Boot(MyAPI)
-// Equivalent to:
-// const instance = new MyAPI()
-// instance.run()
-```

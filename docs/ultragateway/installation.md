@@ -9,30 +9,39 @@
 
 ## Automatic Installation
 
+Installing with Linebridge CLI:
+
 ```bash
-curl -fsSL https://git.ragestudio.net/RageStudio/linebridge-gateway/raw/branch/main/install.sh | sudo sh
+linebridge gateway --install
+```
+
+or with helper script (needs sudo)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ragestudio/linebridge/refs/heads/master/gateway/install.sh | sudo sh
 ```
 
 The installer:
+
 1. Detects your CPU architecture (`x86_64`, `x86_64-v3` with AVX2, or `aarch64`)
 2. Downloads the matching prebuilt binary from the latest release
-3. Installs it to `/usr/local/bin/ultragateway`
+3. Installs it to `/usr/local/bin/ultragateway` or `~/.local/bin`
 
 ## Manual Download
 
 Binaries are published at:
 
 ```
-https://git.ragestudio.net/RageStudio/linebridge-gateway/releases/download/latest/
+https://github.com/ragestudio/linebridge/releases
 ```
 
 Available variants:
 
 | File | Architecture | Notes |
-|------|-------------|-------|
-| `ultragateway_linux_x86_64` | x86_64 (v1) | Baseline, works everywhere |
-| `ultragateway_linux_v3_x86_64` | x86_64 (v3) | Requires AVX2 support |
-| `ultragateway_linux_aarch64` | ARM64 | For Apple Silicon, AWS Graviton, etc. |
+| --- | --- | --- |
+| `ultragateway-linux-x64` | x86_64 (v1) | Baseline, works everywhere |
+| `ultragateway-linux-x64v3` | x86_64 (v3) | Requires AVX2 support |
+| `ultragateway-linux-arm64` | ARM64 | For Apple Silicon, AWS Graviton, etc. |
 
 ## Project Setup
 
@@ -55,10 +64,10 @@ my-project/
 
 ```bash
 cd my-project
-npm install linebridge @linebridge/bootloader
+npm install linebridge @linebridge/cli
 ```
 
-The gateway auto-discovers the bootloader at `node_modules/@linebridge/bootloader/bin`. No additional Node.js tooling is needed — the gateway spawns each service's bootloader as a child process.
+The gateway auto-discovers the bootloader from your node_modules. No additional Node.js tooling is needed — the gateway spawns each service's bootloader as a child process.
 
 ## Starting
 
@@ -77,10 +86,10 @@ DEBUG=true ultragateway .
 
 When the gateway is running, you can use these commands in the terminal:
 
-| Command | Description |
-|---------|------------|
-| `restart <service>` | Hot-reload a specific service |
-| `exit` | Gracefully shutdown the gateway |
+| Command             | Description                     |
+| ------------------- | ------------------------------- |
+| `restart <service>` | Hot-reload a specific service   |
+| `exit`              | Gracefully shutdown the gateway |
 
 ## Verification
 

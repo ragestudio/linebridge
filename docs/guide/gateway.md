@@ -27,11 +27,17 @@ The gateway runs an **embedded NATS server** with JetStream for reliable messagi
 
 ## Installation
 
+Installing with linebridge CLI:
+
 ```bash
-curl -fsSL https://git.ragestudio.net/RageStudio/linebridge-gateway/raw/branch/main/install.sh | sudo sh
+linebridge gateway --install
 ```
 
-This downloads the binary for your architecture (`x86_64`, `x86_64-v3`, or `aarch64`) and installs it to `/usr/local/bin/ultragateway`.
+or with helper script (needs sudo)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ragestudio/linebridge/refs/heads/master/gateway/install.sh | sudo sh
+```
 
 ## Project Structure
 
@@ -46,8 +52,7 @@ my-project/
 │   └── chat/
 │       ├── index.ts
 │       └── routes/
-└── node_modules/
-    └── linebridge/         # Framework (provides bootloader)
+└── ...
 ```
 
 ## Configuration
@@ -56,52 +61,49 @@ Create a `gateway.config.json` in your project root:
 
 ```json
 {
-  "mode": "dev",
-  "http": {
-    "port": 3000,
-    "secure_port": 3443,
-    "certificates": {
-      "cert": "/path/to/fullchain.pem",
-      "key": "/path/to/privkey.pem"
-    }
-  },
-  "ipc": {
-    "path": "/tmp/lb-gateway.sock"
-  },
-  "services": {
-    "bootloader": ""
-  },
-  "jwt": {
-    "secret": "your-jwt-secret",
-    "private_key": "/path/to/ecdsa-private.pem",
-    "public_key": "/path/to/ecdsa-public.pem"
-  },
-  "scripts": [],
-  "routes": [],
-  "control_api": {
-    "enabled": false,
-    "listen": ":9090"
-  },
-  "otel": {
-    "enabled": false,
-    "name": "my-gateway",
-    "endpoint": "localhost:4317",
-    "headers": ""
-  }
+	"mode": "dev",
+	"http": {
+		"port": 3000,
+		"secure_port": 3443,
+		"certificates": {
+			"cert": "/path/to/fullchain.pem",
+			"key": "/path/to/privkey.pem"
+		}
+	},
+	"ipc": {
+		"path": "/tmp/lb-gateway.sock"
+	},
+	"jwt": {
+		"secret": "your-jwt-secret",
+		"private_key": "/path/to/ecdsa-private.pem",
+		"public_key": "/path/to/ecdsa-public.pem"
+	},
+	"scripts": [],
+	"routes": [],
+	"control_api": {
+		"enabled": false,
+		"listen": ":9090"
+	},
+	"otel": {
+		"enabled": false,
+		"name": "my-gateway",
+		"endpoint": "localhost:4317",
+		"headers": ""
+	}
 }
 ```
 
 ### Configuration Reference
 
 | Section | Field | Type | Description |
-|---------|-------|------|-------------|
+| --- | --- | --- | --- |
 | **Root** | `mode` | `"dev"` \| `"prod"` | Development mode enables file watchers for hot-reload |
 | **http** | `port` | `number` | HTTP listen port (default from config) |
 | **http** | `secure_port` | `number` | HTTPS listen port |
 | **http** | `certificates.cert` | `string` | TLS certificate path |
 | **http** | `certificates.key` | `string` | TLS private key path |
 | **ipc** | `path` | `string` | Unix socket path for service IPC |
-| **services** | `bootloader` | `string` | Custom bootloader path (default: auto-detected from `node_modules/linebridge`) |
+| **services** | `bootloader` | `string` | Custom bootloader path (default: auto-detected from `node_modules`) |
 | **jwt** | `secret` | `string` | JWT signing secret |
 | **jwt** | `private_key` | `string` | ECDSA private key path |
 | **jwt** | `public_key` | `string` | ECDSA public key path |
@@ -123,13 +125,21 @@ Create a `gateway.config.json` in your project root:
 
 ```bash
 # From your project root
-ultragateway .
+ultragateway
 
 # Or specify a path
 ultragateway /path/to/project
 ```
 
+or better yet, use the Linebridge CLI:
+
+```bash
+# From your project root
+linebridge gateway
+```
+
 The gateway:
+
 1. Loads `.env` and `gateway.config.json`
 2. Scans the project for Linebridge services (directories with `index.ts`)
 3. Starts an embedded NATS server (port `4222`) with JetStream
@@ -167,17 +177,17 @@ Define custom proxy routes for external services or advanced routing:
 
 ```json
 {
-  "routes": [
-    {
-      "path": "/cdn/*",
-      "target": "http://localhost:9000"
-    },
-    {
-      "path": "/auth/*",
-      "target": "https://auth.example.com",
-      "path_rewrite": { "/auth": "" }
-    }
-  ]
+	"routes": [
+		{
+			"path": "/cdn/*",
+			"target": "http://localhost:9000"
+		},
+		{
+			"path": "/auth/*",
+			"target": "https://auth.example.com",
+			"path_rewrite": { "/auth": "" }
+		}
+	]
 }
 ```
 
@@ -194,27 +204,27 @@ When a Linebridge service starts in gateway mode (`LB_GATEWAY_SOCKET` is set):
 
 ```json
 {
-  "event": "service:register",
-  "data": {
-    "namespace": "api",
-    "secure": false,
-    "http": {
-      "enabled": true,
-      "proto": "http",
-      "paths": ["/users", "/users/:id", "/health"]
-    },
-    "websocket": {
-      "enabled": true,
-      "proto": "ws",
-      "path": "api",
-      "events": ["chat:message", "user:typing"]
-    },
-    "listen": {
-      "ip": "0.0.0.0",
-      "port": 3000,
-      "socket": "/tmp/lb_node_api.sock"
-    }
-  }
+	"event": "service:register",
+	"data": {
+		"namespace": "api",
+		"secure": false,
+		"http": {
+			"enabled": true,
+			"proto": "http",
+			"paths": ["/users", "/users/:id", "/health"]
+		},
+		"websocket": {
+			"enabled": true,
+			"proto": "ws",
+			"path": "api",
+			"events": ["chat:message", "user:typing"]
+		},
+		"listen": {
+			"ip": "0.0.0.0",
+			"port": 3000,
+			"socket": "/tmp/lb_node_api.sock"
+		}
+	}
 }
 ```
 
@@ -241,14 +251,14 @@ If a service crashes, the gateway restarts it after a 1-second delay. On shutdow
 
 ### Bootloader
 
-The gateway uses the Linebridge bootloader to start each service. By default, it auto-detects the bootloader at `node_modules/linebridge/bootloader/bin`. Set `services.bootloader` for a custom path.
+The gateway uses the Linebridge bootloader to start each service. By default, it auto-search for bootloader from node_modules. Set `services.bootloader` for a custom path.
 
 ## WebSocket & NATS
 
 The gateway's WebSocket layer is built on [gws](https://github.com/lxzan/gws) and integrates with NATS for distributed pub/sub. Key operations proxy through NATS:
 
 | Operation | Mechanism |
-|-----------|-----------|
+| --- | --- |
 | `subscribe(topic)` | NATS subscription for topic messages |
 | `unsubscribe(topic)` | NATS subscription removal |
 | `toTopic(topic, event, data)` | NATS publish to topic |
@@ -261,10 +271,10 @@ Gateway plugins are JavaScript files executed in a Goja-based JSVM. They have ac
 
 ```json
 {
-  "scripts": [
-    { "path": "plugins/auth.js", "crash_if_failed": false },
-    { "path": "plugins/logger.js", "crash_if_failed": true }
-  ]
+	"scripts": [
+		{ "path": "plugins/auth.js", "crash_if_failed": false },
+		{ "path": "plugins/logger.js", "crash_if_failed": true }
+	]
 }
 ```
 
@@ -274,10 +284,10 @@ An optional management API runs on a separate port (default `:9090`):
 
 ```json
 {
-  "control_api": {
-    "enabled": true,
-    "listen": "127.0.0.1:9090"
-  }
+	"control_api": {
+		"enabled": true,
+		"listen": "127.0.0.1:9090"
+	}
 }
 ```
 
@@ -287,35 +297,24 @@ Enable distributed tracing and logging via OTLP:
 
 ```json
 {
-  "otel": {
-    "enabled": true,
-    "name": "lb-gateway",
-    "endpoint": "localhost:4317"
-  }
+	"otel": {
+		"enabled": true,
+		"name": "lb-gateway",
+		"endpoint": "localhost:4317"
+	}
 }
 ```
 
 ## Environment Variables
 
-| Variable | Description |
-|----------|-------------|
-| `DEBUG` | Enable debug logging (`true`) |
-| `INFISICAL_CLIENT_ID` | Infisical client ID for secrets injection |
-| `INFISICAL_CLIENT_SECRET` | Infisical client secret |
-| `INFISICAL_PROJECT_ID` | Infisical project ID |
-| `ROOT_PATH` | Set automatically to the working directory |
+| Variable                  | Description                                |
+| ------------------------- | ------------------------------------------ |
+| `DEBUG`                   | Enable debug logging (`true`)              |
+| `INFISICAL_CLIENT_ID`     | Infisical client ID for secrets injection  |
+| `INFISICAL_CLIENT_SECRET` | Infisical client secret                    |
+| `INFISICAL_PROJECT_ID`    | Infisical project ID                       |
+| `ROOT_PATH`               | Set automatically to the working directory |
 
 ### Infisical Integration
 
 When `INFISICAL_*` environment variables are set, the gateway loads secrets from Infisical at startup. JWT secrets and ECDSA keys from Infisical automatically override the config file values.
-
-## Docker
-
-```dockerfile
-FROM node:24-alpine
-COPY --from=install /usr/local/bin/ultragateway /usr/local/bin/ultragateway
-COPY . /app
-WORKDIR /app
-RUN npm install
-CMD ["ultragateway", "."]
-```

@@ -15,22 +15,21 @@ Also is needed to run on GLibc-based systems, MUSL-based systems (Alpine Linux..
 ## Installation
 
 ```bash
-npm install linebridge @linebridge/bootloader @linebridge/engine-neo
+npm install linebridge @linebridge/cli @linebridge/engine-neo
 ```
 
 > **Note:** Linebridge delegates the HTTP/WebSocket execution to an external engine. `@linebridge/engine-neo` is the recommended default engine built on top of `uWebSockets.js`.
 
 ### TypeScript Setup
 
-Linebridge's engine typings are completely dynamic. To inject the types of the engine you installed (like Neo) and the bootloader across your entire project without polluting your source code with imports, create an `env.d.ts` file in the root of your project:
+Linebridge's engine typings are completely dynamic. To inject the types of the engine you installed (like Neo) across your entire project without polluting your source code with imports, create an `env.d.ts` file in the root of your project:
 
 ```ts
 // env.d.ts
-import "@linebridge/bootloader"
 import "@linebridge/engine-neo"
 ```
 
-*TypeScript will automatically discover this file and inject global tools (like `Boot`) and `NeoRequest`/`NeoResponse` types into all your routes and middlewares.*
+_TypeScript will automatically discover this file and inject global tools and `NeoRequest`/`NeoResponse` types into all your routes and middlewares._
 
 ## Your First Server
 
@@ -39,18 +38,17 @@ Create an `index.ts` file:
 ```ts
 import { Server } from "linebridge"
 
+// Make sure the target Server is exported by default so the bootloader can find it
 export default class MyAPI extends Server {
 	static refName = "my-api"
 	static listenPort = 3000
 }
-
-Boot(MyAPI)
 ```
 
 Then boot it:
 
 ```bash
-npx linebridge-boot index.ts
+npx linebridge boot index.ts
 ```
 
 Your server will start on `http://0.0.0.0:3000`. The root endpoint `GET /` returns server metadata, and `GET /_map` returns the full route map.
@@ -75,9 +73,9 @@ my-project/
 └── tsconfig.json
 ```
 
-## Bootloader
+## Bootloader and CLI
 
-The bootloader (`linebridge-boot`) handles `.env` loading, TypeScript/ESM JIT transpilation via `tsx` (esbuild), path aliases (`@`, `@classes`, etc.). See the [Bootloader guide](./bootloader) for the full reference.
+The bootloader (`linebridge-boot` or `linebridge boot`) handles `.env` loading, TypeScript/ESM JIT transpilation via `tsx` (esbuild), path aliases (`@`, `@classes`, etc.). See the [Bootloader guide](./bootloader) for the full reference.
 
 ### Path Aliases
 

@@ -9,17 +9,17 @@ Linebridge applications can be packaged as Docker containers for both standalone
 ## Base Images
 
 | Image | libc | Description |
-|-------|------|-------------|
+| --- | --- | --- |
 | `node:24` | glibc | Debian-based, full Node.js image |
 | `node:24-slim` | glibc | Smaller Debian variant (recommended for standalone) |
 | `ragestudio/ultragateway:latest` | glibc | Debian Trixie Slim + ultragateway + Node.js 24 |
 
 ### Why Not Alpine?
 
-| libc | Image | uWebSockets.js | Status |
-|------|-------|---------------|--------|
-| musl | `node:24-alpine` | ❌ Fails at runtime | Do not use |
-| glibc | `node:24-slim` | ✅ Works | Use this |
+| libc  | Image            | uWebSockets.js      | Status     |
+| ----- | ---------------- | ------------------- | ---------- |
+| musl  | `node:24-alpine` | ❌ Fails at runtime | Do not use |
+| glibc | `node:24-slim`   | ✅ Works            | Use this   |
 
 uWebSockets.js ships prebuilt native binaries linked against glibc. The musl-based Alpine libc is ABI-incompatible, causing immediate crashes on startup. If you need a minimal image, use `node:24-slim` (~70 MB) which is glibc-based.
 
@@ -147,9 +147,9 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - ./services:/app/services        # rw for hot-reload
+      - ./services:/app/services # rw for hot-reload
       - ./gateway.config.json:/app/gateway.config.json:ro
-      - ./node_modules:/app/node_modules  # pre-installed
+      - ./node_modules:/app/node_modules # pre-installed
       - nats-data:/app/nats-data
     environment:
       - NODE_ENV=development
@@ -203,21 +203,21 @@ CMD ["ultragateway", "."]
 
 ### Gateway
 
-| Variable | Description |
-|----------|-------------|
-| `DEBUG` | Enable debug logging (`true`) |
-| `NODE_ENV` | `production` or `development` |
-| `INFISICAL_CLIENT_ID` | Infisical secrets injection |
-| `INFISICAL_CLIENT_SECRET` | Infisical secret |
-| `INFISICAL_PROJECT_ID` | Infisical project ID |
+| Variable                  | Description                   |
+| ------------------------- | ----------------------------- |
+| `DEBUG`                   | Enable debug logging (`true`) |
+| `NODE_ENV`                | `production` or `development` |
+| `INFISICAL_CLIENT_ID`     | Infisical secrets injection   |
+| `INFISICAL_CLIENT_SECRET` | Infisical secret              |
+| `INFISICAL_PROJECT_ID`    | Infisical project ID          |
 
 ### Service (injected by gateway)
 
 The gateway automatically sets these for each service:
 
-| Variable | Value |
-|----------|-------|
-| `LB_SOCKET_MODE` | `true` |
+| Variable            | Value                     |
+| ------------------- | ------------------------- |
+| `LB_SOCKET_MODE`    | `true`                    |
 | `LB_GATEWAY_SOCKET` | Gateway's IPC socket path |
 
 ---
@@ -279,14 +279,14 @@ With `gateway.config.json`:
 
 ```json
 {
-  "http": {
-    "port": 3000,
-    "secure_port": 3443,
-    "certificates": {
-      "cert": "/etc/ssl/fullchain.pem",
-      "key": "/etc/ssl/privkey.pem"
-    }
-  }
+	"http": {
+		"port": 3000,
+		"secure_port": 3443,
+		"certificates": {
+			"cert": "/etc/ssl/fullchain.pem",
+			"key": "/etc/ssl/privkey.pem"
+		}
+	}
 }
 ```
 
