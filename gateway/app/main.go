@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/signal"
 	"path"
-	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -65,7 +64,7 @@ type App struct {
 	IsDebug          bool
 }
 
-var Pwd string
+var Pwd string = utils.Pwd()
 
 func getGracefulTimeout() time.Duration {
 	if val := os.Getenv("GRACEFUL_SHUTDOWN_TIMEOUT"); val != "" {
@@ -149,12 +148,6 @@ func gracefulShutdown(appData *App, natsSrv *natsServer.Server) {
 }
 
 func Start() {
-	if len(os.Args) > 1 {
-		Pwd = os.Args[1]
-	} else {
-		Pwd, _ = os.Getwd()
-	}
-
 	os.Setenv("ROOT_PATH", Pwd)
 	log.Printf("[%s v%s]", ProductName, VersionString)
 	log.Println(Pwd)
@@ -174,24 +167,17 @@ func Start() {
 		appCfg.Mode = "dev"
 	}
 
-	// if no bootloader specified, search in the pwd for built-in linebridge
-	// usually should be on node_modules
+	// if no bootloader specified, search in the project installed dependencies
 	if appCfg.Services.Bootloader == "" {
-		lbModulePath := filepath.Join(Pwd, "node_modules", "linebridge", "bootloader")
-		lbBootModulePath := filepath.Join(Pwd, "node_modules", "@linebridge/bootloader")
+		bootloaderBinPath, err := utils.ScanBootloaderLocation()
 
-		lbBootloaderBinPath := filepath.Join(lbModulePath, "bin")
-
-		// check if exist bin
-		if _, err := os.Stat(lbBootloaderBinPath); os.IsNotExist(err) {
-			lbBootloaderBinPath = filepath.Join(lbBootModulePath, "bin")
-		}
-
-		if _, err := os.Stat(lbBootloaderBinPath); os.IsNotExist(err) {
+		if err != nil {
 			log.Fatal("Linebridge bootloader not found. Check if 'linebridge' module is installed or use a custom bootloader on `config.services.bootloader=`")
 		}
 
-		appCfg.Services.Bootloader = lbBootloaderBinPath
+		log.Printf("Scanned Bootloader binary: %v\n", bootloaderBinPath)
+
+		appCfg.Services.Bootloader = bootloaderBinPath
 	}
 
 	// use external NATS if NATS_URL is set, otherwise start embedded
