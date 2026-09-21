@@ -8,9 +8,9 @@ importers:
 
   .:
     dependencies:
-      '@linebridge/bootloader':
-        specifier: link:../../bootloader
-        version: link:../../bootloader
+      '@linebridge/cli':
+        specifier: link:../../cli
+        version: link:../../cli
       '@linebridge/engine-neo':
         specifier: link:../../engines/neo/dist
         version: link:../../engines/neo/dist

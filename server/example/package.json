@@ -3,11 +3,12 @@
 	"name": "example",
 	"type": "module",
 	"scripts": {
-		"start": "linebridge-boot index.ts"
+		"start": "linebridge boot index.ts",
+		"dev": "linebridge boot index.ts --watch"
 	},
 	"dependencies": {
 		"linebridge": "link:../dist",
-		"@linebridge/bootloader": "link:../../bootloader",
+		"@linebridge/cli": "link:../../cli",
 		"@linebridge/engine-neo": "link:../../engines/neo/dist"
 	}
 }

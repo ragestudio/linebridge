@@ -1,7 +1,7 @@
 import { Server } from "linebridge"
 import injectTest from "./middlewares/injectTest"
 
-export default class ExampleAPI extends Server {
+export class ExampleAPI extends Server {
 	static useMiddlewares = ["logs"]
 
 	routes: Record<string, any> = {
@@ -68,4 +68,4 @@ export default class ExampleAPI extends Server {
 	}
 }
 
-Boot(ExampleAPI)
+export default ExampleAPI
