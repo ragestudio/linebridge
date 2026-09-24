@@ -1,4 +1,4 @@
-import Handler, { HandlerKind } from "../Handler"
+import Handler, { HandlerFunctionByKind, HandlerKind } from "../Handler"
 import parsePathParameters from "../../utils/parsePathParameters"
 
 import type { ServerInstance } from "../../types"
@@ -15,7 +15,7 @@ import type {
 	ServerResponse,
 } from "../../types"
 
-export type RouteTypes = "http" | "ws"
+export type RouteKind = HandlerKind.http | HandlerKind.ws
 export type RouteHttpMethods =
 	| "any"
 	| "get"
@@ -29,14 +29,14 @@ export type RouteHttpMethods =
 export interface RouteObject<
 	Child = Server<any>,
 	SelectedCtx extends ContextsKeys<Child> = ContextsKeys<Child>,
-	Type extends RouteTypes = "http",
+	Kind extends RouteKind = HandlerKind.http,
 	SelectedMw extends MiddlewaresKeys<Child> = MiddlewaresKeys<Child>,
 > {
 	path?: string
 	method?: RouteHttpMethods
 	useMiddlewares?: readonly SelectedMw[]
 	useContexts?: readonly SelectedCtx[]
-	fn: Type extends "ws"
+	fn: Kind extends "ws"
 		? WebsocketHandlerFunction<Pick<Contexts<Child>, SelectedCtx>>
 		: HttpHandlerFunction<
 				Pick<Contexts<Child>, SelectedCtx>,
@@ -47,7 +47,7 @@ export interface RouteObject<
 
 export function defineRoute<
 	Child = Server<any>,
-	Type extends RouteTypes = "http",
+	Kind extends RouteKind = HandlerKind.http,
 >(serverClass?: Child) {
 	type Req = ServerRequest<Child>
 	type Res = ServerResponse<Child>
@@ -60,7 +60,7 @@ export function defineRoute<
 		method?: RouteHttpMethods
 		useMiddlewares?: UseMiddlewares
 		useContexts?: UseContexts
-		fn: Type extends "ws"
+		fn: Kind extends "ws"
 			? WebsocketHandlerFunction<
 					UseContexts extends readonly [any, ...any[]]
 						? Pick<Contexts<Child>, UseContexts[number]>
@@ -88,9 +88,10 @@ export class Route<
 	TServer = Server<any>,
 	TContextKeys extends ContextsKeys<TServer>[] = ContextsKeys<TServer>[],
 > {
+	_initialized: Boolean = false
 	server!: Server<any> & ServerInstance<TServer>
 
-	kind: HandlerKind = HandlerKind.http
+	kind: RouteKind = HandlerKind.http
 	path: string = "/"
 	method: RouteHttpMethods = "get"
 	useContexts: readonly ContextsKeys<TServer>[] = []
@@ -100,9 +101,9 @@ export class Route<
 
 	_source_file?: string
 
-	middlewares: Handler[] = []
+	middlewares: Handler<HandlerKind.middleware>[] = []
 	ctx: Record<string, any> = {}
-	handler!: Handler<HandlerKind>
+	handler!: Handler<any>
 	fn!: Function
 
 	get engine() {
@@ -223,7 +224,7 @@ export class Route<
 					continue
 				}
 
-				const handler = this._to_handler(
+				const handler = this._to_handler<HandlerKind.middleware>(
 					middleware,
 					HandlerKind.middleware,
 				)
@@ -243,33 +244,25 @@ export class Route<
 		if (this.fn) {
 			this.handler = this._to_handler(this.fn, this.kind)
 		}
+
+		this._initialized = true
+
+		return this
 	}
 
-	_to_handler = (fn: any, kind: HandlerKind): Handler<HandlerKind> => {
+	_to_handler = <HKind extends HandlerKind>(
+		fn: Function,
+		kind: HKind,
+	): Handler<HKind> => {
 		if (fn instanceof Handler) {
-			return fn
+			return fn as unknown as Handler<HKind>
 		}
 
-		switch (kind) {
-			case HandlerKind.http:
-				return new Handler<HandlerKind.http>({
-					kind: HandlerKind.http,
-					engine: this.server.engine,
-					fn: fn,
-				})
-			case HandlerKind.middleware:
-				return new Handler<HandlerKind.middleware>({
-					kind: HandlerKind.middleware,
-					engine: this.server.engine,
-					fn: fn,
-				})
-			case HandlerKind.ws:
-				return new Handler<HandlerKind.ws>({
-					kind: HandlerKind.ws,
-					engine: this.server.engine,
-					fn: fn,
-				})
-		}
+		return new Handler<HKind>({
+			kind: kind,
+			engine: this.server.engine,
+			fn: fn as HandlerFunctionByKind[HKind],
+		})
 	}
 }
 

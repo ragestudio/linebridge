@@ -26,41 +26,37 @@ export enum HandlerKind {
 	http = "http",
 	ws = "ws",
 	middleware = "middleware",
+	generic = "generic",
 }
 
-export interface HandlerParamsByKind {
-	[HandlerKind.http]: {
-		kind: HandlerKind.http
-		engine: EngineAdaptor
-		fn: HttpHandlerFunction
-		ctx?: Record<string, any>
-	}
-	[HandlerKind.ws]: {
-		kind: HandlerKind.ws
-		engine: EngineAdaptor
-		fn: WebsocketHandlerFunction
-		ctx?: Record<string, any>
-	}
-	[HandlerKind.middleware]: {
-		kind: HandlerKind.middleware
-		engine: EngineAdaptor
-		fn: MiddlewareHandlerFunction
-		ctx?: Record<string, any>
-	}
+export interface HandlerFunctionByKind {
+	[HandlerKind.http]: HttpHandlerFunction
+	[HandlerKind.ws]: WebsocketHandlerFunction
+	[HandlerKind.middleware]: MiddlewareHandlerFunction
+	[HandlerKind.generic]: Function
 }
 
-export class Handler<K extends HandlerKind = HandlerKind> {
+export interface HandlerParams<
+	TKind extends HandlerKind = HandlerKind.generic,
+> {
+	kind: TKind
+	engine: EngineAdaptor
+	fn: HandlerFunctionByKind[TKind]
+	ctx?: Record<string, any>
+}
+
+export class Handler<Kind extends HandlerKind = HandlerKind.generic> {
 	_constructed: boolean = false
 	static _constructed: boolean = false
 	static _class: boolean = true
 
-	kind: K
+	kind: Kind
 	engine: EngineAdaptor
-	fn: HandlerParamsByKind[K]["fn"]
-	params: HandlerParamsByKind[K]
+	params: HandlerParams<Kind>
+	fn: HandlerFunctionByKind[Kind]
 	ctx?: Record<string, any>
 
-	constructor(params: HandlerParamsByKind[K]) {
+	constructor(params: HandlerParams<Kind>) {
 		if (!params.engine || !(params.engine instanceof EngineAdaptor)) {
 			throw new Error("Missing Handler engine")
 		}
@@ -71,7 +67,7 @@ export class Handler<K extends HandlerKind = HandlerKind> {
 			throw new Error("Missing or Invalid Handler kind")
 		}
 
-		this.kind = params.kind as unknown as K
+		this.kind = params.kind
 
 		if (typeof params.fn !== "function") {
 			throw new Error("Missing or Invalid Handler function")
@@ -95,15 +91,15 @@ export class Handler<K extends HandlerKind = HandlerKind> {
 		try {
 			switch (this.kind) {
 				case "http": {
-					return this.executeAsHttp(...(args as [Request, Response]))
+					return this.asHttp(...(args as [Request, Response]))
 				}
 				case "ws": {
-					return this.executeAsWebsocket(
+					return this.asWebsocket(
 						...(args as [Client, any, typeof this.ctx]),
 					)
 				}
 				case "middleware": {
-					return this.executeAsMiddleware(
+					return this.asMiddleware(
 						...(args as [Request, Response, () => void]),
 					)
 				}
@@ -113,19 +109,12 @@ export class Handler<K extends HandlerKind = HandlerKind> {
 		}
 	}
 
-	/**
-	 * Executes an HTTP route handler.
-	 * If a non-void result is returned and the response hasn't been sent
-	 * yet, it is automatically serialized as JSON.
-	 * OperationErrors are converted to the appropriate HTTP status code.
-	 */
-	async executeAsHttp(req: Request, res: Response): Promise<void> {
+	async asHttp(req: Request, res: Response): Promise<void> {
 		const fn = this.fn as HttpHandlerFunction
 
 		try {
 			const result = await fn(req, res, req.ctx)
 
-			// Auto-JSON: if handler returned data and didn't manually end the response.
 			if (result && !res.completed) {
 				return res.json(result)
 			}
@@ -143,12 +132,7 @@ export class Handler<K extends HandlerKind = HandlerKind> {
 		}
 	}
 
-	/**
-	 * Executes a middleware function.
-	 * Middlewares receive (req, res, next, ctx). If next() is never called,
-	 * the request pipeline stops at this middleware.
-	 */
-	async executeAsMiddleware(
+	async asMiddleware(
 		req: Request,
 		res: Response,
 		next: () => void,
@@ -171,12 +155,7 @@ export class Handler<K extends HandlerKind = HandlerKind> {
 		}
 	}
 
-	/**
-	 * Executes a WebSocket event handler.
-	 * WebSocket errors are logged but don't send HTTP responses -
-	 * the client is notified via its error/ack channel instead.
-	 */
-	async executeAsWebsocket(
+	async asWebsocket(
 		client: Client,
 		data?: any,
 		ctx?: typeof this.ctx,
@@ -198,6 +177,21 @@ export class Handler<K extends HandlerKind = HandlerKind> {
 
 		return [result, error]
 	}
+
+	// async asGeneric() {
+	// 	let result = null
+	// 	let error = null
+
+	// 	try {
+	// 		result = await this.fn()
+	// 	} catch (err: any) {
+	// 		error = err
+	// 		console.debug(`[handler] error >`, err)
+	// 		// if (!(error instanceof OperationError)) {
+	// 		// 	console.debug(`[ws] 500 >`, error)
+	// 		// }
+	// 	}
+	// }
 }
 
 export default Handler
