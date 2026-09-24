@@ -95,10 +95,7 @@ export default async function handleUpstream(
 		const decoded = this.codec.decode(message.data) as RtEngineEventData
 
 		// decode the message body and execute the handler
-		const [result, error] = await handler.executeAsWebsocket(
-			client,
-			decoded.data,
-		)
+		const [result, error] = await handler.asWebsocket(client, decoded.data)
 
 		// ack back with the result (or error) so the gateway can relay it
 		await client.ack(event, result, error)

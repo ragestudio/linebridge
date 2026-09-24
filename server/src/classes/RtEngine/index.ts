@@ -43,7 +43,7 @@ class RTEngine {
 	engine: EngineAdaptor
 
 	/** Map of registered event handlers (built-in + user-defined) */
-	events: Map<string, Handler> = new Map()
+	events: Map<string, Handler<HandlerKind.ws>> = new Map()
 
 	/** Collection of currently connected clients */
 	clients: Clients = new Clients(this)
@@ -195,13 +195,12 @@ class RTEngine {
 		}
 
 		// Wrap in a Handler instance for uniform dispatch
-		const wsHandler = new Handler({
+		const wsHandler = new Handler<HandlerKind.ws>({
 			kind: HandlerKind.ws,
 			engine: this.server.engine,
-			event: event,
 			fn: handler.fn,
 			ctx: ctx,
-		} as any)
+		})
 
 		this.events.set(event, wsHandler)
 	}
