@@ -19,7 +19,7 @@ import type { HttpHandlerFunction } from "../classes/Handler/http"
  * HTTP routes grouped by their method, and a flat list of WebSocket event names.
  * This is useful for introspection, debugging, and API documentation.
  */
-export default class MapRoute extends Route<Server> {
+export default class MapRoute extends Route<Server<any>> {
 	path = "/_map"
 
 	fn: HttpHandlerFunction = async (req, res) => {

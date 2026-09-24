@@ -9,7 +9,7 @@
 import Route from "../classes/Route"
 
 import type Server from "../server"
-import { HttpHandlerFunction } from "../classes/Handler"
+import type { HttpHandlerFunction } from "../classes/Handler"
 
 /**
  * Built-in route handler for GET /.
@@ -17,7 +17,7 @@ import { HttpHandlerFunction } from "../classes/Handler"
  * Returns JSON with the server's identity and version information,
  * useful for health checks, discovery, and debugging.
  */
-export default class MainRoute extends Route<Server> {
+export default class MainRoute extends Route<Server<any>> {
 	path = "/"
 
 	// request the server context so we can access server metadata
