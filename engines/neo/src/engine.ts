@@ -218,6 +218,8 @@ export class NeoEngine extends EngineAdaptor {
 		defaultRoute.path = "/*"
 		defaultRoute.fn = this._defaultResponse
 
+		defaultRoute._initialize(this.server)
+
 		this.register(defaultRoute)
 	}
 
@@ -227,9 +229,13 @@ export class NeoEngine extends EngineAdaptor {
 	public close = close.bind(this)
 
 	/** Registers a route (HTTP method + path + handler). */
-	public register = route_register.bind(this)
+	public register = route_register.bind(this) as OmitThisParameter<
+		typeof route_register
+	>
 	/** Registers a global middleware that runs before every route handler. */
-	public register_middleware = middleware_register.bind(this)
+	public register_middleware = middleware_register.bind(
+		this,
+	) as OmitThisParameter<typeof middleware_register>
 
 	/**
 	 * Publish a message to a topic in MQTT syntax to all WebSocket connections on this Server instance.
@@ -277,7 +283,9 @@ export class NeoEngine extends EngineAdaptor {
 	 * Default handler for unmatched routes. Responds with a 404 JSON body.
 	 */
 	_defaultResponse(req: Request<Server>, res: Response<Server>) {
-		res.status(404).json({ error: "Not found" })
+		res.status(404)
+			.setHeader("content-type", "application/json")
+			._sendFast(`{"error":"Not found"}`)
 	}
 }
 

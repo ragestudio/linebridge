@@ -10,7 +10,7 @@ import type Engine from "./engine"
 import type Request from "./request"
 import type Response from "./response"
 import type { Route } from "linebridge/classes/Route/index"
-import type { Handler } from "linebridge/classes/Handler/index"
+import type { Handler, HandlerKind } from "linebridge/classes/Handler/index"
 
 /** HTTP methods that never carry a request body. */
 const BODYLESS_METHODS = new Set(["GET", "HEAD", "OPTIONS", "TRACE"])
@@ -29,7 +29,7 @@ export default async function (
 	request: Request<any>,
 	response: Response<any>,
 	route: Route<typeof this.server>,
-	allMiddlewares: Handler[],
+	allMiddlewares: Handler<HandlerKind.middleware>[],
 	cursor: number = 0,
 ) {
 	if (response.completed) return

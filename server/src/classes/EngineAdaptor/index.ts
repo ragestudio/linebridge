@@ -10,7 +10,7 @@
  */
 import type LinebridgeServer from "../../server"
 import type { MiddlewareHandlerFunction } from "../Handler"
-import type { RouteAlike } from "../Route"
+import type { Route } from "../Route"
 import type RTEngine from "../RtEngine"
 
 export class EngineAdaptor {
@@ -31,10 +31,14 @@ export class EngineAdaptor {
 	registers: Set<Record<string, any>> = new Set()
 
 	/** Registers an HTTP route (called by route_register). */
-	register!: (route: RouteAlike) => void
+	register!: (route: Route) => void
 
 	/** Registers a global middleware. */
-	register_middleware!: (middleware: MiddlewareHandlerFunction | import("../Handler").MiddlewareObj<any, any, any>) => void
+	register_middleware!: (
+		middleware:
+			| MiddlewareHandlerFunction
+			| import("../Handler").MiddlewareObj<any, any, any>,
+	) => void
 
 	/** Async init - sets up SSL, creates the underlying server app, etc. */
 	initialize!: () => Promise<void>
