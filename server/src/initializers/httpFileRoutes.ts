@@ -19,6 +19,7 @@ import fs from "node:fs"
 
 import Route, { RouteHttpMethods } from "../classes/Route"
 import RecursiveRegister from "../utils/recursiveRegister"
+import { HandlerKind } from "../classes/Handler"
 
 // matches [paramName] segments in directory names
 const parametersRegex = /\[([a-zA-Z0-9_]+)\]/g
@@ -99,7 +100,7 @@ export default async (
 			routeClass.fn = fileObj.fn ?? fileObj
 			routeClass._source_file = absolutePath
 
-			server.engine.register(routeClass)
+			server.register(routeClass, HandlerKind.http)
 		},
 	})
 }

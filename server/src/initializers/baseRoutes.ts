@@ -25,6 +25,6 @@ const base_routes = [MainBaseRoute, MapBaseRoute]
 export default async (server: Server<any>): Promise<void> => {
 	for await (const route of base_routes) {
 		// instantiate the route class and register it with the engine
-		server.engine.register(new route())
+		server.register(route)
 	}
 }

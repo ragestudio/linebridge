@@ -1,30 +1,6 @@
 import "./global"
 import "./vars"
 
-import fs from "node:fs"
-import { EventEmitter } from "tseep"
-
-import registerBaseRoutes from "./registers/baseRoutes"
-import registerBaseMiddlewares from "./registers/baseMiddlewares"
-import registerBaseHeaders from "./registers/baseHeaders"
-import registerWebsocketsFileEvents from "./registers/websocketFileEvents"
-import registerHttpFileRoutes from "./registers/httpFileRoutes"
-import registerGateway from "./registers/gateway"
-import registerPlugins from "./registers/plugins"
-
-import isExperimental from "./utils/isExperimental"
-import getHostAddress from "./utils/getHostAddress"
-
-import Engines, {
-	registerEngine,
-	type EnginesRegistry,
-} from "linebridge/engines"
-import NatsAdapter from "./classes/Nats/adapter"
-import IPC from "./classes/IPC"
-
-import LoggerMiddleware from "./middlewares/logger"
-import CorsMiddleware from "./middlewares/cors"
-
 import type {
 	MiddlewareHandlerFunction,
 	MiddlewareObj,
@@ -38,11 +14,33 @@ import type {
 	IPCEvents,
 } from "./types"
 
+import fs from "node:fs"
+import { EventEmitter } from "tseep"
+
+import registerBaseRoutes from "./initializers/baseRoutes"
+import registerBaseMiddlewares from "./initializers/baseMiddlewares"
+import registerBaseHeaders from "./initializers/baseHeaders"
+import registerWebsocketsFileEvents from "./initializers/websocketFileEvents"
+import registerHttpFileRoutes from "./initializers/httpFileRoutes"
+import registerGateway from "./initializers/gateway"
+import registerPlugins from "./initializers/plugins"
+
+import isExperimental from "./utils/isExperimental"
+import getHostAddress from "./utils/getHostAddress"
+
+import Engines, { registerEngine, type EnginesRegistry } from "./engines"
+import NatsAdapter from "./classes/Nats/adapter"
+import IPC from "./classes/IPC"
+
+import LoggerMiddleware from "./middlewares/logger"
+import CorsMiddleware from "./middlewares/cors"
+
 import { Plugin } from "./classes/Plugin"
 import { Route, RouteAlike, RouteObject } from "./classes/Route"
 import { HandlerKind } from "./classes/Handler"
 import { RtEngineContext, RtEngineSocket } from "./classes/RtEngine/types"
 import { Client } from "./classes/RtEngine/classes/client"
+import registerRoute from "./registers/route"
 import path from "node:path"
 
 try {
@@ -213,10 +211,10 @@ export class Server<EngineType extends string = "neo"> {
 	// ---- user-defined routes & events ----
 
 	/** HTTP route definitions (class-based, registered at boot). */
-	routes!: Record<string, RouteObject<this, any, "http", any> | any>
+	routes!: Record<string, RouteObject<this, any, HandlerKind.http, any> | any>
 
 	/** WebSocket event handler map. */
-	wsEvents?: Record<string, RouteObject<this, any, "ws", any> | any>
+	wsEvents?: Record<string, RouteObject<this, any, HandlerKind.ws, any> | any>
 
 	/** IPC event handler map (used with NATS). */
 	ipcEvents?: IPCEvents
@@ -491,18 +489,7 @@ export class Server<EngineType extends string = "neo"> {
 					definition.useMiddlewares = []
 				}
 
-				const routeObj = new Route()
-
-				routeObj.kind = HandlerKind.http
-				routeObj.path = path
-				routeObj.method = definition.method
-				routeObj.fn = definition.fn
-				routeObj.useContexts =
-					definition.useContexts as ContextsKeys<this>[]
-				routeObj.useMiddlewares =
-					definition.useMiddlewares as MiddlewaresKeys<this>[]
-
-				this.engine.register(routeObj)
+				this.register(definition)
 			}
 		}
 
@@ -553,26 +540,9 @@ export class Server<EngineType extends string = "neo"> {
 		console.info(`🛰  Server ready!\n \t${lines.join("\n\t")} \n`)
 	}
 
-	register = {
-		http: (route: RouteAlike<this>): void => {
-			if (!this.engine) {
-				throw new Error("Engine not initialized")
-			}
-
-			this.engine.register(route as any)
-		},
-		ws: (route: RouteAlike<this>): void => {
-			throw new Error(
-				"Functional/Dynamic websocket event register not implemented yet",
-			)
-
-			// if (!this.engine) {
-			// 	throw new Error("Engine not initialized")
-			// }
-
-			//this.engine.register_wsevent(register)
-		},
-	}
+	register = registerRoute.bind(this) as OmitThisParameter<
+		typeof registerRoute
+	>
 
 	/**
 	 * Graceful shutdown handler. Calls onClose hook, then closes the engine.

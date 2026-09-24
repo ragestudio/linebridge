@@ -12,7 +12,7 @@ import type {
 	MiddlewaresKeys as T_MiddlewaresKeys,
 } from "./types"
 import type {
-	RouteTypes as T_RouteTypes,
+	RouteKind as T_RouteTypes,
 	defineRoute as T_defineRoute,
 } from "./classes/Route"
 import type { defineMiddleware as T_defineMiddleware } from "./classes/Handler/middleware"
