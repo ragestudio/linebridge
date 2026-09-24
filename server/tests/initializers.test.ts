@@ -3,13 +3,13 @@ import "../src/vars"
 import path from "node:path"
 import net from "node:net"
 
-import baseHeadersRegister from "../src/registers/baseHeaders"
-import baseMiddlewaresRegister from "../src/registers/baseMiddlewares"
-import pluginsRegister from "../src/registers/plugins"
-import httpFileRoutesRegister from "../src/registers/httpFileRoutes"
-import websocketFileEventsRegister from "../src/registers/websocketFileEvents"
-import gatewayRegister from "../src/registers/gateway"
-import ipcServiceRegister from "../src/registers/ipcService"
+import baseHeadersRegister from "../src/initializers/baseHeaders"
+import baseMiddlewaresRegister from "../src/initializers/baseMiddlewares"
+import pluginsRegister from "../src/initializers/plugins"
+import httpFileRoutesRegister from "../src/initializers/httpFileRoutes"
+import websocketFileEventsRegister from "../src/initializers/websocketFileEvents"
+import gatewayRegister from "../src/initializers/gateway"
+import ipcServiceRegister from "../src/initializers/ipcService"
 
 import getRoutes from "../src/utils/getRoutes"
 import Route from "../src/classes/Route"
@@ -35,7 +35,7 @@ vi.mock("../src/utils/getRoutes", () => ({
 	default: vi.fn(),
 }))
 
-describe("Registers", () => {
+describe("Initializers", () => {
 	let mockServer: any
 	let mockEngine: any
 	let mockWsEngine: any
