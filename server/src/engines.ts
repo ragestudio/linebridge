@@ -3,7 +3,7 @@
  * This is the entry point that the server uses to look up engine adaptors by name.
  */
 
-import type EngineAdaptor from "../classes/EngineAdaptor"
+import type EngineAdaptor from "./classes/EngineAdaptor"
 
 export interface EnginesRegistry {}
 
