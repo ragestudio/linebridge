@@ -3,16 +3,7 @@
     width="100%"
     height="150px"
 />
+
 # Linebridge Client
+
 Client-side implementations for Linebridge framework.
-
-## Components
-- RTEngineClient
-- ...
-## Installation
-
-To install the Linebridge client, run the following command:
-
-```bash
-npm install linebridge-client
-```
