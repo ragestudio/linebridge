@@ -1,4 +1,4 @@
-import type RTEngineClient from "./index.ts"
+import type WebsocketClient from "./index.ts"
 
 /**
  * Controller for managing topic subscriptions in a real-time client.
@@ -8,13 +8,13 @@ class TopicsController {
 	/**
 	 * Creates an instance of the TopicsController.
 	 *
-	 * @param {RTEngineClient} client - RTE client that will handle communications.
+	 * @param {WebsocketClient} client - RTE client that will handle communications.
 	 */
-	constructor(client: RTEngineClient) {
+	constructor(client: WebsocketClient<any>) {
 		this.client = client
 	}
 
-	client: RTEngineClient
+	client: WebsocketClient<any>
 
 	/**
 	 * Set that stores the topics currently subscribed to.
@@ -40,10 +40,7 @@ class TopicsController {
 		subscriberEventName: string,
 		topic: any,
 	): Promise<boolean> => {
-		console.log(
-			`[rt/${this.client.params.refName}] Subscribing to topic:`,
-			topic,
-		)
+		this.client.logger.log("Subscribing to topic:", topic)
 
 		// create a subscription reference for this topic
 		this.subscriptionsRefs.set(topic, {
@@ -68,10 +65,7 @@ class TopicsController {
 		unsubscribeEventName: string,
 		topic: string,
 	): Promise<boolean> => {
-		console.log(
-			`[rt/${this.client.params.refName}] Unsubscribing from topic:`,
-			topic,
-		)
+		this.client.logger.log("Unsubscribing from topic:", topic)
 
 		this.client.emit(unsubscribeEventName, topic)
 
@@ -131,10 +125,7 @@ class TopicsController {
 	// This can be approached from the backend (using a session regeneration system),
 	// or rewriting this topic management logic, to store subscribed events properly (instead only storing the topic name)
 	regenerate = async (): Promise<boolean> => {
-		console.log(
-			`[rt/${this.client.params.refName}] Regenerating topics...`,
-			this.subscribed,
-		)
+		this.client.logger.log("Regenerating topics...", this.subscribed)
 
 		for (const [topic, ref] of this.subscriptionsRefs.entries()) {
 			this.client.emit(ref.fromEvent, topic)

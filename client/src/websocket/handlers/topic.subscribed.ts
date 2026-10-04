@@ -4,7 +4,7 @@ import type RTEClient from ".."
  * Handles topic subscribed events.
  */
 export default function (this: RTEClient, topic: string) {
-	console.log(`[rt/${this.params.refName}] topic subscribed:`, topic)
+	this.logger.log("topic subscribed:", topic)
 
 	this.topics.subscribed.add(topic)
 
