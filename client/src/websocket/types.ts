@@ -23,7 +23,7 @@ export type EventData<T, K> = K extends keyof T ? T[K] : any
 export type EventHandlerFunction<Data = any> = (
 	data: Data,
 	payload: EventPayload,
-) => void | Promise<void>
+) => any | Promise<any>
 
 export interface CoreEvents {
 	open: void

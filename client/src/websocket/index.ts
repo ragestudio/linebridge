@@ -217,12 +217,9 @@ export class WebsocketClient<CustomEvents extends Record<string, any> = {}> {
 	/**
 	 * Sends an event to the WebSocket server and returns a message from the server.
 	 */
-	call = <
-		K extends keyof (CoreEvents & CustomEvents) | (string & {}),
-		R = any,
-	>(
-		event: K,
-		data?: EventData<CoreEvents & CustomEvents, K>,
+	call = <R = any>(
+		event: string,
+		data?: any,
 		timeout: number = WebsocketClient.callTimeout,
 	): Promise<R> => {
 		return rpc<R>(this, event as string, data, timeout)
