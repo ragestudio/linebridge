@@ -1,6 +1,7 @@
 import { OperationError as M_OperationError } from "./classes/OperationError"
 import { defineRoute as M_DefineRoute } from "./classes/Route"
 import { defineMiddleware as M_DefineMiddleware } from "./classes/Handler/middleware"
+import { HandlerKind as M_HandlerKind } from "./classes/Handler/index"
 
 import M_nanoid from "./utils/nanoid"
 import M_toBoolean from "./utils/toBoolean"
@@ -19,6 +20,7 @@ declare global {
 
 global.isProduction = process.env.NODE_ENV === "production"
 
+global.HandlerKind = M_HandlerKind
 global.OperationError = M_OperationError
 global.defineRoute = M_DefineRoute
 global.defineMiddleware = M_DefineMiddleware

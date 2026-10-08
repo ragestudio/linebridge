@@ -16,6 +16,7 @@ import type {
 	defineRoute as T_defineRoute,
 } from "./classes/Route"
 import type { defineMiddleware as T_defineMiddleware } from "./classes/Handler/middleware"
+import type { HandlerKind as M_HandlerKind } from "./classes/Handler/index"
 
 declare global {
 	var nats: NatsAdapter
@@ -24,6 +25,7 @@ declare global {
 
 	var defineRoute: typeof T_defineRoute
 	var defineMiddleware: typeof T_defineMiddleware
+	var HandlerKind: typeof M_HandlerKind
 
 	type RouteTypes = T_RouteTypes
 	type KnownKeys<T> = T_KnownKeys<T>
@@ -35,6 +37,7 @@ declare global {
 		T_ServerResponse<T>
 }
 
+export type * from "./classes/Handler/index"
 export type { Client as RTEClient } from "./classes/RtEngine/classes/client"
 export type { EnginesRegistry } from "./engines"
 export type { EnginesRequests, EnginesResponses } from "./types"
