@@ -2,6 +2,7 @@
 	"name": "@linebridge/client",
 	"version": "2.0.0",
 	"type": "module",
+	"main": "./dist/index.js",
 	"module": "./dist/index.js",
 	"types": "./dist/index.d.ts",
 	"author": "RageStudio <support@ragestudio.net>",

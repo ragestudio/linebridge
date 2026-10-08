@@ -14,18 +14,18 @@
 		"package.json"
 	],
 	"scripts": {
-		"install": "npm run init && npm run build",
-		"init": "node-gyp configure -- -f compile_commands_json && cp build/Release/compile_commands.json . && node-gyp configure",
-		"build": "node-gyp build && tsc && tsc-alias -f",
+		"install": "node-gyp build",
+		"configure": "node-gyp configure -- -f compile_commands_json && cp build/Release/compile_commands.json . && node-gyp configure",
+		"build": "npm run configure && node-gyp build && tsc && tsc-alias -f",
 		"clean": "node-gyp clean"
 	},
 	"devDependencies": {
-		"typescript": "^7.0.2",
-		"node-addon-api": "^8.8.0",
 		"@types/node": "26.6.4",
+		"node-addon-api": "^8.8.0",
 		"node-api-headers": "^1.9.0",
 		"node-gyp": "^12.3.0",
-		"tsc-alias": "^1.9.5"
+		"tsc-alias": "^1.9.5",
+		"typescript": "^7.0.2"
 	},
 	"peerDependencies": {
 		"linebridge": "workspace:*"
