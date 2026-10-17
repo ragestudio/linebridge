@@ -27,7 +27,7 @@ Linebridge supports distributed architectures through NATS-based inter-process c
 When running behind the [Linebridge Gateway](./gateway), set the `LB_GATEWAY_SOCKET` environment variable:
 
 ```bash
-LB_GATEWAY_SOCKET=/tmp/lb-gateway.sock npx linebridge-boot index.ts
+LB_GATEWAY_SOCKET=/tmp/lb-gateway.sock pnpm exec linebridge-boot index.ts
 ```
 
 The gateway injects this automatically when it starts your service. See the [Linebridge Gateway guide](./gateway) for the full gateway setup.
@@ -43,11 +43,11 @@ When this variable is set:
 
 ```ts
 export default class MyAPI extends Server {
-  static refName = "user-service"
-  static nats = {
-    address: "127.0.0.1",
-    port: 4222,
-  }
+	static refName = "user-service"
+	static nats = {
+		address: "127.0.0.1",
+		port: 4222,
+	}
 }
 ```
 
@@ -62,7 +62,7 @@ Connects to NATS on initialization:
 ```ts
 // Internal flow:
 const nats = await connect({
-  servers: `nats://${params.address}:${params.port}`
+	servers: `nats://${params.address}:${params.port}`,
 })
 
 // Creates a JetStream consumer for IPC
@@ -96,7 +96,7 @@ await server.nats.operations.sendToUserId("user123", "notification", data)
 ```ts
 // Subscribe to a global channel
 await server.nats.subscribeToGlobalChannel("broadcast", (data, message) => {
-  console.log("Received:", data)
+	console.log("Received:", data)
 })
 
 // Unsubscribe
@@ -111,17 +111,17 @@ The `IPC` class enables services to call methods on each other:
 
 ```ts
 export default class UserService extends Server {
-  ipcEvents = {
-    "getUser": async (contexts, data) => {
-      const user = await contexts.db.users.findById(data.userId)
-      return user
-    },
+	ipcEvents = {
+		getUser: async (contexts, data) => {
+			const user = await contexts.db.users.findById(data.userId)
+			return user
+		},
 
-    "createUser": async (contexts, data) => {
-      const user = await contexts.db.users.create(data)
-      return user
-    },
-  }
+		createUser: async (contexts, data) => {
+			const user = await contexts.db.users.create(data)
+			return user
+		},
+	}
 }
 ```
 
@@ -132,7 +132,7 @@ From another service:
 ```ts
 // Internally, services call each other via NATS
 const user = await server.ipc.invoke("user-service", "getUser", {
-  userId: "123",
+	userId: "123",
 })
 ```
 
@@ -146,6 +146,7 @@ The IPC message flow:
 6. Result is encoded and sent back via NATS
 
 Headers include:
+
 - `event` - the IPC event name
 
 ## NATS Client (Synthesized)
@@ -154,10 +155,10 @@ When a WebSocket event comes through NATS (from another instance), a `NatsClient
 
 ```ts
 interface ClientInput {
-  socket_id: string
-  token?: string
-  session?: { user_id: string; username: string }
-  user?: Record<string, any>
+	socket_id: string
+	token?: string
+	session?: { user_id: string; username: string }
+	user?: Record<string, any>
 }
 
 const client = synthesizeClient(input, adapter)

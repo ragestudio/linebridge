@@ -5,7 +5,7 @@
 - **Linux** or **macOS** (Unix domain sockets)
 - **x86_64** or **aarch64** CPU
 - **Node.js >= 24** (for Linebridge services)
-- **npm** (for installing the Linebridge framework)
+- **pnpm** (for installing the Linebridge framework)
 
 ## Automatic Installation
 
@@ -64,7 +64,7 @@ my-project/
 
 ```bash
 cd my-project
-npm install linebridge @linebridge/cli
+pnpm add linebridge @linebridge/cli
 ```
 
 The gateway auto-discovers the bootloader from your node_modules. No additional Node.js tooling is needed — the gateway spawns each service's bootloader as a child process.

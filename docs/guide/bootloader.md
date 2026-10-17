@@ -5,12 +5,12 @@
 > **Note:** The bootloader has been extracted into its own package withing the CLI. You must install it alongside Linebridge:
 >
 > ```bash
-> npm install linebridge @linebridge/cli @linebridge/engine-neo
+> pnpm add linebridge @linebridge/cli @linebridge/engine-neo
 > ```
 
 ## Usage
 
-The recommended approach is to define npm scripts in your `package.json`:
+The recommended approach is to define pnpm scripts in your `package.json`:
 
 ```json
 {
@@ -34,19 +34,19 @@ or you can use the `linebridge boot` CLI command directly:
 
 ```bash
 # Development with hot-reload
-npm run dev
+pnpm run dev
 
 # Production
-npm run prod
+pnpm run prod
 
 # With custom port
-LB_PORT=8080 npm run prod
+LB_PORT=8080 pnpm run prod
 ```
 
-Using npm scripts ensures the bootloader is resolved from the local `node_modules/.bin` and keeps the startup command consistent across environments. You can also invoke it directly:
+Using pnpm scripts ensures the bootloader is resolved from the local `node_modules/.bin` and keeps the startup command consistent across environments. You can also invoke it directly:
 
 ```bash
-npx linebridge boot index.ts
+pnpm exec linebridge boot index.ts
 ```
 
 ## What It Does
@@ -135,7 +135,7 @@ Boot(MyAPI)
 The `--watch` flag enables hot-reload during development:
 
 ```bash
-npx linebridge boot index.ts --watch
+pnpm exec linebridge boot index.ts --watch
 ```
 
 When enabled:

@@ -6,7 +6,7 @@ Linebridge is a multiproposal server framework designed to build fast, scalable,
 
 - **Node.js** >= 24.0.0
 - **Operating System**: Linux or macOS (Windows only via WSL)
-- **npm**
+- **pnpm**
 
 The `Neo` engine and Gateway rely on Linux-specific features (unix sockets, process signals, libc). Windows is not supported natively — use [WSL](https://learn.microsoft.com/en-us/windows/wsl/) if you develop on Windows.
 
@@ -15,7 +15,7 @@ Also is needed to run on GLibc-based systems, MUSL-based systems (Alpine Linux..
 ## Installation
 
 ```bash
-npm install linebridge @linebridge/cli @linebridge/engine-neo
+pnpm add linebridge @linebridge/cli @linebridge/engine-neo
 ```
 
 > **Note:** Linebridge delegates the HTTP/WebSocket execution to an external engine. `@linebridge/engine-neo` is the recommended default engine built on top of `uWebSockets.js`.
@@ -48,7 +48,7 @@ export default class MyAPI extends Server {
 Then boot it:
 
 ```bash
-npx linebridge boot index.ts
+pnpm exec linebridge boot index.ts
 ```
 
 Your server will start on `http://0.0.0.0:3000`. The root endpoint `GET /` returns server metadata, and `GET /_map` returns the full route map.

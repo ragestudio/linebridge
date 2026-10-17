@@ -4,7 +4,7 @@ Linebridge applications can be packaged as Docker containers for both standalone
 
 > **glibc required**: uWebSockets.js (the Neo engine) links against glibc and is **not compatible with musl libc**. Alpine-based images (`node:*-alpine`) will fail at runtime. Always use Debian-based images (`node:24`, `node:24-slim`, or `ragestudio/ultragateway`). The `ragestudio/ultragateway` image is based on Debian Trixie Slim and includes Node.js + ultragateway pre-installed.
 
-> **Bootloader in containers**: Define an npm script (`"prod": "linebridge-boot index.ts"`) and use `CMD ["npm", "run", "prod"]`. The bootloader (should be at `node_modules/.bin/linebridge-boot`) handles `.env` loading, TypeScript/ESM JIT transpilation via `tsx` (esbuild), and path aliases — your TypeScript source runs without a build step. See the [Bootloader guide](./bootloader).
+> **Bootloader in containers**: Define a pnpm script (`"prod": "linebridge-boot index.ts"`) and use `CMD ["pnpm", "run", "prod"]`. The bootloader (should be at `node_modules/.bin/linebridge-boot`) handles `.env` loading, TypeScript/ESM JIT transpilation via `tsx` (esbuild), and path aliases — your TypeScript source runs without a build step. See the [Bootloader guide](./bootloader).
 
 ## Base Images
 
@@ -32,11 +32,17 @@ A single Linebridge service without the gateway. Uses `linebridge-boot` to start
 ```dockerfile
 FROM node:24-slim
 
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME/bin:$PATH"
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+
+RUN corepack enable
+
 WORKDIR /app
 
 # Install dependencies (linebridge includes the bootloader)
-COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --prod --frozen-lockfile
 
 # Copy source (TypeScript, no compilation needed — bootloader handles it)
 COPY . .
@@ -46,7 +52,7 @@ COPY . .
 
 EXPOSE 3000
 
-CMD ["npm", "run", "prod"]
+CMD ["pnpm", "run", "prod"]
 ```
 
 ### compose.yml
@@ -100,13 +106,19 @@ my-project/
 ```dockerfile
 FROM ragestudio/ultragateway:latest
 
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME/bin:$PATH"
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+
+RUN corepack enable
+
 WORKDIR /app
 
 # Copy project files
 COPY . .
 
 # Install project dependencies
-RUN npm install
+RUN pnpm install
 
 # Fix permissions for the node user
 RUN chown -R node:node /app
@@ -162,21 +174,27 @@ volumes:
 
 ## Multi-Stage Build (Optimized)
 
-Uses a build stage for `npm ci` + prune, then copies to the glibc-based runtime:
+Uses a build stage for `pnpm install` + prune, then copies to the glibc-based runtime:
 
 ```dockerfile
 # ── Build stage ──────────────────────────────────────────
 FROM node:24-slim AS build
 
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME/bin:$PATH"
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+
+RUN corepack enable
+
 WORKDIR /build
 
-COPY package.json package-lock.json ./
-RUN npm ci
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 
 COPY . .
 
 # Prune dev dependencies
-RUN npm prune --omit=dev
+RUN pnpm prune --prod
 
 # ── Runtime stage ───────────────────────────────────────
 FROM ragestudio/ultragateway:latest
@@ -329,7 +347,7 @@ services:
 - [ ] Set `mode: "prod"` in `gateway.config.json` (disables file watchers)
 - [ ] Mount `gateway.config.json` as read-only
 - [ ] Mount service code as read-only in production
-- [ ] Define an npm `"prod"` script: `"prod": "linebridge-boot index.ts"` and use `CMD ["npm", "run", "prod"]`
+- [ ] Define a pnpm `"prod"` script: `"prod": "linebridge-boot index.ts"` and use `CMD ["pnpm", "run", "prod"]`
 - [ ] Use a volume for `nats-data` to persist across restarts
 - [ ] Configure health checks
 - [ ] Set resource limits (`deploy.resources.limits`)
