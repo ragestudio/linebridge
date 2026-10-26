@@ -60,6 +60,11 @@ build:
 
 	@du -h $(BUILD_DIR)/$(TARGET_BINARY_NAME)
 
+install:
+	@echo "Installing binary..."
+	cp $(BUILD_DIR)/$(TARGET_BINARY_NAME) ~/.local/bin/$(TARGET_BINARY_NAME)
+	chmod +x ~/$(TARGET_BINARY_NAME)
+
 clean:
 	rm -rf $(BUILD_DIR)
 	rm -f $(PGO_FILE)
