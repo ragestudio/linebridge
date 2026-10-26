@@ -22,6 +22,7 @@ export type RegisterObj = {
 			enabled: boolean
 			proto: "http" | "https"
 			paths?: string[]
+			routes?: { method: string; path: string }[]
 		}
 		websocket: {
 			enabled: boolean
@@ -58,8 +59,10 @@ export default async (server: Server<any>): Promise<void | null> => {
 
 	// collect unique HTTP paths (deduplicate across methods)
 	let httpPaths = new Set<string>()
+	// keep the method of every route so the control ui can group them
+	let httpRoutes: { method: string; path: string }[] = []
 
-	for (let routes of Object.values(http)) {
+	for (let [method, routes] of Object.entries(http)) {
 		let routeList = routes.map((key) => {
 			return key.path
 		})
@@ -75,6 +78,7 @@ export default async (server: Server<any>): Promise<void | null> => {
 
 		routeList.forEach((key) => {
 			httpPaths.add(key)
+			httpRoutes.push({ method: method.toUpperCase(), path: key })
 		})
 	}
 
@@ -103,6 +107,7 @@ export default async (server: Server<any>): Promise<void | null> => {
 				enabled: true,
 				proto: server.hasSSL ? "https" : "http",
 				paths: httpArr,
+				routes: httpRoutes,
 			},
 			websocket: {
 				enabled:
