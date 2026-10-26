@@ -48,6 +48,13 @@ class RTEngine {
 	/** Collection of currently connected clients */
 	clients: Clients = new Clients(this)
 
+	/** Application level ping sent to local clients to keep them alive */
+	static keepaliveInterval: number =
+		Number(process.env.LB_WS_PING_INTERVAL) || 20000
+
+	/** Handle of the keepalive timer */
+	keepaliveTimer: ReturnType<typeof setInterval> | null = null
+
 	/** Upgrade hook from config (custom token validation) */
 	onUpgrade: RtEngineConfig["onUpgrade"]
 
@@ -136,6 +143,29 @@ class RTEngine {
 		this.onUpgrade = config.onUpgrade || null
 		this.onConnection = config.onConnection || null
 		this.onDisconnect = config.onDisconnect || null
+
+		this.startKeepalive()
+	}
+
+	/**
+	 * Sends an application level ping to every local client on an interval.
+	 */
+	private startKeepalive(): void {
+		if (this.keepaliveTimer) return
+
+		this.keepaliveTimer = setInterval(() => {
+			if (this.clients.size === 0) return
+
+			for (const client of this.clients.values()) {
+				try {
+					client.emit("ping").catch(() => {})
+				} catch {
+					// the socket may be closed while iterating
+				}
+			}
+		}, RTEngine.keepaliveInterval)
+
+		this.keepaliveTimer.unref?.()
 	}
 
 	/** Bound message handler - dispatches incoming WebSocket messages */
