@@ -23,6 +23,11 @@ const base_routes = [MainBaseRoute, MapBaseRoute]
  * @param server - the Linebridge server instance
  */
 export default async (server: Server<any>): Promise<void> => {
+	// if we are in gateway mode, skip the base routes
+	if (process.env.LB_GATEWAY_SOCKET) {
+		return
+	}
+
 	for await (const route of base_routes) {
 		// instantiate the route class and register it with the engine
 		server.register(route)
