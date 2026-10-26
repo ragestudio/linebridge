@@ -8,10 +8,10 @@
  *
  * Called during the server boot sequence, after routes and ws events are registered.
  */
+import type Server from "../server"
 
 import net from "node:net"
 import getRoutes from "../utils/getRoutes"
-import type Server from "../server"
 
 export type RegisterObj = {
 	event: string
