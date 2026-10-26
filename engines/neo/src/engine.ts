@@ -212,15 +212,17 @@ export class NeoEngine extends EngineAdaptor {
 			global.websockets = this.ws
 		}
 
-		// create the default route
-		const defaultRoute = new Route()
-		defaultRoute.method = "any"
-		defaultRoute.path = "/*"
-		defaultRoute.fn = this._defaultResponse
+		if (!toBoolean(process.env.LB_SOCKET_MODE)) {
+			// create the default route
+			const defaultRoute = new Route()
+			defaultRoute.method = "any"
+			defaultRoute.path = "/*"
+			defaultRoute.fn = this._defaultResponse
 
-		defaultRoute._initialize(this.server)
+			defaultRoute._initialize(this.server)
 
-		this.register(defaultRoute)
+			this.register(defaultRoute)
+		}
 	}
 
 	/** Starts the server. Bound to the engine instance. */
