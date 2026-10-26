@@ -23,6 +23,9 @@ func (instance *JSVM) RunScript(path string) (goja.Value, error) {
 	}
 
 	// TODO: Use a better way to run scripts instead using strings
+	instance.mutex.Lock()
+	defer instance.mutex.Unlock()
+
 	res, err := instance.Runtime.RunString(string(data))
 
 	if err != nil {

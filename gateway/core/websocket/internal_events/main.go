@@ -1,6 +1,7 @@
 package internal_events
 
 import (
+	"log"
 	"sync"
 )
 
@@ -15,7 +16,25 @@ func (events *InternalEvents) RegisterHandler(event string, callback Handler) {
 }
 
 func (events *InternalEvents) Trigger(event string, data any) {
-	if handler, ok := events.Handlers.Load(event); ok {
-		handler.(Handler)(data)
+	handler, ok := events.Handlers.Load(event)
+
+	if !ok {
+		return
 	}
+
+	fn, ok := handler.(Handler)
+
+	if !ok {
+		return
+	}
+
+	// handlers are user provided scripts, an error there must not
+	// break the connection lifecycle
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			log.Printf("internal event [%s] handler panic: %v", event, recovered)
+		}
+	}()
+
+	fn(data)
 }

@@ -11,7 +11,10 @@ import (
 
 func (context *Instance) TopicSubscribe(conn *gws.Conn, connCtx *structs.WSConnectionCtx, msg *nats.Msg) *structs.OperationResult {
 	if conn == nil || connCtx == nil {
-		return nil
+		return &structs.OperationResult{
+			Ok:    false,
+			Error: "Connection not available",
+		}
 	}
 
 	var op structs.ByTopicOperation
@@ -25,11 +28,12 @@ func (context *Instance) TopicSubscribe(conn *gws.Conn, connCtx *structs.WSConne
 		}
 	}
 
-	subscriber := NewSubscriber(conn)
-	context.PubSub.Subscribe(subscriber, op.Data.Topic, func(msg any) {
-		broadcaster := msg.(*gws.Broadcaster)
-		broadcaster.Broadcast(conn, nil)
-	})
+	if err := context.PubSub.Subscribe(connCtx.ID, conn, op.Data.Topic); err != nil {
+		return &structs.OperationResult{
+			Ok:    false,
+			Error: err.Error(),
+		}
+	}
 
 	if IsDebug {
 		log.Printf("Conn [%s] subscribed to topic [%s]", connCtx.ID, op.Data.Topic)

@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/cloudwego/hertz/pkg/protocol"
 	"github.com/dop251/goja"
@@ -82,7 +83,12 @@ func ServiceSocketFetch(instance *NetRequest, params *NetFetchParams) (*NetFetch
 	req.SetMethod(params.Method)
 	req.SetRequestURI(params.Url)
 
-	err := client.Do(context.Background(), req, res)
+	// the fetch runs while the connection is being accepted, cap it so a
+	// slow service can not hold the handshake open
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	err := client.Do(ctx, req, res)
 
 	if err != nil {
 		return nil, err
@@ -94,7 +100,9 @@ func ServiceSocketFetch(instance *NetRequest, params *NetFetchParams) (*NetFetch
 }
 
 func StandardFetch(params *NetFetchParams) (*NetFetchResult, error) {
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
 	req := &http.Request{
 		Method: params.Method,
 	}

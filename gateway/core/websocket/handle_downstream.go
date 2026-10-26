@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"log"
 	"ultragateway/core/websocket/nats_operations"
 
 	"github.com/lxzan/gws"
@@ -26,5 +27,7 @@ func (context *Instance) HandleDownstream(msg *nats.Msg) {
 	}
 
 	// write the data
-	conn.WriteMessage(gws.OpcodeText, msg.Data)
+	if err := conn.WriteMessage(gws.OpcodeText, msg.Data); err != nil && IsDebug {
+		log.Printf("websocket | failed to write downstream message to [%s]: %v", connID, err)
+	}
 }

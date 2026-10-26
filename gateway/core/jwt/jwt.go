@@ -2,6 +2,7 @@ package jwt
 
 import (
 	"crypto/ecdsa"
+	"strconv"
 	"strings"
 
 	"github.com/cloudwego/hertz/pkg/app"
@@ -35,4 +36,38 @@ func Validate(tokenString string, ECDSAPublicKey *ecdsa.PublicKey) (error, *jwt.
 	}
 
 	return nil, token
+}
+
+// ExtractClaims builds the connection meta map from the configured use_keys
+// every key listed on the config is reset, so a re-authentication with a
+// token that no longer carries a claim removes the stale value
+func ExtractClaims(claims jwt.MapClaims, useKeys []map[string]string) map[string]string {
+	meta := make(map[string]string, len(useKeys))
+
+	for _, selector := range useKeys {
+		key := selector["key"]
+
+		if key == "" {
+			continue
+		}
+
+		value, ok := claims[key]
+
+		if !ok {
+			continue
+		}
+
+		switch selector["type"] {
+		case "string":
+			if str, ok := value.(string); ok {
+				meta[key] = str
+			}
+		case "bool":
+			if boolean, ok := value.(bool); ok {
+				meta[key] = strconv.FormatBool(boolean)
+			}
+		}
+	}
+
+	return meta
 }

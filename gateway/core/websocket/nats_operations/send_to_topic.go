@@ -39,7 +39,7 @@ func (context *Instance) SendToTopic(conn *gws.Conn, connCtx *structs.WSConnecti
 	broadcaster := gws.NewBroadcaster(gws.OpcodeText, data)
 	defer broadcaster.Close()
 
-	context.PubSub.Publish(targetTopic, broadcaster)
+	context.PubSub.Broadcast(targetTopic, broadcaster)
 
 	return &structs.OperationResult{Ok: true}
 }

@@ -70,7 +70,28 @@ func (instance *Instance) Start() error {
 		connectURL = instance.natsURL
 	}
 
-	if instance.Client, err = nats.Connect(connectURL); err != nil {
+	if instance.Client, err = nats.Connect(connectURL,
+		nats.Name("linebridge-gateway"),
+		nats.MaxReconnects(-1),
+		nats.ReconnectWait(2*time.Second),
+		nats.PingInterval(30*time.Second),
+		nats.MaxPingsOutstanding(3),
+		nats.ReconnectBufSize(16*1024*1024),
+		nats.DisconnectErrHandler(func(_ *nats.Conn, err error) {
+			log.Printf("NATS | disconnected: %v", err)
+		}),
+		nats.ReconnectHandler(func(conn *nats.Conn) {
+			log.Printf("NATS | reconnected to %s", conn.ConnectedUrl())
+		}),
+		nats.ErrorHandler(func(_ *nats.Conn, sub *nats.Subscription, err error) {
+			if sub != nil {
+				log.Printf("NATS | async error on [%s]: %v", sub.Subject, err)
+				return
+			}
+
+			log.Printf("NATS | async error: %v", err)
+		}),
+	); err != nil {
 		return err
 	}
 
@@ -91,19 +112,9 @@ func (instance *Instance) Start() error {
 		Storage:   jetstream.MemoryStorage,
 		Retention: jetstream.WorkQueuePolicy,
 		Discard:   jetstream.DiscardOld,
-		MaxAge:    24 * time.Hour,
-		Replicas:  1,
-	}); err != nil {
-		return err
-	}
-
-	if _, err := instance.Jetstream.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
-		Name:      "GLOBAL",
-		Subjects:  []string{"global.>"},
-		Storage:   jetstream.MemoryStorage,
-		Retention: jetstream.WorkQueuePolicy,
-		Discard:   jetstream.DiscardOld,
-		MaxAge:    24 * time.Hour,
+		MaxAge:    10 * time.Minute,
+		MaxMsgs:   100_000,
+		MaxBytes:  64 * 1024 * 1024,
 		Replicas:  1,
 	}); err != nil {
 		return err
@@ -116,8 +127,13 @@ func (instance *Instance) Start() error {
 }
 
 func (instance *Instance) StartListeners() {
-	instance.Client.Subscribe("ipc", instance.HandleIPC)
-	instance.Client.Subscribe("operations", instance.HandleOperations)
+	if _, err := instance.Client.Subscribe("ipc", instance.HandleIPC); err != nil {
+		log.Printf("NATS | failed to subscribe to [ipc]: %v", err)
+	}
+
+	if _, err := instance.Client.Subscribe("operations", instance.HandleOperations); err != nil {
+		log.Printf("NATS | failed to subscribe to [operations]: %v", err)
+	}
 }
 
 func (instance *Instance) RegisterServiceEvent(serviceID string, eventID string) {

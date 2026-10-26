@@ -11,7 +11,10 @@ import (
 
 func (context *Instance) TopicUnsubscribe(conn *gws.Conn, connCtx *structs.WSConnectionCtx, msg *nats.Msg) *structs.OperationResult {
 	if conn == nil || connCtx == nil {
-		return nil
+		return &structs.OperationResult{
+			Ok:    false,
+			Error: "Connection not available",
+		}
 	}
 
 	var op structs.ByTopicOperation
@@ -25,8 +28,7 @@ func (context *Instance) TopicUnsubscribe(conn *gws.Conn, connCtx *structs.WSCon
 		}
 	}
 
-	subscriber := NewSubscriber(conn)
-	context.PubSub.UnSubscribe(subscriber, op.Data.Topic)
+	context.PubSub.Unsubscribe(connCtx.ID, op.Data.Topic)
 
 	if IsDebug {
 		log.Printf("Conn [%s] unsubscribed of topic [%s]", connCtx.ID, op.Data.Topic)

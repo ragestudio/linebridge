@@ -3,10 +3,10 @@ package nats_operations
 import (
 	"os"
 	"ultragateway/core/websocket/connections"
+	"ultragateway/core/websocket/topics"
 	"ultragateway/structs"
 
 	"github.com/bytedance/sonic"
-	"github.com/lxzan/event_emitter"
 	"github.com/lxzan/gws"
 	"github.com/nats-io/nats.go"
 )
@@ -14,7 +14,7 @@ import (
 var IsDebug bool = os.Getenv("DEBUG") == "true"
 
 type Instance struct {
-	PubSub      *event_emitter.EventEmitter[string, *PubSubSubscriber]
+	PubSub      *topics.Manager
 	Connections *connections.ConnectionManager
 }
 

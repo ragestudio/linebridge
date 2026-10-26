@@ -8,7 +8,6 @@ import (
 	"encoding/base64"
 	"log"
 	"net/http"
-	"strconv"
 	"time"
 	"unsafe"
 
@@ -46,6 +45,13 @@ func ComputeClientKey(clientKey []byte) ([]byte, string) {
 }
 
 func (instance *Requests) Websocket(mctx context.Context, ctx *app.RequestContext) {
+	// reject new connections while the gateway is draining
+	if IsShuttingDown.Load() {
+		ctx.SetStatusCode(503)
+		ctx.Write([]byte(`{"error": "Server is shutting down"}`))
+		return
+	}
+
 	// Check if the request is a WebSocket upgrade request
 	if !ctx.IsGet() || string(ctx.Request.Header.Peek("Upgrade")) != "websocket" {
 		ctx.SetStatusCode(400)
@@ -102,16 +108,9 @@ func (instance *Requests) Websocket(mctx context.Context, ctx *app.RequestContex
 
 	// populate the meta fields from the token claims
 	if token != nil && len(instance.Config.JWT.UseKeys) > 0 {
-		for _, selector := range instance.Config.JWT.UseKeys {
-			if value, ok := token.Claims.(jwt.MapClaims)[selector["key"]]; ok {
-				if typeStr, hasType := selector["type"]; hasType {
-					switch typeStr {
-					case "string":
-						wsCtx.Meta[selector["key"]] = value.(string)
-					case "bool":
-						wsCtx.Meta[selector["key"]] = strconv.FormatBool(value.(bool))
-					}
-				}
+		if claims, ok := token.Claims.(jwt.MapClaims); ok {
+			for key, value := range ujwt.ExtractClaims(claims, instance.Config.JWT.UseKeys) {
+				wsCtx.Meta[key] = value
 			}
 		}
 	}
@@ -150,16 +149,10 @@ func (instance *Requests) Websocket(mctx context.Context, ctx *app.RequestContex
 			httpRequest.Header["Sec-Websocket-Protocol"] = []string{B2S(clientProtocol)}
 		}
 
-		// get a wrapper and reader from the pool and set them on the connection
-		cWrapper := instance.WebsocketManager.WrapperPool.Get().(*structs.GwsConnWrapper)
-		cWrapper.Conn = c
-		cWrapper.HandshakeSwallowed = false
-
-		br := instance.WebsocketManager.ReaderPool.Get().(*bufio.Reader)
-		br.Reset(c)
-
-		// set the buf reader on the context
-		wsCtx.BufReader = br
+		// create the connection wrapper and reader for this connection
+		// both are allocated per connection
+		cWrapper := structs.NewGwsConnWrapper(c, instance.WebsocketManager.WriteTimeout)
+		br := bufio.NewReaderSize(c, instance.WebsocketManager.ReadBufferSize)
 
 		// upgrade the connection to a websocket connection
 		gwsConn, err := instance.WebsocketManager.Upgrader.UpgradeFromConn(cWrapper, br, httpRequest)
@@ -168,8 +161,6 @@ func (instance *Requests) Websocket(mctx context.Context, ctx *app.RequestContex
 		if err != nil {
 			log.Printf("Failed to upgrade websocket connection: %v", err)
 			_ = c.Close()
-			instance.WebsocketManager.WrapperPool.Put(cWrapper)
-			instance.WebsocketManager.ReaderPool.Put(br)
 			return
 		}
 
@@ -182,6 +173,7 @@ func (instance *Requests) Websocket(mctx context.Context, ctx *app.RequestContex
 		// handle the error if the connection fails
 		if conn_err != nil {
 			log.Printf("Websocket lifecycle closed with error: %v", conn_err)
+			_ = c.Close()
 		}
 	})
 }

@@ -1,8 +1,8 @@
 package websocket
 
 import (
+	"bytes"
 	"context"
-	"time"
 	unats "ultragateway/core/nats"
 
 	"github.com/bytedance/sonic"
@@ -11,6 +11,12 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
+
+type authResponse struct {
+	Event string         `json:"event"`
+	Data  map[string]any `json:"data"`
+	Ack   bool           `json:"ack"`
+}
 
 func (manager *Instance) OnMessage(conn *gws.Conn, message *gws.Message) {
 	_, span := OTELTracer.Start(context.Background(), "ws-msg",
@@ -25,12 +31,12 @@ func (manager *Instance) OnMessage(conn *gws.Conn, message *gws.Message) {
 
 	if !ok {
 		if netConn != nil {
-			conn.NetConn().Close()
+			netConn.Close()
 		}
 		return
 	}
 
-	connCtx.LastSeen = time.Now().Unix()
+	connCtx.Touch()
 
 	span.AddEvent("ws-msg-load_ctx", trace.WithAttributes(
 		attribute.String("socket_id", connCtx.ID),
@@ -51,7 +57,7 @@ func (manager *Instance) OnMessage(conn *gws.Conn, message *gws.Message) {
 	}
 
 	if event == "ping" {
-		manager.OnPing(conn, message.Bytes())
+		manager.OnClientPing(conn)
 		return
 	}
 
@@ -68,13 +74,31 @@ func (manager *Instance) OnMessage(conn *gws.Conn, message *gws.Message) {
 			return
 		}
 
-		if connCtx, err = manager.Connections.Authenticate(conn, newToken); err != nil {
-			conn.WriteMessage(gws.OpcodeText, []byte(`{"event": "authenticate", "data": { "error": "`+err.Error()+`" }, "ack": true }`))
+		authCtx, oldUserID, authErr := manager.Connections.Authenticate(conn, newToken)
 
+		if authErr != nil {
+			manager.writeJSON(conn, authResponse{
+				Event: "authenticate",
+				Data:  map[string]any{"error": authErr.Error()},
+				Ack:   true,
+			})
 			return
 		}
 
-		conn.WriteMessage(gws.OpcodeText, []byte(`{"event": "authenticate", "data": { "ok": true }, "ack": true}`))
+		connCtx = authCtx
+
+		// the token may belong to a different user than the handshake token
+		if oldUserID != connCtx.UserID() {
+			go connCtx.RunPresenceUpdate(func() {
+				manager.presenceSwitchUser(connCtx, oldUserID)
+			})
+		}
+
+		manager.writeJSON(conn, authResponse{
+			Event: "authenticate",
+			Data:  map[string]any{"ok": true},
+			Ack:   true,
+		})
 
 		return
 	}
@@ -91,11 +115,26 @@ func (manager *Instance) OnMessage(conn *gws.Conn, message *gws.Message) {
 	headers.Add("token", connCtx.Token)
 	headers.Add("socket_id", connCtx.ID)
 
+	// the message buffer is returned to the gws pool when this handler
+	// returns, so the payload is copied before handing it to the async nats
+	// publisher
+	payload := sonic.NoCopyRawMessage(bytes.Clone(message.Bytes()))
+
 	manager.Nats.PublishToIPC(&unats.UpstreamPayload{
 		Header: headers,
 		Event:  event,
-		Data:   sonic.NoCopyRawMessage(message.Bytes()),
+		Data:   payload,
 	})
 
 	span.AddEvent("ws-msg-ipc_pub")
+}
+
+func (manager *Instance) writeJSON(conn *gws.Conn, value any) {
+	payload, err := sonic.Marshal(value)
+
+	if err != nil {
+		return
+	}
+
+	_ = conn.WriteMessage(gws.OpcodeText, payload)
 }

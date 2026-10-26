@@ -13,7 +13,6 @@ require (
 	github.com/hertz-contrib/pprof v0.1.2
 	github.com/infisical/go-sdk v0.8.0
 	github.com/joho/godotenv v1.5.1
-	github.com/lxzan/event_emitter v0.3.2
 	github.com/lxzan/gws v1.10.2
 	github.com/matoous/go-nanoid/v2 v2.1.0
 	github.com/nats-io/nats-server/v2 v2.15.0

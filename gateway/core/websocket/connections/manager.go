@@ -3,12 +3,15 @@ package connections
 import (
 	"errors"
 	"fmt"
+	"log"
 	"sync"
+	"time"
 	"ultragateway/core/websocket/internal_events"
 	"ultragateway/structs"
 
 	ujwt "ultragateway/core/jwt"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/lxzan/gws"
 	nanoid "github.com/matoous/go-nanoid/v2"
 )
@@ -33,6 +36,10 @@ func (manager *ConnectionManager) Add(options *NewConnOptions) error {
 		return err
 	}
 
+	// seed the heartbeat before the connection becomes visible
+	// the heartbeat scheduler and the presence reconciler both read it
+	options.Ctx.InitHeartbeat(time.Now().Unix())
+
 	// store the connection
 	manager.Clients.Store(options.Ctx.ID, options.Conn)
 
@@ -40,21 +47,7 @@ func (manager *ConnectionManager) Add(options *NewConnOptions) error {
 	options.Conn.Session().Store(structs.WSCtxStoreKey, options.Ctx)
 
 	// if user_id specified, store the connection reference by its id
-	if options.Ctx.Meta != nil {
-		if options.Ctx.Meta["user_id"] != "" {
-			userRefs, _ := manager.UsersRef.LoadOrStore(options.Ctx.Meta["user_id"], &structs.WSUserConnections{
-				Conns: make(map[string]struct{}),
-			})
-
-			// cast
-			refs := userRefs.(*structs.WSUserConnections)
-
-			// store the connection id
-			refs.Mutex.Lock()
-			refs.Conns[options.Ctx.ID] = struct{}{}
-			refs.Mutex.Unlock()
-		}
-	}
+	manager.bindUserConn(options.Ctx.ID, options.Ctx.UserID())
 
 	// trigger new conn event
 	manager.InternalEvents.Trigger("connection", &struct {
@@ -66,13 +59,31 @@ func (manager *ConnectionManager) Add(options *NewConnOptions) error {
 	})
 
 	// create "THE LOOP"
+	// a panic inside the connection lifecycle must not take down the process
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			log.Printf("websocket | panic in connection [%s]: %v", options.Ctx.ID, recovered)
+			_ = options.Conn.NetConn().Close()
+		}
+	}()
+
 	options.Conn.ReadLoop()
 
 	return nil
 }
 
 func (manager *ConnectionManager) Remove(conn *gws.Conn) (*structs.WSConnectionCtx, error) {
-	val, ok := conn.Session().Load(structs.WSCtxStoreKey)
+	if conn == nil {
+		return nil, errors.New("connection context not found")
+	}
+
+	session := conn.Session()
+
+	if session == nil {
+		return nil, errors.New("connection context not found")
+	}
+
+	val, ok := session.Load(structs.WSCtxStoreKey)
 
 	if !ok {
 		return nil, errors.New("connection context not found")
@@ -84,28 +95,10 @@ func (manager *ConnectionManager) Remove(conn *gws.Conn) (*structs.WSConnectionC
 	manager.Clients.Delete(connCtx.ID)
 
 	// delete the session context (just in case)
-	conn.Session().Delete(structs.WSCtxStoreKey)
+	session.Delete(structs.WSCtxStoreKey)
 
-	if connCtx.Meta != nil {
-		// delete the userid refs if any
-		if connCtx.Meta["user_id"] != "" {
-			// load the user connections
-			userRefs, ok := manager.UsersRef.Load(connCtx.Meta["user_id"])
-
-			if ok {
-				refs := userRefs.(*structs.WSUserConnections)
-
-				refs.Mutex.Lock()
-				defer refs.Mutex.Unlock()
-
-				delete(refs.Conns, connCtx.ID)
-
-				if len(refs.Conns) == 0 {
-					manager.UsersRef.Delete(connCtx.Meta["user_id"])
-				}
-			}
-		}
-	}
+	// delete the userid refs if any
+	manager.unbindUserConn(connCtx.ID, connCtx.UserID())
 
 	manager.InternalEvents.Trigger("disconnection", &struct {
 		Ctx  *structs.WSConnectionCtx
@@ -116,6 +109,56 @@ func (manager *ConnectionManager) Remove(conn *gws.Conn) (*structs.WSConnectionC
 	})
 
 	return connCtx, nil
+}
+
+func (manager *ConnectionManager) bindUserConn(connID, userID string) {
+	if connID == "" || userID == "" {
+		return
+	}
+
+	userRefs, _ := manager.UsersRef.LoadOrStore(userID, &structs.WSUserConnections{
+		Conns: make(map[string]struct{}),
+	})
+
+	refs := userRefs.(*structs.WSUserConnections)
+
+	refs.Mutex.Lock()
+	refs.Conns[connID] = struct{}{}
+	refs.Mutex.Unlock()
+}
+
+func (manager *ConnectionManager) unbindUserConn(connID, userID string) {
+	if connID == "" || userID == "" {
+		return
+	}
+
+	userRefs, ok := manager.UsersRef.Load(userID)
+
+	if !ok {
+		return
+	}
+
+	refs := userRefs.(*structs.WSUserConnections)
+
+	refs.Mutex.Lock()
+	defer refs.Mutex.Unlock()
+
+	delete(refs.Conns, connID)
+
+	if len(refs.Conns) == 0 {
+		manager.UsersRef.Delete(userID)
+	}
+}
+
+// RebindUser moves a connection to a different user, used when a client
+// authenticates after the connection was already opened
+func (manager *ConnectionManager) RebindUser(connID, oldUserID, newUserID string) {
+	if oldUserID == newUserID {
+		return
+	}
+
+	manager.unbindUserConn(connID, oldUserID)
+	manager.bindUserConn(connID, newUserID)
 }
 
 func (manager *ConnectionManager) GetConn(socketID string) (*gws.Conn, bool) {
@@ -139,13 +182,29 @@ func (manager *ConnectionManager) GetConnCtx(socketID string) (*structs.WSConnec
 }
 
 func (manager *ConnectionManager) LoadConnCtx(conn *gws.Conn) (*structs.WSConnectionCtx, bool) {
-	val, ok := conn.Session().Load(structs.WSCtxStoreKey)
+	if conn == nil {
+		return nil, false
+	}
+
+	session := conn.Session()
+
+	if session == nil {
+		return nil, false
+	}
+
+	val, ok := session.Load(structs.WSCtxStoreKey)
 
 	if !ok {
 		return nil, false
 	}
 
-	return val.(*structs.WSConnectionCtx), true
+	connCtx, ok := val.(*structs.WSConnectionCtx)
+
+	if !ok {
+		return nil, false
+	}
+
+	return connCtx, true
 }
 
 func (manager *ConnectionManager) GetUserIDConnections(userID string) *structs.WSUserConnections {
@@ -158,25 +217,65 @@ func (manager *ConnectionManager) GetUserIDConnections(userID string) *structs.W
 	return val.(*structs.WSUserConnections)
 }
 
-func (manager *ConnectionManager) Authenticate(conn *gws.Conn, token string) (*structs.WSConnectionCtx, error) {
+// Authenticate validates a new token and rebinds the connection to the user
+// carried by it. Returns the previous user id so the caller can update the
+// presence indexes.
+func (manager *ConnectionManager) Authenticate(conn *gws.Conn, token string) (*structs.WSConnectionCtx, string, error) {
 	if token == "" {
-		return nil, fmt.Errorf("token is required for authentication")
+		return nil, "", fmt.Errorf("token is required for authentication")
 	}
 
 	connCtx, ok := manager.LoadConnCtx(conn)
 
 	if !ok {
-		return nil, fmt.Errorf("no context found for connection")
+		return nil, "", fmt.Errorf("no context found for connection")
 	}
 
-	err, _ := ujwt.Validate(token, manager.Config.JWT.ECDSAPublicKey)
+	err, parsed := ujwt.Validate(token, manager.Config.JWT.ECDSAPublicKey)
 
 	if err != nil {
-		return nil, err
+		return nil, "", err
+	}
+
+	oldUserID := connCtx.UserID()
+
+	if parsed != nil {
+		if claims, ok := parsed.Claims.(jwt.MapClaims); ok {
+			meta := ujwt.ExtractClaims(claims, manager.Config.JWT.UseKeys)
+
+			// every configured key is reset, a claim missing from the new
+			// token must not keep the previous value
+			for _, selector := range manager.Config.JWT.UseKeys {
+				key := selector["key"]
+
+				if key == "" {
+					continue
+				}
+
+				value, exists := meta[key]
+
+				if exists {
+					connCtx.Meta[key] = value
+				} else {
+					delete(connCtx.Meta, key)
+				}
+			}
+		}
+	}
+
+	newUserID := connCtx.UserID()
+
+	// the user document attached at handshake time belongs to the old user
+	if oldUserID != newUserID {
+		delete(connCtx.Meta, "user")
 	}
 
 	connCtx.Token = token
 	connCtx.Authorized = true
 
-	return connCtx, nil
+	if oldUserID != newUserID {
+		manager.RebindUser(connCtx.ID, oldUserID, newUserID)
+	}
+
+	return connCtx, oldUserID, nil
 }

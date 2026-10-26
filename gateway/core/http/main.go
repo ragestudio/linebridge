@@ -12,6 +12,7 @@ import (
 	"ultragateway/structs"
 
 	"github.com/cloudwego/hertz/pkg/app/client"
+	"github.com/cloudwego/hertz/pkg/app/middlewares/server/recovery"
 	"github.com/cloudwego/hertz/pkg/app/server"
 	"github.com/cloudwego/hertz/pkg/common/config"
 	"github.com/hertz-contrib/http2/factory"
@@ -56,6 +57,15 @@ func CreateEngine(parameters CreateEngineOptions) {
 	}
 
 	srv := server.New(options...)
+
+	// the websocket handler blocks the hijacked connection for its whole
+	// lifetime, so hertz must not close or reuse the connection after the
+	// handler returns. gws owns the socket and closes it on teardown
+	srv.Engine.KeepHijackedConns = true
+	srv.Engine.NoHijackConnPool = true
+
+	// recover panics in the http chain instead of taking down the process
+	srv.Use(recovery.Recovery())
 
 	// enable HTTP/2
 	if parameters.TLSConfig != nil {

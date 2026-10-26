@@ -1,6 +1,8 @@
 package jsvm
 
 import (
+	"log"
+
 	"github.com/dop251/goja"
 )
 
@@ -29,7 +31,22 @@ func (instance *WebsocketInternalEventRegister) Do(call goja.FunctionCall) goja.
 	}
 
 	instance.WebsocketManager.InternalEvents.RegisterHandler(event, func(data any) {
-		fn(goja.Undefined(), instance.Runtime.ToValue(data))
+		// the event is dispatched from connection goroutines, serialize the
+		// access to the shared runtime
+		instance.mutex.Lock()
+		defer instance.mutex.Unlock()
+
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				log.Printf("jsvm | event [%s] handler panic: %v", event, recovered)
+			}
+		}()
+
+		_, err := fn(goja.Undefined(), instance.Runtime.ToValue(data))
+
+		if err != nil && IsDebug {
+			log.Printf("jsvm | event [%s] handler error: %v", event, err)
+		}
 	})
 
 	return goja.Undefined()

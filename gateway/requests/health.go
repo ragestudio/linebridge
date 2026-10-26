@@ -2,6 +2,7 @@ package requests
 
 import (
 	"context"
+	"sync/atomic"
 	"time"
 
 	"github.com/cloudwego/hertz/pkg/app"
@@ -17,7 +18,7 @@ type HealthResponse struct {
 	ShuttingDown     bool   `json:"shutting_down,omitempty"`
 }
 
-var IsShuttingDown = false
+var IsShuttingDown atomic.Bool
 
 func (instance *Requests) Health(mctx context.Context, ctx *app.RequestContext) {
 	runningCount := 0
@@ -50,7 +51,7 @@ func (instance *Requests) Health(mctx context.Context, ctx *app.RequestContext) 
 		WebsocketConns:   wsConnCount,
 	}
 
-	if IsShuttingDown {
+	if IsShuttingDown.Load() {
 		resp.Status = "draining"
 		resp.ShuttingDown = true
 		ctx.SetStatusCode(202)

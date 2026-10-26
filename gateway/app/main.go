@@ -77,15 +77,17 @@ func getGracefulTimeout() time.Duration {
 
 func gracefulShutdown(appData *App, natsSrv *natsServer.Server) {
 	shutdownTimeout := getGracefulTimeout()
-	waitForever := os.Getenv("AUTO_SHUTDOWN_WHEN_IDLE") == "true"
 
-	if waitForever {
-		log.Printf("Graceful shutdown initiated, waiting indefinitely for idle")
-	} else {
-		log.Printf("Graceful shutdown initiated, timeout: %v", shutdownTimeout)
+	// waiting forever for clients to leave turns a deploy into a hard kill
+	// once the orchestrator grace period expires, so the drain is always
+	// bounded and remaining connections are closed with a going away frame
+	if os.Getenv("AUTO_SHUTDOWN_WHEN_IDLE") == "true" {
+		log.Printf("AUTO_SHUTDOWN_WHEN_IDLE is set, drain is still bounded to %v", shutdownTimeout)
 	}
 
-	requests.IsShuttingDown = true
+	log.Printf("Graceful shutdown initiated, timeout: %v", shutdownTimeout)
+
+	requests.IsShuttingDown.Store(true)
 
 	// step 1: wait for active websocket connections to drain
 	if appData.WebsocketManager != nil && appData.WebsocketManager.Connections != nil {
@@ -103,13 +105,16 @@ func gracefulShutdown(appData *App, natsSrv *natsServer.Server) {
 				break
 			}
 
-			log.Printf("Draining websocket connections... (%d remaining)", connCount)
+			if time.Since(drainStart) >= shutdownTimeout {
+				closed := appData.WebsocketManager.CloseAll(1001, "server going away")
+				log.Printf("Drain timeout reached, closed %d websocket connections", closed)
 
-			if !waitForever && time.Since(drainStart) >= shutdownTimeout {
-				log.Println("Drain timeout reached, forcing shutdown")
+				// give the close frames a moment to reach the clients
+				time.Sleep(time.Second)
 				break
 			}
 
+			log.Printf("Draining websocket connections... (%d remaining)", connCount)
 			time.Sleep(2 * time.Second)
 		}
 	}
