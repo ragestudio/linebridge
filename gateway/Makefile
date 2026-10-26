@@ -61,6 +61,9 @@ build:
 	@du -h $(BUILD_DIR)/$(TARGET_BINARY_NAME)
 
 install:
+	# check if there is the compiled binary
+	if [ ! -f $(BUILD_DIR)/$(TARGET_BINARY_NAME) ]; then @echo "Binary not found, please build first"; fi
+
 	@echo "Installing binary..."
 	cp $(BUILD_DIR)/$(TARGET_BINARY_NAME) ~/.local/bin/$(TARGET_BINARY_NAME)
 	chmod +x ~/$(TARGET_BINARY_NAME)
