@@ -242,15 +242,11 @@ export class Server<EngineType extends string = "neo"> {
 			console.warn(`Version: ${Vars.libPkg?.version}\n`)
 		}
 
-		// Merge user params on top of framework defaults.
 		this.params = {
 			...Vars.defaultParams,
 			...params,
 		}
 
-		// Apply static property overrides from the subclass constructor.
-		// This lets subclasses set e.g. `static refName = "my-app"` and have
-		// it override the default without passing anything to super().
 		const ctor = this.constructor as typeof Server
 
 		if (typeof ctor.refName === "string") {
@@ -335,28 +331,6 @@ export class Server<EngineType extends string = "neo"> {
 		return ssl.key && ssl.cert
 	}
 
-	/**
-	 * Main boot sequence. Called once to start the server.
-	 *
-	 * Order of operations:
-	 * 1. Resolve local address.
-	 * 2. Register lifecycle events on the internal EventEmitter.
-	 * 3. If LB_GATEWAY_SOCKET is set: start NATS adapter + IPC client.
-	 * 4. Load and initialize the engine (uWebSockets.js).
-	 * 5. Execute initialize[] tasks in parallel.
-	 * 6. Call onInitialize() hook.
-	 * 8. Register base headers and middlewares.
-	 * 9. Register declared HTTP routes.
-	 * 10. Register declared WebSocket events.
-	 * 11. Scan filesystem for HTTP route files.
-	 * 12. Scan filesystem for WebSocket event files.
-	 * 13. Register built-in routes (/ and /_map) if enabled.
-	 * 14. Publish to gateway if LB_GATEWAY_SOCKET is set.
-	 * 15. Initialize plugins.
-	 * 16. Start the engine listening.
-	 * 17. Call afterInitialize() hook.
-	 * 18. Print startup summary.
-	 */
 	run = async (): Promise<void> => {
 		// Record start time for the startup summary at the end.
 		const startHrTime = process.hrtime()
@@ -418,7 +392,6 @@ export class Server<EngineType extends string = "neo"> {
 
 		this.engine = new EngineClass(this)
 
-		// Let the engine do its internal setup (SSL, uWS app, etc.).
 		if (typeof this.engine.initialize === "function") {
 			await this.engine.initialize()
 		}
