@@ -2,6 +2,7 @@ package topics
 
 import (
 	"errors"
+	"sort"
 	"sync"
 
 	"github.com/lxzan/gws"
@@ -159,4 +160,21 @@ func (manager *Manager) CountConn(connID string) int {
 	defer manager.mu.RUnlock()
 
 	return len(manager.byConn[connID])
+}
+
+// Topics returns the topics a connection is subscribed to
+func (manager *Manager) Topics(connID string) []string {
+	manager.mu.RLock()
+	defer manager.mu.RUnlock()
+
+	connTopics := manager.byConn[connID]
+	topics := make([]string, 0, len(connTopics))
+
+	for topic := range connTopics {
+		topics = append(topics, topic)
+	}
+
+	sort.Strings(topics)
+
+	return topics
 }

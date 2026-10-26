@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"sort"
 	"sync"
 	"time"
 
@@ -179,6 +180,24 @@ func (instance *Instance) LookupServiceByEventID(eventID string) (string, bool) 
 	serviceID, ok := instance.ServicesEventsMap[eventID]
 
 	return serviceID, ok
+}
+
+// ServiceEvents returns the events routed to a service through nats
+func (instance *Instance) ServiceEvents(serviceID string) []string {
+	instance.Mutex.RLock()
+	defer instance.Mutex.RUnlock()
+
+	events := make([]string, 0, 8)
+
+	for eventID, sID := range instance.ServicesEventsMap {
+		if sID == serviceID {
+			events = append(events, eventID)
+		}
+	}
+
+	sort.Strings(events)
+
+	return events
 }
 
 func (instance *Instance) SetUpstreamTransformer(transformer func(*UpstreamPayload)) {

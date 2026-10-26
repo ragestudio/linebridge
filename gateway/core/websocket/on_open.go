@@ -55,9 +55,11 @@ func (manager *Instance) OnOpen(socket *gws.Conn) {
 	span.AddEvent("ws-conn-send_ack")
 
 	// presence bookkeeping runs outside the read loop
-	go ConnCtx.RunPresenceUpdate(func() {
-		manager.presenceTrack(ConnCtx)
-	})
+	if manager.presenceEnabled() {
+		go ConnCtx.RunPresenceUpdate(func() {
+			manager.presenceTrack(ConnCtx)
+		})
+	}
 
 	// announce the connection to the cluster
 	connEventData, _ := sonic.Marshal(ConnCtx)

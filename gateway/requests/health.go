@@ -24,7 +24,7 @@ func (instance *Requests) Health(mctx context.Context, ctx *app.RequestContext) 
 	runningCount := 0
 
 	for _, svc := range instance.Services {
-		if svc.Running {
+		if svc.IsRunning() {
 			runningCount++
 		}
 	}

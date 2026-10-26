@@ -101,7 +101,7 @@ type presenceSocketRef struct {
 }
 
 func (manager *Instance) presenceEnabled() bool {
-	return manager.Redis != nil
+	return manager.PresenceEnabled && manager.Redis != nil
 }
 
 // presenceWrite runs a presence mutation, retrying transient redis errors

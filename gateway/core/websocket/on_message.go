@@ -88,7 +88,7 @@ func (manager *Instance) OnMessage(conn *gws.Conn, message *gws.Message) {
 		connCtx = authCtx
 
 		// the token may belong to a different user than the handshake token
-		if oldUserID != connCtx.UserID() {
+		if oldUserID != connCtx.UserID() && manager.presenceEnabled() {
 			go connCtx.RunPresenceUpdate(func() {
 				manager.presenceSwitchUser(connCtx, oldUserID)
 			})

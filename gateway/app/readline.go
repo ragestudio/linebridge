@@ -4,7 +4,13 @@ import (
 	"bufio"
 	"os"
 	"strings"
+	"syscall"
 )
+
+// requestGracefulShutdown starts the normal drain and stop sequence
+func requestGracefulShutdown() {
+	_ = syscall.Kill(os.Getpid(), syscall.SIGTERM)
+}
 
 func (app *App) StartReadline() {
 	scanner := bufio.NewScanner(os.Stdin)
@@ -37,8 +43,13 @@ func (app *App) StartReadline() {
 
 				service.Restart()
 			}
-		case "exit":
-			os.Exit(0)
+		case "exit", "shutdown":
+			os.Stderr.WriteString("shutting down gateway\n")
+			requestGracefulShutdown()
+		case "force":
+			os.Stderr.WriteString("forcing gateway shutdown\n")
+			app.RequestForceShutdown("console command")
+			requestGracefulShutdown()
 		default:
 			os.Stderr.WriteString("Unknown command: " + command + "\n")
 		}

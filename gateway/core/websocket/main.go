@@ -60,6 +60,7 @@ type Instance struct {
 	PingWait        time.Duration
 	WriteTimeout    time.Duration
 	ReadBufferSize  int
+	PresenceEnabled bool
 	PresenceTTL     time.Duration
 	PresenceRefresh time.Duration
 }
@@ -105,6 +106,26 @@ func envInt(name string, fallback int) int {
 	return value
 }
 
+// presenceSetting resolves the opt-in presence flag, env wins over config
+func presenceSetting(config *structs.BaseConfig) bool {
+	enabled := config != nil && config.Presence.Enabled
+
+	raw, present := os.LookupEnv("PRESENCE_ENABLED")
+
+	if !present || raw == "" {
+		return enabled
+	}
+
+	parsed, err := strconv.ParseBool(raw)
+
+	if err != nil {
+		log.Printf("websocket | invalid PRESENCE_ENABLED value [%s], using config value", raw)
+		return enabled
+	}
+
+	return parsed
+}
+
 func NewManager(options *NewManagerOptions) *Instance {
 	instance := &Instance{
 		PubSub:          topics.NewManager(envInt("WS_MAX_TOPICS_PER_CONN", defaultMaxTopicsPerConn)),
@@ -116,8 +137,20 @@ func NewManager(options *NewManagerOptions) *Instance {
 		PingWait:        envSeconds("WS_PING_WAIT", defaultPingWait),
 		WriteTimeout:    envSeconds("WS_WRITE_TIMEOUT", defaultWriteTimeout),
 		ReadBufferSize:  envInt("WS_READ_BUFFER_SIZE", defaultReadBufferSize),
+		PresenceEnabled: presenceSetting(options.Config),
 		PresenceTTL:     envSeconds("PRESENCE_TTL", defaultPresenceTTL),
 		PresenceRefresh: envSeconds("PRESENCE_REFRESH_INTERVAL", defaultPresenceRefresh),
+	}
+
+	if instance.PresenceEnabled && options.Redis == nil {
+		log.Printf("websocket | presence is enabled but redis is not configured, presence stays disabled")
+		instance.PresenceEnabled = false
+	}
+
+	if instance.PresenceEnabled {
+		log.Printf("websocket | presence enabled (ttl %s, refresh %s)", instance.PresenceTTL, instance.PresenceRefresh)
+	} else {
+		log.Printf("websocket | presence disabled")
 	}
 
 	// the ttl has to outlive at least two refresh cycles, otherwise a slow

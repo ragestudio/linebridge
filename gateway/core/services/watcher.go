@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"log"
 	"os"
 	"path/filepath"
@@ -15,22 +16,22 @@ var IGNORED_DIRS = []string{
 	"dist",
 }
 
-func attachWatcherToService(s *Service) error {
+// attachWatcherToService starts a watcher for the service directory
+// the caller must hold the service mutex or call it during construction
+func attachWatcherToService(s *Service, ctx context.Context) error {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return err
 	}
 
-	s.mutex.Lock()
 	s.Watcher = watcher
-	s.mutex.Unlock()
 
 	go func() {
 		defer watcher.Close()
 
 		for {
 			select {
-			case <-s.ctx.Done():
+			case <-ctx.Done():
 				return
 			case event, ok := <-watcher.Events:
 				if !ok {

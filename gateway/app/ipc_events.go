@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"log"
 	"strings"
+	"time"
+	"ultragateway/core/services"
 	"ultragateway/structs"
 
 	"github.com/bytedance/sonic"
@@ -17,17 +19,24 @@ type IpcEventsInterface interface {
 	OnRegisterServiceEvent(data json.RawMessage)
 }
 
+type RouteRegister struct {
+	Method string `json:"method"`
+	Path   string `json:"path"`
+}
+
 type ServiceRegisterEvent struct {
 	Namespace string `json:"namespace"`
 	Secure    bool   `json:"secure"`
 	Http      struct {
-		Enabled bool     `json:"enabled"`
-		Proto   string   `json:"proto"`
-		Paths   []string `json:"paths"`
+		Enabled bool            `json:"enabled"`
+		Proto   string          `json:"proto"`
+		Paths   []string        `json:"paths"`
+		Routes  []RouteRegister `json:"routes"`
 	} `json:"http"`
 	Ws struct {
 		Enabled bool     `json:"enabled"`
 		Proto   string   `json:"proto"`
+		Path    string   `json:"path"`
 		Events  []string `json:"events"`
 	} `json:"websocket"`
 	Listen struct {
@@ -59,8 +68,13 @@ func (ctx *IpcEvents) OnRegisterServiceEvent(payload *structs.EventData, rawMess
 	if register.Data.Http.Enabled {
 		if len(register.Data.Http.Paths) > 0 {
 			for _, path := range register.Data.Http.Paths {
-				namespacePath := strings.Split(path, "/")[1]
-				ctx.AppData.HttpPathsRefs.Store(namespacePath, register.Data.Namespace)
+				segments := strings.Split(strings.TrimPrefix(path, "/"), "/")
+
+				if len(segments) == 0 || segments[0] == "" {
+					continue
+				}
+
+				ctx.AppData.HttpPathsRefs.Store(segments[0], register.Data.Namespace)
 			}
 		}
 	}
@@ -68,11 +82,39 @@ func (ctx *IpcEvents) OnRegisterServiceEvent(payload *structs.EventData, rawMess
 	if register.Data.Listen.Socket != "" {
 		// set the listen socket of the service
 		service.SetListenSocket(register.Data.Listen.Socket)
-
-		for _, event := range register.Data.Ws.Events {
-			ctx.AppData.Nats.RegisterServiceEvent(register.Data.Namespace, event)
-		}
 	}
+
+	// nats routing does not depend on the http socket, register the events
+	// every time the service advertises them
+	for _, event := range register.Data.Ws.Events {
+		ctx.AppData.Nats.RegisterServiceEvent(register.Data.Namespace, event)
+	}
+
+	registration := services.Registration{
+		Namespace:    register.Data.Namespace,
+		Secure:       register.Data.Secure,
+		HTTPEnabled:  register.Data.Http.Enabled,
+		HTTPProto:    register.Data.Http.Proto,
+		Paths:        register.Data.Http.Paths,
+		Routes:       make([]services.Route, 0, len(register.Data.Http.Routes)),
+		WSEnabled:    register.Data.Ws.Enabled,
+		WSProto:      register.Data.Ws.Proto,
+		WSPath:       register.Data.Ws.Path,
+		WSEvents:     register.Data.Ws.Events,
+		IP:           register.Data.Listen.Ip,
+		Port:         register.Data.Listen.Port,
+		Socket:       register.Data.Listen.Socket,
+		RegisteredAt: time.Now().Unix(),
+	}
+
+	for _, route := range register.Data.Http.Routes {
+		registration.Routes = append(registration.Routes, services.Route{
+			Method: route.Method,
+			Path:   route.Path,
+		})
+	}
+
+	service.SetRegistration(registration)
 
 	log.Printf("[%v] Service registered via IPC", register.Data.Namespace)
 

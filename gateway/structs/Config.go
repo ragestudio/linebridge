@@ -23,12 +23,18 @@ type BaseConfig struct {
 	ControlAPI ControlAPIConfig `json:"control_api"`
 	OTEL       OTELConfig       `json:"otel"`
 	Redis      RedisConfig      `json:"redis"`
+	Presence   PresenceConfig   `json:"presence"`
 }
 
 type RedisConfig struct {
 	Enabled  bool   `json:"enabled"`
 	URL      string `json:"url"`      // e.g. redis://localhost:6379
 	Password string `json:"password"` // optional password
+}
+
+// PresenceConfig enables the redis backed presence index, disabled by default
+type PresenceConfig struct {
+	Enabled bool `json:"enabled"`
 }
 
 type HttpConfig struct {

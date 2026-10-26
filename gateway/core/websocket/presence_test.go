@@ -42,6 +42,7 @@ func newPresenceTestInstance(t *testing.T) *Instance {
 	return &Instance{
 		Redis:           &uredis.Instance{Client: client},
 		Connections:     &connections.ConnectionManager{},
+		PresenceEnabled: true,
 		PresenceTTL:     time.Minute,
 		PresenceRefresh: 10 * time.Second,
 	}
@@ -64,6 +65,42 @@ func newPresenceTestCtx(connID, userID string) *structs.WSConnectionCtx {
 
 func liveUnix() string {
 	return strconv.FormatInt(time.Now().Unix(), 10)
+}
+
+func TestPresenceSetting(t *testing.T) {
+	t.Setenv("PRESENCE_ENABLED", "")
+
+	config := &structs.BaseConfig{}
+
+	if presenceSetting(config) {
+		t.Fatal("presence must be disabled by default")
+	}
+
+	config.Presence.Enabled = true
+
+	if !presenceSetting(config) {
+		t.Fatal("expected the config to enable presence")
+	}
+
+	t.Setenv("PRESENCE_ENABLED", "false")
+
+	if presenceSetting(config) {
+		t.Fatal("expected the env to disable presence")
+	}
+
+	t.Setenv("PRESENCE_ENABLED", "true")
+	config.Presence.Enabled = false
+
+	if !presenceSetting(config) {
+		t.Fatal("expected the env to enable presence")
+	}
+
+	t.Setenv("PRESENCE_ENABLED", "not-a-bool")
+	config.Presence.Enabled = true
+
+	if !presenceSetting(config) {
+		t.Fatal("invalid env values must fall back to the config")
+	}
 }
 
 func TestPresenceTrackAndUntrack(t *testing.T) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"log"
 	"maps"
 	"os"
@@ -21,6 +22,7 @@ import (
 	baseSrv "ultragateway/core/http"
 	"ultragateway/core/ipc"
 	"ultragateway/core/jsvm"
+	"ultragateway/core/logs"
 	"ultragateway/core/nats"
 	unats "ultragateway/core/nats"
 	uredis "ultragateway/core/redis"
@@ -57,11 +59,14 @@ type App struct {
 	Nats             *unats.Instance
 	Redis            *uredis.Instance
 	WebsocketManager *websocket.Instance
+	Logs             *logs.Hub
 	HttpPathsRefs    *sync.Map
 	JSVM             *jsvm.JSVM
 	ControlAPI       *control.ControlAPI
 	OTEL             *OTEL
 	IsDebug          bool
+	forceShutdown    chan struct{}
+	forceOnce        sync.Once
 }
 
 var Pwd string = utils.Pwd()
@@ -73,6 +78,23 @@ func getGracefulTimeout() time.Duration {
 		}
 	}
 	return 30 * time.Second
+}
+
+// RequestForceShutdown skips the drain window and kills the services
+func (app *App) RequestForceShutdown(reason string) {
+	app.forceOnce.Do(func() {
+		log.Printf("Forced shutdown requested: %s", reason)
+		close(app.forceShutdown)
+	})
+}
+
+func forceRequested(channel <-chan struct{}) bool {
+	select {
+	case <-channel:
+		return true
+	default:
+		return false
+	}
 }
 
 func gracefulShutdown(appData *App, natsSrv *natsServer.Server) {
@@ -89,10 +111,20 @@ func gracefulShutdown(appData *App, natsSrv *natsServer.Server) {
 
 	requests.IsShuttingDown.Store(true)
 
+	// block every restart path before draining, the processes keep running
+	services.BeginShutdown()
+
+	for _, service := range appData.Services {
+		service.PrepareShutdown()
+	}
+
 	// step 1: wait for active websocket connections to drain
+	forced := false
+
 	if appData.WebsocketManager != nil && appData.WebsocketManager.Connections != nil {
 		drainStart := time.Now()
 
+	drain:
 		for {
 			connCount := 0
 			appData.WebsocketManager.Connections.Clients.Range(func(key, value any) bool {
@@ -105,6 +137,18 @@ func gracefulShutdown(appData *App, natsSrv *natsServer.Server) {
 				break
 			}
 
+			select {
+			case <-appData.forceShutdown:
+				forced = true
+				closed := appData.WebsocketManager.CloseAll(1001, "server going away")
+				log.Printf("Forced shutdown, closed %d websocket connections", closed)
+
+				// give the close frames a moment to reach the clients
+				time.Sleep(200 * time.Millisecond)
+				break drain
+			case <-time.After(2 * time.Second):
+			}
+
 			if time.Since(drainStart) >= shutdownTimeout {
 				closed := appData.WebsocketManager.CloseAll(1001, "server going away")
 				log.Printf("Drain timeout reached, closed %d websocket connections", closed)
@@ -115,7 +159,6 @@ func gracefulShutdown(appData *App, natsSrv *natsServer.Server) {
 			}
 
 			log.Printf("Draining websocket connections... (%d remaining)", connCount)
-			time.Sleep(2 * time.Second)
 		}
 	}
 
@@ -128,6 +171,12 @@ func gracefulShutdown(appData *App, natsSrv *natsServer.Server) {
 	// step 3: stop all services gracefully
 	log.Println("Stopping all services...")
 	for _, service := range appData.Services {
+		if forced || forceRequested(appData.forceShutdown) {
+			forced = true
+			service.ForceStop()
+			continue
+		}
+
 		service.Stop()
 	}
 
@@ -149,11 +198,22 @@ func gracefulShutdown(appData *App, natsSrv *natsServer.Server) {
 		}
 	}
 
+	// step 6: stop the control api
+	if appData.ControlAPI != nil {
+		log.Println("Stopping control api")
+		appData.ControlAPI.Stop()
+	}
+
 	log.Println("Graceful shutdown complete")
 }
 
 func Start() {
 	os.Setenv("ROOT_PATH", Pwd)
+
+	// capture every gateway log line in memory for the control api
+	logHub := logs.NewHub()
+	log.SetOutput(io.MultiWriter(os.Stderr, logHub.Writer("gateway", "")))
+
 	log.Printf("[%s v%s]", ProductName, VersionString)
 	log.Println(Pwd)
 
@@ -224,7 +284,9 @@ func Start() {
 		},
 		Services:      make(map[string]*services.Service),
 		HttpPathsRefs: &sync.Map{},
+		Logs:          logHub,
 		IsDebug:       IsDebug,
+		forceShutdown: make(chan struct{}),
 	}
 
 	go appData.StartReadline()
@@ -254,11 +316,7 @@ func Start() {
 	}
 
 	// Initialize Control API
-	if appData.Config.ControlAPI.Enabled == true {
-		appData.ControlAPI = control_api.NewControlAPI(&control.NewControlAPIOptions{
-			Config: appData.Config,
-		})
-	}
+	// it only runs in dev mode, the control plane must never be exposed in production
 
 	if appData.Config.OTEL.Enabled == true {
 		appData.InitOTEL()
@@ -371,11 +429,31 @@ func Start() {
 				EnableWatcher:     appCfg.Mode == "dev",
 				BootloaderPath:    appCfg.Services.Bootloader,
 				GatewaySocketPath: appCfg.IPC.Path,
+				Logs:              appData.Logs,
 			},
 		)
 
 		appData.Services[serviceID] = serviceInst
 		appData.Services[serviceID].Start()
+	}
+
+	// the control plane is a development tool only
+	if appCfg.Mode == "dev" && appCfg.ControlAPI.Enabled {
+		appData.ControlAPI = control_api.NewControlAPI(&control.NewControlAPIOptions{
+			Config:        appCfg,
+			Services:      &appData.Services,
+			Websocket:     appData.WebsocketManager,
+			Redis:         appData.Redis,
+			Nats:          appData.Nats,
+			Logs:          appData.Logs,
+			ProductName:   appData.ProductName,
+			Version:       appData.Version,
+			StartTime:     appData.StartTime,
+			SysInfo:       appData.SysInfo,
+			HttpPathsRefs: appData.HttpPathsRefs,
+		})
+	} else if appCfg.ControlAPI.Enabled && IsDebug {
+		log.Printf("Control API is enabled on the config but the gateway is not in dev mode, skipping")
 	}
 
 	reqHandler := &requests.Requests{
@@ -409,20 +487,48 @@ func Start() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
 
+	shutdownDone := make(chan struct{})
+
 	go func() {
 		sig := <-sigChan
 		log.Printf("Received signal: %v, starting graceful shutdown", sig)
+
+		// a second signal skips the drain window
+		go func() {
+			select {
+			case second := <-sigChan:
+				appData.RequestForceShutdown(fmt.Sprintf("received second signal %v", second))
+			case <-shutdownDone:
+			}
+		}()
+
 		gracefulShutdown(appData, natsEmbedded)
-		os.Exit(0)
+		close(shutdownDone)
 	}()
 
 	serversWaitGroup.Wait()
 	log.Println("All servers finished, executing internal cleanup")
+
+	// the http server also listens for signals, do not exit before the
+	// services are stopped and the remaining connections are closed
+	select {
+	case <-shutdownDone:
+	case <-time.After(time.Minute):
+		log.Println("Graceful shutdown did not finish in time, exiting")
+	}
 }
 
 func StartEmbeddedNats() *natsServer.Server {
+	// keep the embedded broker on loopback unless explicitly exposed, an
+	// unauthenticated nats on 0.0.0.0 lets anyone publish ipc events
+	host := os.Getenv("NATS_LISTEN_HOST")
+
+	if host == "" {
+		host = "127.0.0.1"
+	}
+
 	opts := &natsServer.Options{
-		Host:       "0.0.0.0",
+		Host:       host,
 		Port:       4222,
 		Debug:      IsDebug,
 		NoSigs:     true,
@@ -438,6 +544,7 @@ func StartEmbeddedNats() *natsServer.Server {
 	}
 
 	log.Println("Starting embedded NATS server")
+	log.Printf("Embedded NATS listening on %s:4222 (override with NATS_LISTEN_HOST)", host)
 
 	go ns.Start()
 

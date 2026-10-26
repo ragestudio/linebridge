@@ -80,7 +80,7 @@ func (instance *Instance) Start() error {
 
 	// create directory for socket if it not exist
 	socketDir := filepath.Dir(instance.SocketPath)
-	if err := os.MkdirAll(socketDir, 0755); err != nil {
+	if err := os.MkdirAll(socketDir, 0700); err != nil {
 		return fmt.Errorf("failed to create socket directory: %w", err)
 	}
 
@@ -90,8 +90,8 @@ func (instance *Instance) Start() error {
 		return fmt.Errorf("failed to listen on socket: %w", err)
 	}
 
-	// fix the permissions
-	if err := os.Chmod(instance.SocketPath, 0666); err != nil {
+	// only the gateway user may publish service registrations
+	if err := os.Chmod(instance.SocketPath, 0600); err != nil {
 		listener.Close()
 		return fmt.Errorf("failed to set socket permissions: %w", err)
 	}

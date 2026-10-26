@@ -109,7 +109,7 @@ func (instance *Requests) ProxyHandler(mctx context.Context, ctx *app.RequestCon
 			})
 		} else {
 			ctx.JSON(consts.StatusBadGateway, map[string]string{
-				"message": err.Error(),
+				"message": "Upstream service unavailable",
 			})
 		}
 
@@ -117,7 +117,6 @@ func (instance *Requests) ProxyHandler(mctx context.Context, ctx *app.RequestCon
 	}
 
 	// set some gateway headers
-	res.Header.Set("Connection", "close")
 	res.Header.Set(instance.ProductName, instance.ProductVersion)
 
 	// pipe the response from the client response
