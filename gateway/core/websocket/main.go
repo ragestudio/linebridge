@@ -29,7 +29,8 @@ const (
 	// must stay well below the client watchdog (30s in the js client)
 	defaultPingInterval = 15 * time.Second
 	// extra window before a silent connection is considered dead
-	defaultPingWait = 30 * time.Second
+	// kept generous because reverse proxies may delay control frames
+	defaultPingWait = 60 * time.Second
 	// workers used to fan out heartbeat writes
 	defaultHeartbeatWorkers = 64
 	// buffered queue between the scheduler and the workers
@@ -291,6 +292,13 @@ func (manager *Instance) StartHeartbeat() {
 				if connCtx.Expired(now, maxAge) {
 					// non blocking, safe to call from the scheduler
 					if connCtx.BeginClose() {
+						log.Printf(
+							"websocket | connection [%s] evicted, no heartbeat for %ds (max %ds)",
+							connCtx.ID,
+							now-connCtx.LastSeen(),
+							maxAge,
+						)
+
 						manager.CloseConn(conn, 1000, `{ "error": "heartbeat timeout" }`)
 					}
 					return true

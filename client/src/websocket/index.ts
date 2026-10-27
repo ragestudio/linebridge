@@ -137,6 +137,8 @@ export class WebsocketClient<CustomEvents extends Record<string, any> = {}> {
 	 * cancels any pending reconnection attempts, clears timers and prevents further reconnection.
 	 */
 	destroy(): void {
+		this.heartbeatController.destroy()
+
 		if (!this.socket && !this.state.reconnecting) {
 			return
 		}
@@ -147,7 +149,6 @@ export class WebsocketClient<CustomEvents extends Record<string, any> = {}> {
 			this.topics.unsubscribeAll()
 		}
 
-		this.heartbeatController.stop()
 		this.reconnectController.stop()
 
 		this.abortController.abort()

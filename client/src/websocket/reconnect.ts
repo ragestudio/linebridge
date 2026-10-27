@@ -48,8 +48,17 @@ export default class ReconnectController {
 			client.state.connectionRetryCount + 1
 		client.state.reconnecting = true
 
+		// first retries are fast, a proxy hiccup should cost less than a second
+		const attempt = client.state.connectionRetryCount
+		const backoff = Math.min(
+			reconnectTimeout,
+			1000 * 2 ** Math.min(attempt - 1, 3),
+		)
+		const jitter = Math.round(Math.random() * 250)
+		const delay = backoff + jitter
+
 		client.logger.log(
-			`Connection timeout, retrying connection in ${reconnectTimeout}ms [${client.state.connectionRetryCount}/${client.params.maxConnectRetries}]`,
+			`Connection closed, retrying connection in ${delay}ms [${attempt}/${client.params.maxConnectRetries}]`,
 		)
 
 		client.dispatchToHandlers("reconnecting")
@@ -59,6 +68,6 @@ export default class ReconnectController {
 			client
 				.connect()
 				.catch((err) => client.logger.error("Reconnect failed", err))
-		}, reconnectTimeout)
+		}, delay)
 	}
 }

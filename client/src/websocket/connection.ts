@@ -181,6 +181,10 @@ export default class ConnectionController {
 
 		client.heartbeatController.stop()
 
+		client.logger.log(
+			`Connection closed (code=${e.code}, reason="${e.reason || ""}", clean=${e.wasClean}, socket=${client.state.id ?? "?"}, sincePing=${client.state.lastPing ? Math.round(performance.now() - client.state.lastPing) : -1}ms)`,
+		)
+
 		client.dispatchToHandlers("close")
 
 		if (
@@ -199,6 +203,9 @@ export default class ConnectionController {
 	/** Handles WebSocket message event */
 	handleMessage(event: MessageEvent): void {
 		const client = this.client
+
+		// any inbound frame means the connection is alive
+		client.state.lastPing = performance.now()
 
 		try {
 			const payload = decode(event.data)

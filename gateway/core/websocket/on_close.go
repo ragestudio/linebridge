@@ -1,6 +1,8 @@
 package websocket
 
 import (
+	"log"
+	"time"
 	unats "ultragateway/core/nats"
 
 	"github.com/bytedance/sonic"
@@ -16,6 +18,41 @@ func (manager *Instance) OnClose(conn *gws.Conn, err error) {
 
 	// drop topic subscriptions
 	manager.PubSub.UnsubscribeAll(connCtx.ID)
+
+	// the close code tells whether it was us, the client or an intermediary
+	remote := ""
+
+	if addr := conn.RemoteAddr(); addr != nil {
+		remote = addr.String()
+	}
+
+	uptime := time.Now().Unix() - connCtx.ConnectedAt()
+
+	if closeErr, ok := err.(*gws.CloseError); ok {
+		log.Printf(
+			"websocket | connection [%s] received close frame (code=%d, reason=%q, remote=%s, uptime=%ds)",
+			connCtx.ID,
+			closeErr.Code,
+			string(closeErr.Reason),
+			remote,
+			uptime,
+		)
+	} else if err != nil {
+		log.Printf(
+			"websocket | connection [%s] closed without close frame (cause=%v, remote=%s, uptime=%ds)",
+			connCtx.ID,
+			err,
+			remote,
+			uptime,
+		)
+	} else {
+		log.Printf(
+			"websocket | connection [%s] closed (remote=%s, uptime=%ds)",
+			connCtx.ID,
+			remote,
+			uptime,
+		)
+	}
 
 	// presence bookkeeping runs outside the connection teardown
 	// ClosePresence waits for an in-flight track, so a connection that
