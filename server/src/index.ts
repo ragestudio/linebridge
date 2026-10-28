@@ -25,8 +25,8 @@ declare global {
 
 	var defineRoute: typeof T_defineRoute
 	var defineMiddleware: typeof T_defineMiddleware
-	var HandlerKind: typeof M_HandlerKind
 
+	type HandlerKind = typeof M_HandlerKind
 	type RouteTypes = T_RouteTypes
 	type KnownKeys<T> = T_KnownKeys<T>
 	type MiddlewaresKeys<T extends Server<any>> = T_MiddlewaresKeys<T>

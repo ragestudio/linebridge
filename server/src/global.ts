@@ -20,7 +20,6 @@ declare global {
 
 global.isProduction = process.env.NODE_ENV === "production"
 
-global.HandlerKind = M_HandlerKind
 global.OperationError = M_OperationError
 global.defineRoute = M_DefineRoute
 global.defineMiddleware = M_DefineMiddleware
