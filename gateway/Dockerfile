@@ -9,7 +9,7 @@ COPY . .
 RUN make build
 
 # Runtime
-FROM node:24-trixie-slim AS runtime
+FROM node:26-trixie-slim AS runtime
 
 RUN apt update
 RUN apt install -y curl bash nscd
