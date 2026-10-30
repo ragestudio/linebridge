@@ -1,5 +1,6 @@
 import fs from "node:fs"
 import inferSchemaFromValue from "./inferSchemaFromValue"
+import inferSchemaFromSource from "./inferSchemaFromSource"
 
 export async function loadSpecsFromRoutes(registers: Set<any>) {
 	let specifications = new Set<any>()
@@ -46,6 +47,18 @@ export async function loadSpecsFromRoutes(registers: Set<any>) {
 					type: "string",
 					description: `Path parameter ${match[1]}`,
 				}
+			}
+		}
+
+		// no spec file (or no returns in it): try static inference from the
+		// route handler source, so offline/generated docs get real schemas
+		if (!spec.returns && endpoint._source_file) {
+			try {
+				const source = fs.readFileSync(endpoint._source_file, "utf8")
+
+				spec.returns = inferSchemaFromSource(source) ?? undefined
+			} catch (error) {
+				// Ignored
 			}
 		}
 

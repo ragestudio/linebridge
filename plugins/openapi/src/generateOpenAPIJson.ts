@@ -18,7 +18,18 @@ export async function generateOpenAPIJson(specifications: Set<any>) {
 		const requestBody = buildRequestBody(spec, refs)
 		const responses = buildResponses(spec, refs)
 
+		// doc generators (e.g. docusaurus-plugin-openapi-docs) require every
+		// operation to have a summary or an operationId, so default both
+		const operationId =
+			spec.operationId ??
+			`${spec.method}${path.replace(/[^a-zA-Z0-9]+/g, "_")}`.replace(
+				/_+$/,
+				"",
+			)
+
 		paths[path][spec.method] = {
+			operationId,
+			summary: spec.summary ?? spec.description,
 			description: spec.description,
 			parameters,
 			...(requestBody && { requestBody }),

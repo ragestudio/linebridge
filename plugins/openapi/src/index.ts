@@ -1,23 +1,26 @@
-import { Plugin } from "linebridge/src"
+import { Plugin } from "linebridge"
 
 import generateOpenAPIJson from "./generateOpenAPIJson"
 import loadSpecsFromRoutes from "./loadSpecsFromRoutes"
 
-export const typeMap: Record<string, any> = {
-	string: { type: "string" },
-	number: { type: "number" },
-	boolean: { type: "boolean" },
-	date: { type: "string", format: "date-time" },
-	String: { type: "string" },
-	Number: { type: "number" },
-	Boolean: { type: "boolean" },
-	Date: { type: "string", format: "date-time" },
-}
+export { typeMap } from "./typeMap"
 
 export class OpenAPIPlugin extends Plugin {
 	spec: Record<string, any> = {}
 
+	private specGenerated = false
+
 	onRequest = async (req: any, res: any) => {
+		// Routes are registered AFTER plugins initialize, so the spec must be
+		// generated lazily on first request, when engine.registers is populated.
+		if (!this.specGenerated) {
+			this.specGenerated = true
+
+			this.spec = await generateOpenAPIJson(
+				await loadSpecsFromRoutes(this.server.engine.registers),
+			)
+		}
+
 		const protocol = this.server.hasSSL ? "https" : "http"
 
 		let serverUrl: string = ""
@@ -49,11 +52,7 @@ export class OpenAPIPlugin extends Plugin {
 
 		console.log("[OpenAPIPlugin] Initializing...")
 
-		this.spec = await generateOpenAPIJson(
-			await loadSpecsFromRoutes(this.server.engine.registers),
-		)
-
-		this.server.register.http({
+		this.server.register({
 			method: "get",
 			path: "/openapi.json",
 			fn: this.onRequest,
