@@ -60,6 +60,9 @@ export default function WebSockets({ snapshot }) {
 						.includes(needle) ||
 					String(connection.remote_addr || "")
 						.toLowerCase()
+						.includes(needle) ||
+					String(connection.client_ip || "")
+						.toLowerCase()
 						.includes(needle)
 				)
 			})
@@ -173,8 +176,13 @@ export default function WebSockets({ snapshot }) {
 															connection.last_seen,
 														)}
 													</td>
-													<td class="mono small">
-														${connection.remote_addr ||
+													<td
+														class="mono small"
+														title=${connection.remote_addr ||
+														""}
+													>
+														${connection.client_ip ||
+														connection.remote_addr ||
 														"—"}
 													</td>
 													<td>

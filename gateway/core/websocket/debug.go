@@ -14,6 +14,7 @@ type DebugConnection struct {
 	TokenType   string            `json:"token_type,omitempty"`
 	ConnectedAt int64             `json:"connected_at"`
 	LastSeen    int64             `json:"last_seen"`
+	ClientIP    string            `json:"client_ip,omitempty"`
 	RemoteAddr  string            `json:"remote_addr,omitempty"`
 	Topics      []string          `json:"topics"`
 	Meta        map[string]string `json:"meta,omitempty"`
@@ -43,6 +44,7 @@ func (manager *Instance) DebugConnections() []DebugConnection {
 			TokenType:   connCtx.TokenType,
 			ConnectedAt: connCtx.ConnectedAt(),
 			LastSeen:    connCtx.LastSeen(),
+			ClientIP:    connCtx.ClientIP,
 			Topics:      manager.PubSub.Topics(connCtx.ID),
 			Meta:        connCtx.Meta,
 		}

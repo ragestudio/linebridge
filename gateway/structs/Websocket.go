@@ -54,6 +54,9 @@ type WSConnectionCtx struct {
 	TokenType string            `json:"token_type,omitempty"`
 	Meta      map[string]string `json:"meta,omitempty"`
 
+	// real client address resolved from the proxy headers on the handshake
+	ClientIP string `json:"client_ip,omitempty"`
+
 	// heartbeat state, written by the read loop and read by the heartbeat workers
 	lastSeen atomic.Int64
 	lastPing atomic.Int64

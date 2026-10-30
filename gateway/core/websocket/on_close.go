@@ -27,28 +27,36 @@ func (manager *Instance) OnClose(conn *gws.Conn, err error) {
 	}
 
 	uptime := time.Now().Unix() - connCtx.ConnectedAt()
+	client := connCtx.ClientIP
+
+	if client == "" {
+		client = "-"
+	}
 
 	if closeErr, ok := err.(*gws.CloseError); ok {
 		log.Printf(
-			"websocket | connection [%s] received close frame (code=%d, reason=%q, remote=%s, uptime=%ds)",
+			"websocket | connection [%s] received close frame (code=%d, reason=%q, client=%s, remote=%s, uptime=%ds)",
 			connCtx.ID,
 			closeErr.Code,
 			string(closeErr.Reason),
+			client,
 			remote,
 			uptime,
 		)
 	} else if err != nil {
 		log.Printf(
-			"websocket | connection [%s] closed without close frame (cause=%v, remote=%s, uptime=%ds)",
+			"websocket | connection [%s] closed without close frame (cause=%v, client=%s, remote=%s, uptime=%ds)",
 			connCtx.ID,
 			err,
+			client,
 			remote,
 			uptime,
 		)
 	} else {
 		log.Printf(
-			"websocket | connection [%s] closed (remote=%s, uptime=%ds)",
+			"websocket | connection [%s] closed (client=%s, remote=%s, uptime=%ds)",
 			connCtx.ID,
+			client,
 			remote,
 			uptime,
 		)

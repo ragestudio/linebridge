@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 	"unsafe"
 
@@ -42,6 +43,30 @@ func ComputeClientKey(clientKey []byte) ([]byte, string) {
 	acceptKey := base64.StdEncoding.EncodeToString(hash[:])
 
 	return cleanKey, acceptKey
+}
+
+// clientIP resolves the original client address from the proxy headers
+// it is only used for logs and debugging, never for authorization
+func clientIP(ctx *app.RequestContext) string {
+	for _, header := range []string{"CF-Connecting-IP", "X-Real-IP"} {
+		value := ctx.Request.Header.Peek(header)
+
+		if len(value) > 0 {
+			return strings.TrimSpace(string(value))
+		}
+	}
+
+	value := ctx.Request.Header.Peek("X-Forwarded-For")
+
+	if len(value) == 0 {
+		return ""
+	}
+
+	if index := bytes.IndexByte(value, ','); index > 0 {
+		value = value[:index]
+	}
+
+	return strings.TrimSpace(string(value))
 }
 
 func (instance *Requests) Websocket(mctx context.Context, ctx *app.RequestContext) {
@@ -104,6 +129,7 @@ func (instance *Requests) Websocket(mctx context.Context, ctx *app.RequestContex
 		Token:      tokenParts[1],
 		Meta:       map[string]string{},
 		Authorized: token != nil,
+		ClientIP:   clientIP(ctx),
 	}
 
 	// populate the meta fields from the token claims
