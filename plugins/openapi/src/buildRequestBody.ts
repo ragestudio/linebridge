@@ -5,23 +5,36 @@ export function buildRequestBody(spec: any, refs: Map<string, any>) {
 		return undefined
 	}
 
-	let refName = null
+	let schemaData: any = {}
 
-	if (typeof spec.body.ref === "object") {
-		addSchemaRef(refs, spec.body.ref)
-		refName = spec.body.ref.name
+	if (spec.body.ref) {
+		let refName = null
+
+		if (typeof spec.body.ref === "object") {
+			addSchemaRef(refs, spec.body.ref)
+			refName = spec.body.ref.name
+		} else {
+			refName = spec.body.ref.toString()
+		}
+
+		schemaData = {
+			type: spec.body.type,
+			$ref: `#/components/schemas/${refName}`,
+		}
 	} else {
-		refName = spec.body.ref.toString()
+		schemaData = {
+			type: spec.body.type,
+			properties: spec.body.properties,
+			items: spec.body.items,
+			...(spec.body.required ? { required: spec.body.required } : {}),
+		}
 	}
 
 	return {
 		description: spec.body.description,
 		content: {
 			"application/json": {
-				schema: {
-					type: spec.body.type,
-					$ref: `#/components/schemas/${refName}`,
-				},
+				schema: schemaData,
 			},
 		},
 	}

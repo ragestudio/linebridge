@@ -1,6 +1,13 @@
 {
 	"name": "@linebridge/plugin-openapi",
 	"version": "1.0.0",
+	"type": "module",
+	"types": "./src/index.ts",
+	"main": "./src/index.ts",
+	"exports": {
+		".": "./src/index.ts",
+		"./src/*": "./src/*.ts"
+	},
 	"peerDependencies": {
 		"linebridge": "workspace:*"
 	}

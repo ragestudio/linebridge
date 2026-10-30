@@ -1,4 +1,4 @@
-import { typeMap } from "."
+import { typeMap } from "./typeMap"
 
 export function extractProperties(properties: Record<string, any>) {
 	return Object.entries(properties).reduce(
