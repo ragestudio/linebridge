@@ -129,6 +129,28 @@ func sanitizeEnv(env map[string]string) []envEntry {
 	return entries
 }
 
+func (api *ControlAPI) handleNodeList(writer http.ResponseWriter, request *http.Request) {
+	if api.options.Nodes == nil {
+		writeJSON(writer, http.StatusBadRequest, map[string]any{
+			"error": "Node Manager is not available",
+		})
+		return
+	}
+
+	list, err := api.options.Nodes.SerializeList()
+
+	if api.options.Nodes == nil {
+		writeJSON(writer, http.StatusInternalServerError, map[string]any{
+			"error": err,
+		})
+		return
+	}
+
+	writer.Header().Set("Content-Type", "application/json; charset=utf-8")
+	writer.WriteHeader(http.StatusOK)
+	writer.Write(list)
+}
+
 func (api *ControlAPI) handleHealth(writer http.ResponseWriter, request *http.Request) {
 	servicesTotal := 0
 	servicesRunning := 0

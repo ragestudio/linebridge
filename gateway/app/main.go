@@ -25,6 +25,7 @@ import (
 	"ultragateway/core/logs"
 	"ultragateway/core/nats"
 	unats "ultragateway/core/nats"
+	"ultragateway/core/nodes"
 	uredis "ultragateway/core/redis"
 	"ultragateway/core/services"
 	"ultragateway/core/websocket"
@@ -33,6 +34,8 @@ import (
 	"ultragateway/utils"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
+	snowflake "github.com/influxdata/influxdb/pkg/snowflake"
 	"github.com/nats-io/nats-server/v2/server"
 	natsServer "github.com/nats-io/nats-server/v2/server"
 )
@@ -47,6 +50,10 @@ var (
 )
 
 type App struct {
+	Ctx    context.Context
+	Cancel context.CancelFunc
+
+	GatewayID        string
 	ProductName      string
 	Version          string
 	StartTime        time.Time
@@ -55,6 +62,8 @@ type App struct {
 	Config           *structs.BaseConfig
 	Services         map[string]*services.Service
 	InfisicalEnv     map[string]string
+	Snowflake        *snowflake.Generator
+	NodesManager     *nodes.NodeManager
 	SocketListener   *ipc.Instance
 	Nats             *unats.Instance
 	Redis            *uredis.Instance
@@ -108,6 +117,20 @@ func gracefulShutdown(appData *App, natsSrv *natsServer.Server) {
 	}
 
 	log.Printf("Graceful shutdown initiated, timeout: %v", shutdownTimeout)
+
+	if appData.NodesManager != nil {
+		deregCtx, deregCancel := context.WithTimeout(context.Background(), 5*time.Second)
+
+		if err := appData.NodesManager.Unregister(deregCtx); err != nil {
+			log.Printf("Failed to unregister node on shutdown: %v", err)
+		}
+
+		deregCancel()
+	}
+
+	if appData.Cancel != nil {
+		appData.Cancel()
+	}
 
 	requests.IsShuttingDown.Store(true)
 
@@ -210,6 +233,9 @@ func gracefulShutdown(appData *App, natsSrv *natsServer.Server) {
 func Start() {
 	os.Setenv("ROOT_PATH", Pwd)
 
+	appCtx, appCancel := context.WithCancel(context.Background())
+	defer appCancel()
+
 	// capture every gateway log line in memory for the control api
 	logHub := logs.NewHub()
 	log.SetOutput(io.MultiWriter(os.Stderr, logHub.Writer("gateway", "")))
@@ -269,13 +295,19 @@ func Start() {
 		log.Fatal("No services found")
 	}
 
+	uuid, _ := uuid.NewV7()
+
 	// create the base singleton app instance
 	appData := &App{
+		GatewayID:   uuid.String(),
+		Ctx:         appCtx,
+		Cancel:      appCancel,
 		ProductName: ProductName,
 		Version:     VersionString,
 		ProjectJSON: projectPkgJson,
 		StartTime:   time.Now(),
 		Config:      appCfg,
+		Snowflake:   snowflake.New(0),
 		SysInfo: map[string]any{
 			"os":         runtime.GOOS,
 			"arch":       runtime.GOARCH,
@@ -315,9 +347,6 @@ func Start() {
 		}
 	}
 
-	// Initialize Control API
-	// it only runs in dev mode, the control plane must never be exposed in production
-
 	if appData.Config.OTEL.Enabled == true {
 		appData.InitOTEL()
 	}
@@ -336,6 +365,16 @@ func Start() {
 
 	if appData.Redis != nil {
 		log.Println("Redis client initialized")
+	}
+
+	appData.NodesManager, err = nodes.New(appData.GatewayID, appData.Nats)
+
+	if err == nil {
+		appData.NodesManager.Register()
+
+		if err := appData.NodesManager.Watch(appCtx); err != nil {
+			log.Printf("Failed to start nodes watcher: %v", err)
+		}
 	}
 
 	// initialize Websocket
@@ -451,12 +490,14 @@ func Start() {
 			StartTime:     appData.StartTime,
 			SysInfo:       appData.SysInfo,
 			HttpPathsRefs: appData.HttpPathsRefs,
+			Nodes:         appData.NodesManager,
 		})
 	} else if appCfg.ControlAPI.Enabled && IsDebug {
 		log.Printf("Control API is enabled on the config but the gateway is not in dev mode, skipping")
 	}
 
 	reqHandler := &requests.Requests{
+		GatewayId:        appData.GatewayID,
 		ProductName:      appData.ProductName,
 		ProductVersion:   appData.Version,
 		StartTime:        appData.StartTime,

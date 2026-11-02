@@ -17,6 +17,7 @@ import (
 	"time"
 	"ultragateway/core/logs"
 	"ultragateway/core/nats"
+	"ultragateway/core/nodes"
 	"ultragateway/core/redis"
 	"ultragateway/core/services"
 	"ultragateway/core/websocket"
@@ -42,6 +43,7 @@ type NewControlAPIOptions struct {
 	StartTime     time.Time
 	SysInfo       map[string]any
 	HttpPathsRefs *sync.Map
+	Nodes         *nodes.NodeManager
 }
 
 // ControlAPI is the development control plane, it exposes the state of the
@@ -170,6 +172,8 @@ func (api *ControlAPI) buildRouter() *http.ServeMux {
 	mux.HandleFunc("GET /api/health", api.handleHealth)
 	mux.HandleFunc("GET /api/config", api.handleConfig)
 	mux.HandleFunc("GET /api/system", api.handleSystem)
+
+	mux.HandleFunc("GET /api/nodes/list", api.handleNodeList)
 
 	mux.HandleFunc("GET /api/services", api.handleServices)
 	mux.HandleFunc("GET /api/services/{id}", api.handleServiceDetail)
