@@ -107,9 +107,7 @@ describe("NeoEngine", () => {
 
 import { expectTypeOf } from "vitest"
 import { EngineAdaptor } from "linebridge/classes/EngineAdaptor/index"
-import type { RTEClient as RTEngine } from "linebridge"
-import type { RouteAlike } from "linebridge/classes/Route/index"
-import type { MiddlewareHandlerFunction } from "linebridge/classes/Handler/middleware"
+import type RTEngine from "linebridge/classes/RtEngine/index"
 
 describe("NeoEngine Type Inference", () => {
 	it("should satisfy the EngineAdaptor interface", () => {
@@ -127,10 +125,8 @@ describe("NeoEngine Type Inference", () => {
 		// engine.uws is typed as uwsEngine | null in NeoEngine
 		expectTypeOf(engine.uws).not.toBeAny()
 
-		// register method expects a RouteAlike
-		expectTypeOf(engine.register).toEqualTypeOf<
-			(route: RouteAlike) => void
-		>()
+		// register method expects a Route
+		expectTypeOf(engine.register).toEqualTypeOf<(route: Route) => void>()
 
 		// register_middleware expects a MiddlewareHandlerFunction or a Handler wrapper
 		expectTypeOf(engine.register_middleware).toBeFunction()
