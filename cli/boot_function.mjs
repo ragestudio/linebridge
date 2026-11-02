@@ -23,16 +23,19 @@ async function Boot(main) {
 	process.on("exit", (code) => {
 		console.log(`[BOOT] Closing ...`)
 
-		instance._fireClose()
+		instance._fireClose?.()
 	})
 
-	process.on("SIGTERM", () => {
-		process.exit(0)
-	})
+	const shutdown = async () => {
+		try {
+			await instance._fireClose?.()
+		} finally {
+			process.exit(0)
+		}
+	}
 
-	process.on("SIGINT", () => {
-		process.exit(0)
-	})
+	process.once("SIGTERM", shutdown)
+	process.once("SIGINT", shutdown)
 
 	await instance.run()
 
