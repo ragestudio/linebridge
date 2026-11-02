@@ -7,14 +7,14 @@ import type {
 } from "./classes/Handler/middleware"
 import type { WebsocketHandlerFunction } from "./classes/Handler/websocket"
 import type { EngineAdaptor } from "./classes/EngineAdaptor"
-import type {
-	ServerResponse,
-	ContextsKeys,
-	MiddlewaresKeys,
-	IPCEvents,
-} from "./types"
+import type { ServerResponse, IPCEvents } from "./types"
+import type { RouteKind } from "./classes/Route"
+import type { EnginesRegistry } from "./engines"
+
+import { registerEngine, Engines } from "./engines"
 
 import fs from "node:fs"
+import path from "node:path"
 import { EventEmitter } from "tseep"
 
 import registerBaseRoutes from "./initializers/baseRoutes"
@@ -22,13 +22,13 @@ import registerBaseMiddlewares from "./initializers/baseMiddlewares"
 import registerBaseHeaders from "./initializers/baseHeaders"
 import registerWebsocketsFileEvents from "./initializers/websocketFileEvents"
 import registerHttpFileRoutes from "./initializers/httpFileRoutes"
+import registerEventsFileRoutes from "./initializers/eventsFileRoutes"
 import registerGateway from "./initializers/gateway"
 import registerPlugins from "./initializers/plugins"
 
 import isExperimental from "./utils/isExperimental"
 import getHostAddress from "./utils/getHostAddress"
 
-import Engines, { registerEngine, type EnginesRegistry } from "./engines"
 import NatsAdapter from "./classes/Nats/adapter"
 import IPC from "./classes/IPC"
 
@@ -36,12 +36,11 @@ import LoggerMiddleware from "./middlewares/logger"
 import CorsMiddleware from "./middlewares/cors"
 
 import { Plugin } from "./classes/Plugin"
-import { Route, RouteAlike, RouteObject } from "./classes/Route"
+import { RouteObject } from "./classes/Route"
 import { HandlerKind } from "./classes/Handler"
 import { RtEngineContext, RtEngineSocket } from "./classes/RtEngine/types"
 import { Client } from "./classes/RtEngine/classes/client"
 import registerRoute from "./registers/route"
-import path from "node:path"
 
 try {
 	// @ts-ignore: engine-neo is an optional dependency
@@ -55,6 +54,12 @@ try {
 export interface NatsParams {
 	address?: string
 	port?: number
+	url?: string
+	user?: string
+	pass?: string
+	token?: string
+	name?: string
+	timeout?: number
 }
 
 export interface WebsocketParams {
@@ -81,6 +86,8 @@ export interface ServerParams {
 	routesPath: string
 	/** Filesystem path scanned for WebSocket event files. */
 	wsRoutesPath: string
+	/** Filesystem path scanned for generic event files. */
+	eventsPath: string
 	/** Middlewares to apply globally (by name or function). */
 	useMiddlewares: Array<
 		string | MiddlewareHandlerFunction | MiddlewareObj<any, any, any>
@@ -133,6 +140,7 @@ export class Server<EngineType extends string = "neo"> {
 	static baseRoutes?: boolean
 	static routesPath?: string
 	static wsRoutesPath?: string
+	static eventsPath?: string
 	static nats?: NatsParams
 	// ---- instance properties ----
 
@@ -206,12 +214,12 @@ export class Server<EngineType extends string = "neo"> {
 	afterInitialize?(): Promise<void>
 
 	/** Called when the server is shutting down. */
-	onClose?(): void
+	onClose?(): void | Promise<void>
 
 	// ---- user-defined routes & events ----
 
-	/** HTTP route definitions (class-based, registered at boot). */
-	routes!: Record<string, RouteObject<this, any, HandlerKind.http, any> | any>
+	/** Route definitions (class-based, registered at boot). */
+	routes!: Record<string, RouteObject<this, any, RouteKind, any> | any>
 
 	/** WebSocket event handler map. */
 	wsEvents?: Record<string, RouteObject<this, any, HandlerKind.ws, any> | any>
@@ -282,6 +290,10 @@ export class Server<EngineType extends string = "neo"> {
 
 		if (typeof ctor.wsRoutesPath === "string") {
 			this.params.wsRoutesPath = ctor.wsRoutesPath
+		}
+
+		if (typeof ctor.eventsPath === "string") {
+			this.params.eventsPath = ctor.eventsPath
 		}
 
 		if (typeof ctor.websockets === "object") {
@@ -437,19 +449,28 @@ export class Server<EngineType extends string = "neo"> {
 			}
 		}
 
-		// Register class-defined HTTP Routes
+		// Custom engines may not extend EngineAdaptor, so default to http.
+		const transport = this.engine.transport ?? "http"
+
+		// Register class-defined routes. The route kind decides how the
+		// engine dispatches it (http, ws or generic).
 		if (typeof this.routes === "object") {
-			for (const [path, definition] of Object.entries(this.routes)) {
-				if (!definition.method) {
+			for (const [key, definition] of Object.entries(this.routes)) {
+				const kind = (definition.kind ?? HandlerKind.http) as RouteKind
+
+				// the map key is the default endpoint (URL or subject)
+				definition.path ??= key
+
+				if (kind === HandlerKind.http && !definition.method) {
 					console.warn(
-						`Server defined Route [${path}] has no method defined, skipping`,
+						`Server defined Route [${key}] has no method defined, skipping`,
 					)
 					continue
 				}
 
 				if (!definition.fn) {
 					console.warn(
-						`Server defined Route [${path}] has no handler defined, skipping`,
+						`Server defined Route [${key}] has no handler defined, skipping`,
 					)
 					continue
 				}
@@ -462,23 +483,29 @@ export class Server<EngineType extends string = "neo"> {
 					definition.useMiddlewares = []
 				}
 
-				this.register(definition)
+				this.register(definition, kind)
 			}
 		}
 
-		// Scan the filesystem for HTTP route files (e.g. routes/users/get.ts).
-		await registerHttpFileRoutes(this.params.routesPath, this)
+		if (transport === "http") {
+			// Scan the filesystem for HTTP route files (e.g. routes/users/get.ts).
+			await registerHttpFileRoutes(this.params.routesPath, this)
 
-		// Scan the filesystem for WebSocket event files.
-		await registerWebsocketsFileEvents(this.params.wsRoutesPath, this)
+			// Scan the filesystem for WebSocket event files.
+			await registerWebsocketsFileEvents(this.params.wsRoutesPath, this)
 
-		// Register built-in routes: / (server info) and /_map (route listing).
-		if (this.params.baseRoutes == true) {
-			await registerBaseRoutes(this)
+			// Register built-in routes: / (server info) and /_map (route listing).
+			if (this.params.baseRoutes == true) {
+				await registerBaseRoutes(this)
+			}
+		}
+
+		if (transport === "generic") {
+			await registerEventsFileRoutes(this.params.eventsPath, this)
 		}
 
 		// If running behind the gateway, advertise this services routes to it.
-		if (process.env.LB_GATEWAY_SOCKET) {
+		if (transport === "http" && process.env.LB_GATEWAY_SOCKET) {
 			console.info("Publishing to Gateway")
 			await registerGateway(this)
 		}
@@ -502,7 +529,9 @@ export class Server<EngineType extends string = "neo"> {
 			`- Websocket: ${this.engine?.ws ? this.engine.ws?.config?.path : "Disabled"}`,
 		]
 
-		if (this.engine.socket_path) {
+		if (transport === "generic") {
+			lines.push(`- ID: ${this.params.refName}`)
+		} else if (this.engine.socket_path) {
 			lines.push(`- Socket: ${this.engine.socket_path}`)
 		} else {
 			lines.push(
@@ -517,17 +546,49 @@ export class Server<EngineType extends string = "neo"> {
 		typeof registerRoute
 	>
 
+	private _closingPromise: Promise<void> | null = null
+
 	/**
 	 * Graceful shutdown handler. Calls onClose hook, then closes the engine.
 	 * Registered on process exit signals (SIGINT, SIGTERM, etc.) by the engine.
 	 */
-	_fireClose = (): void => {
-		if (typeof this.onClose === "function") {
-			this.onClose()
+	_fireClose = (): Promise<void> => {
+		if (this._closingPromise) return this._closingPromise
+
+		this._closingPromise = this.runClose()
+
+		return this._closingPromise
+	}
+
+	private runClose = async (): Promise<void> => {
+		try {
+			if (typeof this.onClose === "function") {
+				await this.onClose()
+			}
+		} catch (error) {
+			console.error("Error running onClose:", error)
 		}
 
-		if (this.engine && typeof this.engine.close === "function") {
-			this.engine.close()
+		try {
+			if (this.engine && typeof this.engine.close === "function") {
+				await this.engine.close()
+			}
+		} catch (error) {
+			console.error("Error closing engine:", error)
+		}
+
+		try {
+			const ipc = this.ipc as any
+			if (ipc && typeof ipc.close === "function") await ipc.close()
+		} catch (error) {
+			console.error("Error closing ipc:", error)
+		}
+
+		try {
+			const nats = this.nats as any
+			if (nats && typeof nats.close === "function") await nats.close()
+		} catch (error) {
+			console.error("Error closing nats:", error)
 		}
 	}
 }

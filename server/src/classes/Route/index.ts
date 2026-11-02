@@ -1,4 +1,8 @@
-import Handler, { HandlerFunctionByKind, HandlerKind } from "../Handler"
+import Handler, {
+	HandlerFunctionByKind,
+	HandlerKind,
+	type GenericHandlerFunction,
+} from "../Handler"
 import parsePathParameters from "../../utils/parsePathParameters"
 
 import type { ServerInstance } from "../../types"
@@ -15,7 +19,14 @@ import type {
 	ServerResponse,
 } from "../../types"
 
-export type RouteKind = HandlerKind.http | HandlerKind.ws
+type PickedContexts<Child, UseContexts> = UseContexts extends readonly [
+	any,
+	...any[],
+]
+	? Pick<Contexts<Child>, Extract<UseContexts[number], keyof Contexts<Child>>>
+	: unknown
+
+export type RouteKind = "http" | "ws" | "generic"
 export type RouteHttpMethods =
 	| "any"
 	| "get"
@@ -26,54 +37,78 @@ export type RouteHttpMethods =
 	| "options"
 	| "head"
 
-export interface RouteObject<
+type RouteHandlerFor<
+	Child,
+	Kind extends RouteKind,
+	SelectedCtx,
+	SelectedMw extends MiddlewaresKeys<Child>,
+> = Kind extends "ws"
+	? WebsocketHandlerFunction<SelectedCtx>
+	: Kind extends "generic"
+		? GenericHandlerFunction<
+				SelectedCtx,
+				ServerRequest<Child>,
+				ServerResponse<Child>
+			>
+		: HttpHandlerFunction<
+				SelectedCtx,
+				ServerRequest<Child> & ExtractReqExt<Child, SelectedMw>,
+				ServerResponse<Child> & ExtractResExt<Child, SelectedMw>
+			>
+
+export type RouteObject<
 	Child = Server<any>,
 	SelectedCtx extends ContextsKeys<Child> = ContextsKeys<Child>,
 	Kind extends RouteKind = HandlerKind.http,
 	SelectedMw extends MiddlewaresKeys<Child> = MiddlewaresKeys<Child>,
-> {
+> = {
 	path?: string
-	method?: RouteHttpMethods
+	queue?: string
 	useMiddlewares?: readonly SelectedMw[]
 	useContexts?: readonly SelectedCtx[]
-	fn: Kind extends "ws"
-		? WebsocketHandlerFunction<Pick<Contexts<Child>, SelectedCtx>>
-		: HttpHandlerFunction<
-				Pick<Contexts<Child>, SelectedCtx>,
-				ServerRequest<Child> & ExtractReqExt<Child, SelectedMw>,
-				ServerResponse<Child> & ExtractResExt<Child, SelectedMw>
-			>
-}
+	fn: RouteHandlerFor<
+		Child,
+		Kind,
+		Pick<Contexts<Child>, Extract<SelectedCtx, keyof Contexts<Child>>>,
+		SelectedMw
+	>
+} & (Kind extends "http"
+	? { kind?: "http"; method?: RouteHttpMethods }
+	: { kind: Kind; method?: never })
 
 export function defineRoute<
 	Child = Server<any>,
 	Kind extends RouteKind = HandlerKind.http,
 >(serverClass?: Child) {
-	type Req = ServerRequest<Child>
-	type Res = ServerResponse<Child>
-
 	const define = <
 		const UseContexts extends readonly ContextsKeys<Child>[] = readonly [],
 		const UseMiddlewares extends readonly MiddlewaresKeys<Child>[] =
 			readonly [],
-	>(route: {
-		method?: RouteHttpMethods
-		useMiddlewares?: UseMiddlewares
-		useContexts?: UseContexts
-		fn: Kind extends "ws"
-			? WebsocketHandlerFunction<
-					UseContexts extends readonly [any, ...any[]]
-						? Pick<Contexts<Child>, UseContexts[number]>
-						: unknown
-				>
-			: HttpHandlerFunction<
-					UseContexts extends readonly [any, ...any[]]
-						? Pick<Contexts<Child>, UseContexts[number]>
-						: unknown,
-					Req & ExtractReqExt<Child, UseMiddlewares[number]>,
-					Res & ExtractResExt<Child, UseMiddlewares[number]>
-				>
-	}): typeof route => route
+	>(
+		route: {
+			path?: string
+			queue?: string
+			useMiddlewares?: UseMiddlewares
+			useContexts?: UseContexts
+			fn: Kind extends "ws"
+				? WebsocketHandlerFunction<PickedContexts<Child, UseContexts>>
+				: Kind extends "generic"
+					? GenericHandlerFunction<
+							PickedContexts<Child, UseContexts>,
+							ServerRequest<Child>,
+							ServerResponse<Child>
+						>
+					: HttpHandlerFunction<
+							PickedContexts<Child, UseContexts>,
+							ServerRequest<Child> &
+								ExtractReqExt<Child, UseMiddlewares[number]>,
+							ServerResponse<Child> &
+								ExtractResExt<Child, UseMiddlewares[number]>
+						>
+		} & (Kind extends "http"
+			? { kind?: "http"; method?: RouteHttpMethods }
+			: { kind?: Kind; method?: never }),
+	): typeof route => route
 
 	return define
 }
@@ -91,8 +126,9 @@ export class Route<
 	_initialized: Boolean = false
 	server!: Server<any> & ServerInstance<TServer>
 
-	kind: RouteKind = HandlerKind.http
+	kind: RouteKind = "http"
 	path: string = "/"
+	queue?: string
 	method: RouteHttpMethods = "get"
 	useContexts: readonly ContextsKeys<TServer>[] = []
 	useMiddlewares: readonly MiddlewaresKeys[] = []
@@ -101,7 +137,7 @@ export class Route<
 
 	_source_file?: string
 
-	middlewares: Handler<HandlerKind.middleware>[] = []
+	middlewares: Handler<any>[] = []
 	ctx: Record<string, any> = {}
 	handler!: Handler<any>
 	fn!: Function
@@ -127,6 +163,14 @@ export class Route<
 				this.path = definitions.path
 			}
 
+			if (typeof definitions.kind === "string") {
+				this.kind = definitions.kind
+			}
+
+			if (typeof definitions.queue === "string") {
+				this.queue = definitions.queue
+			}
+
 			if (typeof definitions.method === "string") {
 				this.method = definitions.method
 			}
@@ -150,7 +194,11 @@ export class Route<
 			)
 		}
 
-		this.pathParametersKey = parsePathParameters(this.path)
+		if (this.kind === HandlerKind.generic) {
+			this.pathParametersKey = []
+		} else {
+			this.pathParametersKey = parsePathParameters(this.path)
+		}
 
 		const allContexts = Object.assign(
 			{},
@@ -175,24 +223,29 @@ export class Route<
 
 		// register middlewares
 		if (this.useMiddlewares && Array.isArray(this.useMiddlewares)) {
+			const middlewareKind =
+				this.kind === HandlerKind.generic
+					? HandlerKind.generic
+					: HandlerKind.middleware
+
 			for (let key of this.useMiddlewares) {
-				if (typeof key !== "string" && typeof key !== "function") {
+				const isObjectMiddleware =
+					typeof key === "object" &&
+					key !== null &&
+					typeof (key as any).fn === "function"
+
+				if (
+					typeof key !== "string" &&
+					typeof key !== "function" &&
+					!isObjectMiddleware
+				) {
 					console.warn(`invalid typeof use middleware:`, key)
 					continue
 				}
 
-				let middleware
+				let middleware: any =
+					typeof key === "string" ? allMiddlewares[key] : key
 				let middlewareCtx: Record<string, any> | undefined
-
-				// if is a string, lookup on the server
-				if (typeof key === "string") {
-					middleware = allMiddlewares[key]
-				}
-
-				// if is already a fn, just use it
-				if (typeof key === "function") {
-					middleware = key
-				}
 
 				// if middleware is an object with a fn property (MiddlewareObj), extract the fn and resolve contexts
 				if (
@@ -200,7 +253,6 @@ export class Route<
 					typeof middleware === "object" &&
 					typeof middleware.fn === "function"
 				) {
-					// resolve useContexts for this middleware
 					if (
 						Array.isArray(middleware.useContexts) &&
 						middleware.useContexts.length > 0
@@ -224,10 +276,7 @@ export class Route<
 					continue
 				}
 
-				const handler = this._to_handler<HandlerKind.middleware>(
-					middleware,
-					HandlerKind.middleware,
-				)
+				const handler = this._to_handler(middleware, middlewareKind)
 
 				if (handler) {
 					// assign resolved contexts to the middleware handler
@@ -242,7 +291,7 @@ export class Route<
 		}
 
 		if (this.fn) {
-			this.handler = this._to_handler(this.fn, this.kind)
+			this.handler = this._to_handler(this.fn, this.kind as HandlerKind)
 		}
 
 		this._initialized = true

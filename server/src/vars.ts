@@ -14,10 +14,7 @@ import { fileURLToPath } from "node:url"
 import loggerMiddleware from "./middlewares/logger/index"
 import corsMiddleware from "./middlewares/cors/index"
 
-const _dirname = (() => {
-	if (typeof __dirname !== "undefined") return __dirname
-	return path.dirname(fileURLToPath(import.meta.url))
-})()
+const _dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const LibPkg = JSON.parse(
 	fs.readFileSync(path.resolve(_dirname, "../package.json"), "utf8"),
@@ -37,6 +34,7 @@ class VarsInstance {
 		baseRoutes: true,
 		routesPath: path.resolve(process.cwd(), "routes"),
 		wsRoutesPath: path.resolve(process.cwd(), "ws_routes"),
+		eventsPath: path.resolve(process.cwd(), "events"),
 		useMiddlewares: [],
 		usePlugins: [],
 		// All HTTP methods that the framework recognizes for route registration.

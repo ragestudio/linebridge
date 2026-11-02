@@ -40,6 +40,8 @@ type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
 	? I
 	: never
 
+type IsAny<T> = 0 extends 1 & T ? true : false
+
 type ExtractPluginContexts<Plugins extends any[]> = UnionToIntersection<
 	Plugins[number] extends new (...args: any[]) => infer P
 		? P extends { contexts: infer C }
@@ -62,7 +64,8 @@ export type ExtractPlugins<T> = T extends { usePlugins: infer P }
 	: []
 
 /** Union of context keys available to a route on a given Server subclass. */
-export type ContextsKeys<Child = Server<any>> = KnownKeys<Contexts<Child>>
+export type ContextsKeys<Child = Server<any>> =
+	IsAny<Contexts<Child>> extends true ? string : KnownKeys<Contexts<Child>>
 
 /** Union of middleware keys available on a given Server subclass. */
 export type MiddlewaresKeys<Child = Server<any>> = KnownKeys<

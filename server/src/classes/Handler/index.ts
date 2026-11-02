@@ -14,12 +14,24 @@ import { Client } from "../RtEngine/classes/client"
 import type { Request, Response, HttpHandlerFunction } from "./http"
 import type { WebsocketHandlerFunction } from "./websocket"
 import type { MiddlewareHandlerFunction, MiddlewareObj } from "./middleware"
+import type {
+	GenericHandlerFunction,
+	GenericMiddlewareFunction,
+	GenericMiddlewareObj,
+	GenericRequest,
+	GenericResponse,
+} from "./generic"
 
 export type {
 	HttpHandlerFunction,
 	WebsocketHandlerFunction,
 	MiddlewareHandlerFunction,
 	MiddlewareObj,
+	GenericHandlerFunction,
+	GenericMiddlewareFunction,
+	GenericMiddlewareObj,
+	GenericRequest,
+	GenericResponse,
 }
 
 export enum HandlerKind {
@@ -33,7 +45,7 @@ export interface HandlerFunctionByKind {
 	[HandlerKind.http]: HttpHandlerFunction
 	[HandlerKind.ws]: WebsocketHandlerFunction
 	[HandlerKind.middleware]: MiddlewareHandlerFunction
-	[HandlerKind.generic]: Function
+	[HandlerKind.generic]: GenericHandlerFunction
 }
 
 export interface HandlerParams<
@@ -101,6 +113,15 @@ export class Handler<Kind extends HandlerKind = HandlerKind.generic> {
 				case "middleware": {
 					return this.asMiddleware(
 						...(args as [Request, Response, () => void]),
+					)
+				}
+				case "generic": {
+					return this.asGeneric(
+						...(args as [
+							unknown,
+							GenericResponse,
+							typeof this.ctx,
+						]),
 					)
 				}
 			}
@@ -178,20 +199,50 @@ export class Handler<Kind extends HandlerKind = HandlerKind.generic> {
 		return [result, error]
 	}
 
-	// async asGeneric() {
-	// 	let result = null
-	// 	let error = null
+	/**
+	 * Executes a protocol agnostic handler. The engine provides the request
+	 * and response objects, the shared pipeline only closes the exchange.
+	 */
+	async asGenericMiddleware(
+		req: unknown,
+		res: GenericResponse,
+		next: () => void,
+		ctx?: this["ctx"],
+	): Promise<void> {
+		const fn = this.fn as GenericMiddlewareFunction
 
-	// 	try {
-	// 		result = await this.fn()
-	// 	} catch (err: any) {
-	// 		error = err
-	// 		console.debug(`[handler] error >`, err)
-	// 		// if (!(error instanceof OperationError)) {
-	// 		// 	console.debug(`[ws] 500 >`, error)
-	// 		// }
-	// 	}
-	// }
+		try {
+			await fn(req, res, next, ctx ?? this.ctx ?? {})
+		} catch (error: any) {
+			if (res.completed) return
+
+			const code = error instanceof OperationError ? error.code : 500
+
+			res.error(error, code)
+		}
+	}
+
+	async asGeneric(
+		req: unknown,
+		res: GenericResponse,
+		ctx?: this["ctx"],
+	): Promise<void> {
+		const fn = this.fn as GenericHandlerFunction
+
+		try {
+			const result = await fn(req, res, ctx ?? this.ctx ?? {})
+
+			if (!res.completed) {
+				res.send(result ?? null)
+			}
+		} catch (error: any) {
+			if (res.completed) return
+
+			const code = error instanceof OperationError ? error.code : 500
+
+			res.error(error, code)
+		}
+	}
 }
 
 export default Handler

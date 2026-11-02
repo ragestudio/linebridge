@@ -1,4 +1,4 @@
-import type { NatsConnection } from "@nats-io/transport-node"
+import type { NatsConnection, Subscription } from "@nats-io/transport-node"
 
 import handleReceivedEvent from "./handleReceivedEvent"
 import invoke from "./invoke"
@@ -27,6 +27,8 @@ export class IPC {
 			queue: `${refName}-internal_ipc-worker`,
 		})
 
+		this.subscription = subscription
+
 		const eventLoop = async () => {
 			for await (const message of subscription) {
 				this.handleReceivedEvent(message)
@@ -38,6 +40,7 @@ export class IPC {
 
 	server: any
 	nats: NatsConnection
+	subscription: Subscription | null = null
 	codec = new JSONCodec()
 
 	get isAvailable() {
@@ -52,6 +55,11 @@ export class IPC {
 		typeof handleReceivedEvent
 	>
 	invoke = invoke.bind(this) as OmitThisParameter<typeof invoke>
+
+	async close(): Promise<void> {
+		this.subscription?.unsubscribe()
+		this.subscription = null
+	}
 }
 
 export default IPC

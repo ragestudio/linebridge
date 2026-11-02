@@ -25,6 +25,7 @@ export default function (
 		routeInstance = new Route()
 		routeInstance.kind = kind
 		routeInstance.path = route.path ?? "/"
+		routeInstance.queue = route.queue
 		routeInstance.method = route.method ?? "get"
 		routeInstance.useContexts = route.useContexts ?? []
 		routeInstance.useMiddlewares = route.useMiddlewares ?? []
