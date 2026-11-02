@@ -164,7 +164,9 @@ describe("RTEngine Type Inference", () => {
 		// Check basic properties
 		expectTypeOf(rtEngine.config).toEqualTypeOf<RtEngineConfig>()
 		expectTypeOf(rtEngine.clients).toEqualTypeOf<Clients>()
-		expectTypeOf(rtEngine.events).toEqualTypeOf<Map<string, Handler>>()
+		expectTypeOf(rtEngine.events).toEqualTypeOf<
+			Map<string, Handler<HandlerKind.ws>>
+		>()
 
 		// Check hooks signatures
 		expectTypeOf(rtEngine.onUpgrade).toMatchTypeOf<
