@@ -32,7 +32,9 @@ export default async function (this: Engine): Promise<void> {
 				// optionally register process-exit listeners for graceful shutdown
 				if (this.options.auto_close) {
 					EXIT_EVENTS.forEach((type) =>
-						process.once(type, () => this.close()),
+						process.once(type, () => {
+							void this.server._fireClose()
+						}),
 					)
 				}
 

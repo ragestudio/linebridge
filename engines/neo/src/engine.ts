@@ -22,7 +22,7 @@ import RTEngine from "linebridge/classes/RtEngine/index"
 import { EngineAdaptor } from "linebridge/classes/EngineAdaptor/index"
 import { Route } from "linebridge/classes/Route/index"
 
-import WebsocketPolyfill from "./ws/Websocket.js"
+import Websocket from "./ws/Websocket"
 import route_register from "./route_register"
 import middleware_register from "./register_middleware"
 import listen from "./listen"
@@ -185,7 +185,7 @@ export class NeoEngine extends EngineAdaptor {
 
 				// wrap raw uWS websocket with the polyfill so RTEngine gets EventEmitter + helpers
 				open: (ws: any) => {
-					const poly = new WebsocketPolyfill(ws)
+					const poly = new Websocket(ws)
 					ws.poly = poly
 					//@ts-ignore polyfill context is Object vs RtEngineSocket's typed shape, but runtime is correct
 					this.ws!.handleConnection(poly)
