@@ -52,7 +52,7 @@ describe("defineMiddleware Type Inference", () => {
 			expectTypeOf(res.customSend).toBeFunction()
 
 			// Should not have random properties
-			expectTypeOf(req).not.toHaveProperty("nonExistentProp")
+			expectTypeOf(req).not.toHaveProperty("nonExistentProp", {} as any)
 		})
 
 		// The resulting middleware should be correctly typed
