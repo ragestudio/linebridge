@@ -149,10 +149,6 @@ func (proxy *CustomRouteHandler) exec(mctx context.Context, ctx *app.RequestCont
 	// zero-copy merge the response
 	res.CopyTo(&ctx.Response)
 
-	ctx.Header("Access-Control-Allow-Origin", "*")
-	ctx.Header("Access-Control-Allow-Headers", "*")
-	ctx.Header("Access-Control-Allow-Methods", "GET, POST, DELETE, PUT, PATCH, OPTIONS")
-
 	// ensure connection is closed to prevent hanging
 	ctx.Response.Header.Set("Connection", "close")
 }
@@ -166,6 +162,7 @@ func applyPathRewrite(originalPath string, pathRewrite map[string]string) string
 		// check for wildcard pattern like "/spectrum/(.*)"
 		if strings.Contains(cleanPattern, "(.*)") {
 			prefix := strings.TrimSuffix(cleanPattern, "(.*)")
+
 			if strings.HasPrefix(originalPath, prefix) {
 				// extract everything after the prefix
 				remaining := originalPath[len(prefix):]

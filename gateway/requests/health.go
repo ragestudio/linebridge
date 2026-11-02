@@ -14,8 +14,8 @@ type HealthResponse struct {
 	NatsConnected    bool   `json:"nats_connected"`
 	ServicesRunning  int    `json:"services_running"`
 	ServicesExpected int    `json:"services_expected"`
-	WebsocketConns   int    `json:"websocket_connections"`
 	ShuttingDown     bool   `json:"shutting_down,omitempty"`
+	SysInfo          any    `json:"sys_info"`
 }
 
 var IsShuttingDown atomic.Bool
@@ -29,14 +29,6 @@ func (instance *Requests) Health(mctx context.Context, ctx *app.RequestContext) 
 		}
 	}
 
-	wsConnCount := 0
-	if instance.WebsocketManager != nil && instance.WebsocketManager.Connections != nil {
-		instance.WebsocketManager.Connections.Clients.Range(func(key, value any) bool {
-			wsConnCount++
-			return true
-		})
-	}
-
 	natsOk := instance.WebsocketManager != nil &&
 		instance.WebsocketManager.Nats != nil &&
 		instance.WebsocketManager.Nats.Client != nil &&
@@ -48,7 +40,7 @@ func (instance *Requests) Health(mctx context.Context, ctx *app.RequestContext) 
 		NatsConnected:    natsOk,
 		ServicesRunning:  runningCount,
 		ServicesExpected: len(instance.Services),
-		WebsocketConns:   wsConnCount,
+		SysInfo:          instance.SysInfo,
 	}
 
 	if IsShuttingDown.Load() {

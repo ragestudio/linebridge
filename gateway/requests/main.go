@@ -9,6 +9,7 @@ import (
 )
 
 type Requests struct {
+	GatewayId        string
 	ProductName      string
 	ProductVersion   string
 	StartTime        time.Time

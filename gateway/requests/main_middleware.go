@@ -19,11 +19,6 @@ func (h *Requests) MainMiddleware(mctx context.Context, ctx *app.RequestContext)
 	ctx.Header(h.ProductName, h.ProductVersion)
 	ctx.Response.Header.Del("server")
 
-	// add cors headers
-	ctx.Header("Access-Control-Allow-Origin", "*")
-	ctx.Header("Access-Control-Allow-Headers", "*")
-	ctx.Header("Access-Control-Allow-Methods", "GET, POST, DELETE, PUT, PATCH, OPTIONS")
-
 	// add content type header
 	ctx.Header("Content-Type", "application/json")
 

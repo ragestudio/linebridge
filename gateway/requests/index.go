@@ -9,10 +9,10 @@ import (
 
 func (instance *Requests) Index(mctx context.Context, ctx *app.RequestContext) {
 	data := map[string]any{
+		"id":         instance.GatewayId,
 		"gateway":    instance.ProductName,
 		"lb_version": instance.ProductVersion,
 		"uptime":     time.Since(instance.StartTime).String(),
-		"sys_info":   instance.SysInfo,
 	}
 
 	if instance.ProjectJSON != nil {
