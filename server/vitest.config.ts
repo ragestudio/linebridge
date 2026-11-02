@@ -4,6 +4,11 @@ export default defineConfig({
 	test: {
 		globals: true,
 		environment: "node",
+		server: {
+			deps: {
+				external: [/\.node$/],
+			},
+		},
 		include: ["tests/**/*.test.ts"],
 		coverage: {
 			provider: "v8",
