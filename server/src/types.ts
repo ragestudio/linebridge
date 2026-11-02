@@ -9,16 +9,20 @@ export interface EnginesResponses<T = any> {}
 
 export type ServerRequest<T = Server<any>> =
 	ServerInstance<T> extends { __engine_type: infer E }
-		? E extends keyof import("linebridge/types").EnginesRequests<T>
-			? import("linebridge/types").EnginesRequests<T>[E]
-			: Request & { [key: string]: any }
+		? IsAny<E> extends true
+			? Request & { [key: string]: any }
+			: E extends keyof import("linebridge/types").EnginesRequests<T>
+				? import("linebridge/types").EnginesRequests<T>[E]
+				: Request & { [key: string]: any }
 		: Request & { [key: string]: any }
 
 export type ServerResponse<T = Server<any>> =
 	ServerInstance<T> extends { __engine_type: infer E }
-		? E extends keyof import("linebridge/types").EnginesResponses<T>
-			? import("linebridge/types").EnginesResponses<T>[E]
-			: Response & { [key: string]: any }
+		? IsAny<E> extends true
+			? Response & { [key: string]: any }
+			: E extends keyof import("linebridge/types").EnginesResponses<T>
+				? import("linebridge/types").EnginesResponses<T>[E]
+				: Response & { [key: string]: any }
 		: Response & { [key: string]: any }
 
 /**
