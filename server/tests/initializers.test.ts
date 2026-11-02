@@ -7,12 +7,14 @@ import baseHeadersRegister from "../src/initializers/baseHeaders"
 import baseMiddlewaresRegister from "../src/initializers/baseMiddlewares"
 import pluginsRegister from "../src/initializers/plugins"
 import httpFileRoutesRegister from "../src/initializers/httpFileRoutes"
+import eventsFileRoutesRegister from "../src/initializers/eventsFileRoutes"
 import websocketFileEventsRegister from "../src/initializers/websocketFileEvents"
 import gatewayRegister from "../src/initializers/gateway"
 import ipcServiceRegister from "../src/initializers/ipcService"
 
 import getRoutes from "../src/utils/getRoutes"
 import Route from "../src/classes/Route"
+import { HandlerKind } from "../src/classes/Handler"
 
 vi.mock("node:net", () => {
 	class MockSocket {
@@ -48,6 +50,7 @@ describe("Initializers", () => {
 
 		mockEngine = {
 			base_headers: {},
+			transport: "http",
 			register_middleware: vi.fn(),
 			register: vi.fn(),
 			ws: mockWsEngine,
@@ -59,6 +62,9 @@ describe("Initializers", () => {
 			middlewares: { customMw: vi.fn() },
 			params: {},
 			plugins: new Map(),
+			register: vi.fn((route: any, kind: any) =>
+				mockEngine.register(route, kind),
+			),
 		}
 
 		vi.spyOn(console, "warn").mockImplementation(() => {})
@@ -148,6 +154,31 @@ describe("Initializers", () => {
 			expect(registeredRoute.useContexts).toEqual(["db"])
 			expect(registeredRoute.useMiddlewares).toEqual(["auth"])
 			expect(typeof registeredRoute.fn).toBe("function")
+		})
+	})
+
+	describe("eventsFileRoutes", () => {
+		const eventsDir = path.join(__dirname, "fixtures", "events")
+
+		it("should return null for non generic engines", async () => {
+			const res = await eventsFileRoutesRegister(eventsDir, mockServer)
+			expect(res).toBeNull()
+		})
+
+		it("should register generic routes from files", async () => {
+			mockEngine.transport = "generic"
+
+			await eventsFileRoutesRegister(eventsDir, mockServer)
+
+			expect(mockServer.register).toHaveBeenCalled()
+
+			const registeredRoute = mockServer.register.mock
+				.calls[0][0] as Route
+
+			expect(registeredRoute).toBeInstanceOf(Route)
+			expect(registeredRoute.kind).toBe(HandlerKind.generic)
+			expect(registeredRoute.path).toBe("testing.ping")
+			expect(registeredRoute.useContexts).toEqual(["server"])
 		})
 	})
 
