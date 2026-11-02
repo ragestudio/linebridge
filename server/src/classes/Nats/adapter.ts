@@ -196,6 +196,20 @@ export class NatsAdapter {
 		this.subscriptions.delete(channel)
 	}
 
+	async close(): Promise<void> {
+		for (const subscription of this.subscriptions.values()) {
+			await subscription.drain?.()
+		}
+
+		this.subscriptions.clear()
+
+		await this.ipcMessages?.stop?.()
+		this.ipcMessages = null
+
+		await this.connection?.drain()
+		this.connection = null
+	}
+
 	// bind handlers to this adapter instance so they have access to
 	// nats, server, and the operations map
 	handleUpstream = handleUpstream.bind(this)
