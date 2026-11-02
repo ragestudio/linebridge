@@ -20,7 +20,7 @@ export class NatsRpcError extends Error {
 }
 
 export class NatsEngine extends EngineAdaptor {
-	transport = "nats" as const
+	transport = "generic" as const
 	ws = null
 
 	base_headers: Record<string, string> = {}
@@ -82,7 +82,10 @@ export class NatsEngine extends EngineAdaptor {
 			queue: route.queue,
 			callback: (error, message) => {
 				if (error) {
-					console.error(`[nats] subscription error on [${route.path}]`, error)
+					console.error(
+						`[nats] subscription error on [${route.path}]`,
+						error,
+					)
 					return
 				}
 
@@ -130,7 +133,11 @@ export class NatsEngine extends EngineAdaptor {
 		this.connection?.publish(subject, this.codec.encode(data))
 	}
 
-	async request(subject: string, data: unknown, timeout = 10000): Promise<any> {
+	async request(
+		subject: string,
+		data: unknown,
+		timeout = 10000,
+	): Promise<any> {
 		if (!this.connection) {
 			throw new Error("NATS engine is not initialized")
 		}
