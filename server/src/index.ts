@@ -3,6 +3,7 @@ import { Plugin } from "./classes/Plugin"
 import { Route } from "./classes/Route"
 import { IPC } from "./classes/IPC"
 import { NatsAdapter } from "./classes/Nats/adapter"
+import { EngineAdaptor } from "./classes/EngineAdaptor"
 
 import type {
 	ServerRequest as T_ServerRequest,
@@ -43,4 +44,4 @@ export type { EnginesRegistry } from "./engines"
 export type { EnginesRequests, EnginesResponses } from "./types"
 export type * from "./server"
 
-export { Server, Plugin, Route }
+export { Server, Plugin, Route, EngineAdaptor }
