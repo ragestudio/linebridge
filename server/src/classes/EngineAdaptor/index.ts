@@ -13,10 +13,15 @@ import type { MiddlewareHandlerFunction } from "../Handler"
 import type { Route } from "../Route"
 import type RTEngine from "../RtEngine"
 
+export type EngineTransport = "http" | "generic"
+
 export class EngineAdaptor {
 	constructor(server: LinebridgeServer) {
 		this.server = server
 	}
+
+	/** Transport handled by this engine. HTTP engines can also expose ws. */
+	transport: EngineTransport = "http"
 
 	/** Unix socket path when running in socket mode (LB_SOCKET_MODE). */
 	socket_path?: string
