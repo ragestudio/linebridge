@@ -4,7 +4,7 @@ class InfisicalLib {
 
 		try {
 			sdk = await import("@infisical/sdk")
-			sdk = client.InfisicalSDK
+			sdk = sdk.InfisicalSDK
 		} catch (err) {
 			// not installed
 		}
@@ -16,6 +16,16 @@ class InfisicalLib {
 			return null
 		}
 
+		if (
+			!process.env.INFISICAL_CLIENT_ID ||
+			!process.env.INFISICAL_CLIENT_SECRET
+		) {
+			console.warn(
+				"FAIL: Trying to load Infisical secrets without a valid INFISICAL_CLIENT_ID or INFISICAL_CLIENT_SECRET",
+			)
+			return
+		}
+
 		const envMode =
 			(global.FORCE_ENV ?? global.isProduction) ? "prod" : "dev"
 
@@ -23,7 +33,7 @@ class InfisicalLib {
 			`[BOOT] 🔑 Injecting env variables from INFISICAL in [${envMode}] mode...`,
 		)
 
-		const client = new sdk.client()
+		const client = new sdk()
 
 		await client.auth().universalAuth.login({
 			clientId: process.env.INFISICAL_CLIENT_ID,
