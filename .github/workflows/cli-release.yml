@@ -45,4 +45,4 @@ jobs:
           version: 11
 
       - name: Publish to NPM via Trusted Publishing
-        run: pnpm publish --no-git-checks --provenance .
+        run: pnpm publish --no-git-checks --provenance ./cli
