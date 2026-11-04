@@ -1,6 +1,6 @@
 {
 	"name": "@linebridge/cli",
-	"version": "3.0.0",
+	"version": "3.0.1",
 	"author": "ragestudio",
 	"license": "MIT",
 	"description": "Command-line interface for Linebridge",
