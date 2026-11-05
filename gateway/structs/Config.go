@@ -14,6 +14,7 @@ type ScriptConfig struct {
 
 type BaseConfig struct {
 	Mode       string           `json:"mode"`
+	Node       NodeConfig       `json:"node"`
 	Http       HttpConfig       `json:"http"`
 	IPC        IPCConfig        `json:"ipc"`
 	Services   ServicesConfig   `json:"services"`
@@ -24,6 +25,14 @@ type BaseConfig struct {
 	OTEL       OTELConfig       `json:"otel"`
 	Redis      RedisConfig      `json:"redis"`
 	Presence   PresenceConfig   `json:"presence"`
+}
+
+// NodeConfig identifies this gateway inside the cluster
+// the id is stable across restarts and is used to route directed work
+// to the node that owns a socket
+type NodeConfig struct {
+	Id   string `json:"id"`   // stable node identifier, eg. dc1-a
+	Addr string `json:"addr"` // reachable address for other nodes, optional
 }
 
 type RedisConfig struct {

@@ -57,6 +57,9 @@ type WSConnectionCtx struct {
 	// real client address resolved from the proxy headers on the handshake
 	ClientIP string `json:"client_ip,omitempty"`
 
+	// gateway node holding this connection, used to route directed work
+	NodeID string `json:"node_id,omitempty"`
+
 	// heartbeat state, written by the read loop and read by the heartbeat workers
 	lastSeen atomic.Int64
 	lastPing atomic.Int64
