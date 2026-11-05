@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -87,6 +88,49 @@ func getGracefulTimeout() time.Duration {
 		}
 	}
 	return 30 * time.Second
+}
+
+var nodeIDPattern = regexp.MustCompile(`[^a-zA-Z0-9._-]+`)
+
+// sanitizeNodeID keeps the id usable inside a nats subject
+func sanitizeNodeID(id string) string {
+	return strings.Trim(nodeIDPattern.ReplaceAllString(id, "-"), "-.")
+}
+
+// resolveNodeID returns the identifier that represents this gateway in the
+// cluster. A configured value wins, then NODE_ID, then the hostname. The uuid
+// fallback keeps the node identifiable when nothing else is set.
+func resolveNodeID(config *structs.BaseConfig) string {
+	if config != nil {
+		if id := sanitizeNodeID(strings.TrimSpace(config.Node.Id)); id != "" {
+			return id
+		}
+	}
+
+	if id := sanitizeNodeID(strings.TrimSpace(os.Getenv("NODE_ID"))); id != "" {
+		return id
+	}
+
+	if hostname, err := os.Hostname(); err == nil && hostname != "" {
+		if id := sanitizeNodeID(hostname); id != "" {
+			return id
+		}
+	}
+
+	id, _ := uuid.NewV7()
+
+	return id.String()
+}
+
+// resolveNodeAddr returns the address other nodes can use to reach this one
+func resolveNodeAddr(config *structs.BaseConfig) string {
+	if config != nil {
+		if addr := strings.TrimSpace(config.Node.Addr); addr != "" {
+			return addr
+		}
+	}
+
+	return strings.TrimSpace(os.Getenv("NODE_ADDR"))
 }
 
 // RequestForceShutdown skips the drain window and kills the services
@@ -295,11 +339,31 @@ func Start() {
 		log.Fatal("No services found")
 	}
 
-	uuid, _ := uuid.NewV7()
+	// parse START_ONLY_SERVICES to filter which services to start
+	onlyServices := map[string]bool{}
+	if raw := os.Getenv("START_ONLY_SERVICES"); raw != "" {
+		for _, s := range strings.Split(raw, ",") {
+			onlyServices[strings.TrimSpace(s)] = true
+		}
+		log.Printf("Filtering services: only starting %v", raw)
+	}
+
+	// services advertised to the cluster through the node registry
+	nodeServiceIDs := make([]string, 0, len(scannedServices))
+
+	for _, service := range scannedServices {
+		serviceID := service["id"]
+
+		if len(onlyServices) > 0 && !onlyServices[serviceID] {
+			continue
+		}
+
+		nodeServiceIDs = append(nodeServiceIDs, serviceID)
+	}
 
 	// create the base singleton app instance
 	appData := &App{
-		GatewayID:   uuid.String(),
+		GatewayID:   resolveNodeID(appCfg),
 		Ctx:         appCtx,
 		Cancel:      appCancel,
 		ProductName: ProductName,
@@ -354,6 +418,7 @@ func Start() {
 	// initialize NATS client (connects to external or embedded)
 	appData.Nats = nats.NewManager(&nats.NewManagerOptions{
 		NatsURL: natsURL,
+		NodeID:  appData.GatewayID,
 	})
 
 	if err := appData.Nats.Start(); err != nil {
@@ -370,7 +435,11 @@ func Start() {
 	appData.NodesManager, err = nodes.New(appData.GatewayID, appData.Nats)
 
 	if err == nil {
-		appData.NodesManager.Register()
+		appData.NodesManager.NetworkAddr = resolveNodeAddr(appCfg)
+
+		if err := appData.NodesManager.Register(nodeServiceIDs); err != nil {
+			log.Printf("Failed to register node: %v", err)
+		}
 
 		if err := appData.NodesManager.Watch(appCtx); err != nil {
 			log.Printf("Failed to start nodes watcher: %v", err)
@@ -379,6 +448,7 @@ func Start() {
 
 	// initialize Websocket
 	appData.WebsocketManager = websocket.NewManager(&websocket.NewManagerOptions{
+		NodeID:   appData.GatewayID,
 		Nats:     appData.Nats,
 		Redis:    appData.Redis,
 		Services: &appData.Services,
@@ -416,6 +486,10 @@ func Start() {
 		maps.Copy(servicesEnv, appData.InfisicalEnv)
 	}
 
+	// services consume the events of the node that runs them, always last
+	// so no injected env can override the node identity
+	servicesEnv["LB_NODE_ID"] = appData.GatewayID
+
 	// create a JSVM instance
 	appData.JSVM = jsvm.Create(&jsvm.JSVM{
 		WebsocketManager: appData.WebsocketManager,
@@ -438,15 +512,6 @@ func Start() {
 
 			continue
 		}
-	}
-
-	// parse START_ONLY_SERVICES to filter which services to start
-	onlyServices := map[string]bool{}
-	if raw := os.Getenv("START_ONLY_SERVICES"); raw != "" {
-		for _, s := range strings.Split(raw, ",") {
-			onlyServices[strings.TrimSpace(s)] = true
-		}
-		log.Printf("Filtering services: only starting %v", raw)
 	}
 
 	// initialize all base microservices
