@@ -409,6 +409,11 @@ func Start() {
 				appData.Config.JWT.ECDSAPublicKey, _ = jwt.ParseECPublicKeyFromPEM(val)
 			}
 		}
+
+		// an injected REDIS_URL behaves like an environment override too
+		if url := strings.TrimSpace(appData.InfisicalEnv["REDIS_URL"]); url != "" {
+			os.Setenv("REDIS_URL", url)
+		}
 	}
 
 	if appData.Config.OTEL.Enabled == true {
