@@ -213,6 +213,39 @@ export default class NatsClient implements RTEClient {
 	}
 
 	/**
+	 * subscribes the remote client to several topics in a single operation
+	 *
+	 * views that watch many users (eg. presence) would otherwise pay one
+	 * request per topic
+	 */
+	async subscribeMany(topics: string[]): Promise<any> {
+		if (!Array.isArray(topics) || topics.length === 0) return null
+
+		const response = await this.operation("subscribeToTopics", { topics })
+
+		if (!response) return null
+		if (!response.ok) return await this.error(response.error)
+
+		return response
+	}
+
+	/**
+	 * unsubscribes the remote client from several topics in one operation
+	 */
+	async unsubscribeMany(topics: string[]): Promise<any> {
+		if (!Array.isArray(topics) || topics.length === 0) return null
+
+		const response = await this.operation("unsubscribeFromTopics", {
+			topics,
+		})
+
+		if (!response) return null
+		if (!response.ok) return await this.error(response.error)
+
+		return response
+	}
+
+	/**
 	 * unsubscribes the remote client from all pubsub topics
 	 */
 	async unsubscribeAll(): Promise<void> {

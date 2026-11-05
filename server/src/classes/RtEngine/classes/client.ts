@@ -164,6 +164,39 @@ export class Client {
 	}
 
 	/**
+	 * Subscribes this client to several topics at once.
+	 *
+	 * Used by views that watch many users, eg. presence, so the server does
+	 * not pay one round trip per topic.
+	 *
+	 * @param topics - The topic names to subscribe to
+	 */
+	async subscribeMany(topics: string[]): Promise<any> {
+		if (!this.socket) return null
+
+		for (const topic of topics) {
+			this.socket.subscribe(topic)
+		}
+
+		return true
+	}
+
+	/**
+	 * Unsubscribes this client from several topics at once.
+	 *
+	 * @param topics - The topic names to unsubscribe from
+	 */
+	async unsubscribeMany(topics: string[]): Promise<any> {
+		if (!this.socket) return null
+
+		for (const topic of topics) {
+			this.socket.unsubscribe(topic)
+		}
+
+		return true
+	}
+
+	/**
 	 * Unsubscribes this client from a pub/sub topic.
 	 *
 	 * A "topic:unsubscribed" event is emitted to confirm the removal.
