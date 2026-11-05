@@ -62,21 +62,25 @@ func (manager *Instance) OnClose(conn *gws.Conn, err error) {
 		)
 	}
 
-	// presence bookkeeping runs outside the connection teardown
-	// ClosePresence waits for an in-flight track, so a connection that
-	// opens and closes back to back can not leave a stale entry
-	if manager.presenceEnabled() {
-		go connCtx.ClosePresence(func() {
-			manager.presenceUntrack(connCtx)
-		})
-	}
-
 	disconnectionEvent, _ := sonic.Marshal(connCtx)
 
-	manager.Nats.PublishToGlobal(
-		&unats.UpstreamPayload{
-			Event: "disconnection",
-			Data:  disconnectionEvent,
-		},
-	)
+	// presence is removed before announcing the disconnection, otherwise a
+	// service reacting to the event still sees the socket as online and may
+	// skip the disconnect grace period. ClosePresence waits for an in-flight
+	// track, so a connection that opens and closes back to back can not leave
+	// a stale entry
+	go func() {
+		if manager.presenceEnabled() {
+			connCtx.ClosePresence(func() {
+				manager.presenceUntrack(connCtx)
+			})
+		}
+
+		manager.Nats.PublishToGlobal(
+			&unats.UpstreamPayload{
+				Event: "disconnection",
+				Data:  disconnectionEvent,
+			},
+		)
+	}()
 }

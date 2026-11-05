@@ -56,22 +56,25 @@ func (manager *Instance) OnOpen(socket *gws.Conn) {
 
 	span.AddEvent("ws-conn-send_ack")
 
-	// presence bookkeeping runs outside the read loop
-	if manager.presenceEnabled() {
-		go ConnCtx.RunPresenceUpdate(func() {
-			manager.presenceTrack(ConnCtx)
-		})
-	}
-
-	// announce the connection to the cluster
 	connEventData, _ := sonic.Marshal(ConnCtx)
 
-	manager.Nats.PublishToGlobal(
-		&unats.UpstreamPayload{
-			Event: "connection",
-			Data:  connEventData,
-		},
-	)
+	span.AddEvent("ws-conn-presence_scheduled")
 
-	span.AddEvent("ws-conn-global_pub")
+	// presence bookkeeping and the cluster announcement run outside the read
+	// loop, the event is published only after presence is visible, otherwise
+	// a service reacting to it could still read the socket as offline
+	go func() {
+		if manager.presenceEnabled() {
+			ConnCtx.RunPresenceUpdate(func() {
+				manager.presenceTrack(ConnCtx)
+			})
+		}
+
+		manager.Nats.PublishToGlobal(
+			&unats.UpstreamPayload{
+				Event: "connection",
+				Data:  connEventData,
+			},
+		)
+	}()
 }
