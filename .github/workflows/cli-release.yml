@@ -17,32 +17,42 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           sparse-checkout: |
             cli
 
       - name: Create Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN || secrets.GITEA_TOKEN }}
         with:
           name: ${{ github.ref_name }}
-          generate_release_notes: true
+          # gitea has no generate notes endpoint
+          generate_release_notes: ${{ github.server_url == 'https://github.com' }}
           draft: false
           prerelease: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "24"
           registry-url: "https://registry.npmjs.org/"
+          package-manager-cache: false
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v3
+        uses: pnpm/action-setup@v6
         with:
           version: 11
 
+      # github uses trusted publishing, gitea has no oidc so it needs a token
       - name: Publish to NPM via Trusted Publishing
+        if: github.server_url == 'https://github.com'
         run: pnpm publish --no-git-checks --provenance ./cli
+
+      - name: Publish to NPM with token
+        if: github.server_url != 'https://github.com'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: pnpm publish --no-git-checks ./cli

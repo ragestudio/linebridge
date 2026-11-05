@@ -15,30 +15,29 @@ jobs:
     name: Build Native Modules
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        # gitea only has self hosted linux runners
+        os: ${{ fromJSON(github.server_url == 'https://github.com' && '["ubuntu-latest","macos-latest"]' || '["ubuntu-latest"]') }}
         arch: [x64, arm64]
         node: [24, 26]
-        include:
-          - os: ubuntu-latest
-            os_name: linux
-          - os: macos-latest
-            os_name: darwin
 
     runs-on: ${{ matrix.os }}
 
+    env:
+      OS_NAME: ${{ startsWith(matrix.os, 'macos') && 'darwin' || 'linux' }}
+
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v3
+        uses: pnpm/action-setup@v6
         with:
           version: 11
 
@@ -60,17 +59,17 @@ jobs:
       - name: Rename Binary for Release
         working-directory: ./engines/neo
         run: |
-          mv build/Release/uws-wrapper-${{ matrix.arch }}.node uws-wrapper-${{ matrix.os_name }}-${{ matrix.arch }}-node${{ matrix.node }}.node
+          mv build/Release/uws-wrapper-${{ matrix.arch }}.node uws-wrapper-${{ env.OS_NAME }}-${{ matrix.arch }}-node${{ matrix.node }}.node
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: uws-wrapper-${{ matrix.os_name }}-${{ matrix.arch }}-node${{ matrix.node }}
-          path: ./engines/neo/uws-wrapper-${{ matrix.os_name }}-${{ matrix.arch }}-node${{ matrix.node }}.node
+          name: uws-wrapper-${{ env.OS_NAME }}-${{ matrix.arch }}-node${{ matrix.node }}
+          path: ./engines/neo/uws-wrapper-${{ env.OS_NAME }}-${{ matrix.arch }}-node${{ matrix.node }}.node
 
       - name: Upload NPM Package Dist
         if: matrix.os == 'ubuntu-latest' && matrix.arch == 'x64' && matrix.node == 24
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: neo-npm-package
           path: ./engines/neo/dist
@@ -81,32 +80,49 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
+      - name: Download binaries
+        uses: actions/download-artifact@v8
         with:
+          pattern: uws-wrapper-*
+          merge-multiple: true
           path: ./binaries
 
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download NPM package
+        uses: actions/download-artifact@v8
         with:
-          files: ./binaries/**/*.node
+          name: neo-npm-package
+          path: ./neo-package
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN || secrets.GITEA_TOKEN }}
+        with:
+          files: ./binaries/*.node
           name: ${{ github.ref_name }}
           generate_release_notes: false
           draft: false
           prerelease: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "24"
           registry-url: "https://registry.npmjs.org/"
+          package-manager-cache: false
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v3
+        uses: pnpm/action-setup@v6
         with:
           version: 11
 
+      # github uses trusted publishing, gitea has no oidc so it needs a token
       - name: Publish to NPM via Trusted Publishing
-        run: pnpm publish --no-git-checks --provenance ./binaries/neo-npm-package
+        if: github.server_url == 'https://github.com'
+        run: pnpm publish --no-git-checks --provenance ./neo-package
+
+      - name: Publish to NPM with token
+        if: github.server_url != 'https://github.com'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: pnpm publish --no-git-checks ./neo-package
