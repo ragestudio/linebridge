@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"regexp"
 	"sort"
 	"strconv"
 	"sync"
@@ -35,8 +36,16 @@ type NatsInterface interface {
 // it is shared across the cluster through a KV bucket, so a gateway can
 // forward an event when no local service registered it
 type registryEntry struct {
+	Event   string `json:"event"`
 	Node    string `json:"node"`
 	Service string `json:"service"`
+}
+
+// kv keys do not accept every character an event name may use
+var registryKeyPattern = regexp.MustCompile(`[^a-zA-Z0-9_./=-]+`)
+
+func registryKey(eventID string) string {
+	return registryKeyPattern.ReplaceAllString(eventID, "-")
 }
 
 type Instance struct {
@@ -214,6 +223,7 @@ func (instance *Instance) publishRegistry(eventID string, serviceID string) {
 	}
 
 	payload, err := sonic.Marshal(registryEntry{
+		Event:   eventID,
 		Node:    instance.NodeID,
 		Service: serviceID,
 	})
@@ -225,7 +235,7 @@ func (instance *Instance) publishRegistry(eventID string, serviceID string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if _, err := instance.Registry.Put(ctx, eventID, payload); err != nil {
+	if _, err := instance.Registry.Put(ctx, registryKey(eventID), payload); err != nil {
 		log.Printf("NATS | failed to publish registry for [%s]: %v", eventID, err)
 	}
 }
@@ -239,7 +249,9 @@ func (instance *Instance) removeRegistry(eventID string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	entry, err := instance.Registry.Get(ctx, eventID)
+	key := registryKey(eventID)
+
+	entry, err := instance.Registry.Get(ctx, key)
 
 	if err != nil {
 		return
@@ -255,7 +267,7 @@ func (instance *Instance) removeRegistry(eventID string) {
 		return
 	}
 
-	_ = instance.Registry.Delete(ctx, eventID)
+	_ = instance.Registry.Delete(ctx, key)
 }
 
 // watchRegistry keeps the remote event map in sync with the cluster
@@ -302,13 +314,26 @@ func (instance *Instance) handleRegistryEntry(entry jetstream.KeyValueEntry) {
 			return
 		}
 
+		// the key is sanitized, the real event name lives in the value
+		eventID := data.Event
+
+		if eventID == "" {
+			eventID = entry.Key()
+		}
+
 		instance.Mutex.Lock()
-		instance.remoteEvents[entry.Key()] = data
+		instance.remoteEvents[eventID] = data
 		instance.Mutex.Unlock()
 
 	case jetstream.KeyValueDelete, jetstream.KeyValuePurge:
 		instance.Mutex.Lock()
-		delete(instance.remoteEvents, entry.Key())
+
+		for eventID, data := range instance.remoteEvents {
+			if registryKey(eventID) == entry.Key() || data.Event == entry.Key() {
+				delete(instance.remoteEvents, eventID)
+			}
+		}
+
 		instance.Mutex.Unlock()
 	}
 }
