@@ -180,6 +180,8 @@ func NewManager(options *NewManagerOptions) *Instance {
 	instance.NatsOperations = map[string]nats_operations.HandlerFunc{
 		"subscribeToTopic":      natsOperations.TopicSubscribe,
 		"unsubscribeToTopic":    natsOperations.TopicUnsubscribe,
+		"subscribeToTopics":     natsOperations.TopicSubscribeMany,
+		"unsubscribeFromTopics": natsOperations.TopicUnsubscribeMany,
 		"findClientsByUserId":   natsOperations.FindClientsByUserId,
 		"findPresenceByUserIds": natsOperations.FindPresenceByUserIds,
 		"sendToUserId":          natsOperations.SendToUserId,

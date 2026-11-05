@@ -17,6 +17,13 @@ type ByTopicOperation struct {
 	} `json:"data"`
 }
 
+// ByTopicsOperation batches topic subscriptions in a single operation
+type ByTopicsOperation struct {
+	Data struct {
+		Topics []string `json:"topics"`
+	} `json:"data"`
+}
+
 type ByUserIDOperation struct {
 	Data struct {
 		UserID string `json:"user_id"`
