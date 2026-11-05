@@ -15,15 +15,17 @@ import (
 )
 
 type Node struct {
-	Id          string `json:"id"`
-	MachineID   string `json:"machine_id"`
-	NetworkAddr string `json:"net_addr"`
+	Id          string   `json:"id"`
+	MachineID   string   `json:"machine_id"`
+	NetworkAddr string   `json:"net_addr"`
+	Services    []string `json:"services,omitempty"`
 }
 
 type NodeManager struct {
-	GatewayID string
-	Nats      *nats.Instance
-	KV        jetstream.KeyValue
+	GatewayID   string
+	NetworkAddr string
+	Nats        *nats.Instance
+	KV          jetstream.KeyValue
 
 	mu       sync.RWMutex
 	nodesMap map[string]Node
@@ -99,7 +101,7 @@ func (mng *NodeManager) GetNodes() []Node {
 	return result
 }
 
-func (mng *NodeManager) Register() error {
+func (mng *NodeManager) Register(services []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -111,8 +113,10 @@ func (mng *NodeManager) Register() error {
 	}
 
 	node := Node{
-		Id:        mng.GatewayID,
-		MachineID: machineId,
+		Id:          mng.GatewayID,
+		MachineID:   machineId,
+		NetworkAddr: mng.NetworkAddr,
+		Services:    services,
 	}
 
 	encoded, err := sonic.Marshal(&node)
