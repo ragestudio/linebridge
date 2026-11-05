@@ -21,6 +21,7 @@ type ConnectionManager struct {
 	UsersRef       sync.Map
 	InternalEvents *internal_events.InternalEvents
 	Config         *structs.BaseConfig
+	NodeID         string
 }
 
 type NewConnOptions struct {
@@ -35,6 +36,9 @@ func (manager *ConnectionManager) Add(options *NewConnOptions) error {
 	if options.Ctx.ID, err = nanoid.New(); err != nil {
 		return err
 	}
+
+	// stamp the owning node so any service can route directed work
+	options.Ctx.NodeID = manager.NodeID
 
 	// seed the heartbeat before the connection becomes visible
 	// the heartbeat scheduler and the presence reconciler both read it
