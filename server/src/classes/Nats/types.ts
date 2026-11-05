@@ -39,6 +39,8 @@ export interface NatsClientContext extends RtEngineContext {
 	user_id?: string
 	/** camelCase alias for the authenticated user id */
 	userId?: string
+	/** gateway node that owns the socket */
+	node_id?: string
 	/** display name of the authenticated user */
 	username?: string
 	/** url to the user's avatar image */

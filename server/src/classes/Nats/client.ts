@@ -13,6 +13,12 @@ import type RTEClient from "../RtEngine/classes/client"
 import type { NatsClientContext } from "./types"
 import serializeError from "../../utils/serializeError"
 import safeJsonStringify from "../../utils/safeJsonStringify"
+import { operationsTimeout } from "./handlers/dispatchOperation"
+import { nats } from "../../lazyNats"
+
+// a gateway that does not own the socket answers with this error so the
+// caller can retry the operation on the broadcast subject
+const CLIENT_NOT_FOUND = "client_not_found"
 
 /**
  * proxy object for a client connected to a different gateway instance
@@ -57,6 +63,7 @@ export default class NatsClient implements RTEClient {
 		this.context = {
 			id: headers.get("socket_id"),
 			socket_id: headers.get("socket_id"),
+			node_id: headers.get("node_id") ?? undefined,
 			token: headers.get("token"),
 			user_id: headers.get("user_id"),
 			userId: headers.get("user_id"),
@@ -77,6 +84,11 @@ export default class NatsClient implements RTEClient {
 	/** the authenticated user id, if any */
 	get userId(): string | undefined {
 		return this.context.userId
+	}
+
+	/** the gateway node that owns the physical socket */
+	get nodeId(): string | undefined {
+		return this.context.node_id
 	}
 
 	/**
@@ -135,7 +147,13 @@ export default class NatsClient implements RTEClient {
 			}
 		}
 
-		await this.nats.publish("ipc", Buffer.from(serialized), {
+		// a known node only wakes up its own gateway, the broadcast subject
+		// stays as fallback for sockets without node information
+		const subject = this.context.node_id
+			? `downstream.${this.context.node_id}`
+			: "ipc"
+
+		await this.nats.publish(subject, Buffer.from(serialized), {
 			headers: this.headers,
 		})
 	}
@@ -230,32 +248,88 @@ export default class NatsClient implements RTEClient {
 	}
 
 	/**
-	 * sends a request to the "operations" subject and awaits a reply
+	 * sends an operation bound to this socket and awaits a reply
 	 *
-	 * this is the core method used by subscribe, unsubscribe, and
-	 * toTopic. it serializes the operation type and data, sends a
-	 * NATS request with a 50-second timeout, decodes the response,
-	 * and returns the result. on error it emits an error event to
-	 * the client and returns null
+	 * when the owning node is known the request goes to
+	 * "operations.<node>", so only the gateway holding the socket answers.
+	 * if that gateway no longer owns it, the request is retried on the
+	 * broadcast subject which older gateways still handle.
 	 */
 	async operation(type: string, data?: any): Promise<any> {
-		try {
-			const response = await this.nats.request(
-				"operations",
-				Buffer.from(Serializers.Operation({ type, data })),
-				{ headers: this.headers, timeout: 50000 },
+		const payload = Buffer.from(Serializers.Operation({ type, data }))
+		const nodeId = this.context.node_id
+
+		if (nodeId) {
+			const directed = await this.requestOperation(
+				`operations.${nodeId}`,
+				payload,
+				this.headers,
 			)
 
-			const decoded = this.codec.decode(response.data)
-
-			if (!decoded.ok) {
-				return await this.error(decoded.error)
+			if (directed?.ok) {
+				return directed
 			}
 
-			return decoded
+			if (directed && directed.error !== CLIENT_NOT_FOUND) {
+				return await this.error(directed.error)
+			}
+		}
+
+		const response = await this.requestOperation(
+			"operations",
+			payload,
+			this.legacyHeaders(),
+		)
+
+		if (!response) {
+			return null
+		}
+
+		if (!response.ok) {
+			return await this.error(response.error)
+		}
+
+		return response
+	}
+
+	/** issues a request and decodes the reply, null on timeout or error */
+	private async requestOperation(
+		subject: string,
+		payload: Buffer,
+		headers: any,
+	): Promise<any> {
+		try {
+			const response = await this.nats.request(subject, payload, {
+				headers,
+				timeout: operationsTimeout(),
+			})
+
+			return this.codec.decode(response.data)
 		} catch (error) {
 			console.error(error)
 			return null
 		}
+	}
+
+	/**
+	 * clones the client headers and marks the request as directed, so
+	 * gateways with node routing skip the broadcast copy
+	 */
+	private legacyHeaders(): any {
+		if (!nats) {
+			return this.headers
+		}
+
+		const headers = nats.headers()
+
+		for (const key of this.headers.keys()) {
+			for (const value of this.headers.values(key)) {
+				headers.append(key, value)
+			}
+		}
+
+		headers.set("directed", "1")
+
+		return headers
 	}
 }

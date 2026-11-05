@@ -40,6 +40,8 @@ export interface RtEngineContext {
 	id: string
 	/** Authenticated user object (null when not authenticated) */
 	user?: { _id: string; [key: string]: any } | null
+	/** Gateway node that owns the socket, when running behind a cluster */
+	node_id?: string
 	/** Active session data */
 	session?: any
 	/** Additional context properties */

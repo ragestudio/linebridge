@@ -27,9 +27,9 @@ export default async function sendToTopic(
 	event: string,
 	data?: any,
 ): Promise<any> {
-	return await this.dispatchOperation("sendToTopic", {
-		topic,
-		event,
-		data,
-	})
+	return await this.dispatchOperation(
+		"sendToTopic",
+		{ topic, event, data },
+		{ mode: "deliver" },
+	)
 }

@@ -28,9 +28,13 @@ export default async function sendToUserId(
 	event: string,
 	data?: any,
 ): Promise<any> {
-	return await this.dispatchOperation("sendToUserId", {
-		user_id,
-		// nest event and data inside the data payload for the operation handler
-		data: { event, data },
-	})
+	return await this.dispatchOperation(
+		"sendToUserId",
+		{
+			user_id,
+			// nest event and data inside the data payload for the operation handler
+			data: { event, data },
+		},
+		{ mode: "deliver" },
+	)
 }

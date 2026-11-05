@@ -146,7 +146,7 @@ describe("NatsClient", () => {
 				expect.any(Buffer),
 				expect.objectContaining({
 					headers: mockHeaders,
-					timeout: 50000,
+					timeout: 5000,
 				}),
 			)
 			expect(result).toEqual({ ok: true, result: "success" })

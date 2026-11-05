@@ -23,12 +23,14 @@ import type RTEngine from "../index"
  * @param client_id - The unique id of the target client
  * @param event     - The event name to send
  * @param data      - Optional payload data
+ * @param node_id   - Gateway node that owns the socket, when known
  */
 export default async function sendToClientId(
 	this: RTEngine,
 	client_id: string,
 	event: string,
 	data?: any,
+	node_id?: string,
 ) {
 	// Guard: the engine must be attached before sending
 	if (!this.engine) {
@@ -44,6 +46,7 @@ export default async function sendToClientId(
 			client_id,
 			event,
 			data,
+			node_id,
 		)
 	}
 

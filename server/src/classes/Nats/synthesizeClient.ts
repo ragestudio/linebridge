@@ -18,6 +18,8 @@ import { nats } from "../../lazyNats"
 interface ClientInput {
 	/** the websocket connection id */
 	socket_id: string
+	/** gateway node that owns the socket */
+	node_id?: string
 	/** authentication token */
 	token?: string
 	/** session data with user_id and username */
@@ -53,6 +55,10 @@ export default async (
 	const clientHeaders: any = nats!.headers()
 
 	clientHeaders.append("socket_id", client.socket_id)
+
+	if (client.node_id) {
+		clientHeaders.append("node_id", client.node_id)
+	}
 
 	if (client.token) {
 		clientHeaders.append("token", client.token)

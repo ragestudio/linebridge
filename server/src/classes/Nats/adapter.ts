@@ -89,7 +89,12 @@ export class NatsAdapter {
 
 		const jsm: JetStreamManager = await jetstreamManager(this.connection)
 
-		const ipcSubject = `ipc.${this.refName}`
+		// events stay on the node that owns the socket, so a stateful
+		// handler always runs in the same process for a given session
+		const nodeId = process.env.LB_NODE_ID
+		const ipcSubject = nodeId
+			? `ipc.${nodeId}.${this.refName}`
+			: `ipc.${this.refName}`
 		let streamName: string
 
 		// find or create the stream that captures ipc subjects
@@ -106,8 +111,10 @@ export class NatsAdapter {
 			console.log(`Created JetStream stream [${streamName}]`)
 		}
 
-		// ensure the durable consumer exists for this service type
-		const consumerName = `${this.refName}-processor`
+		// ensure the durable consumer exists for this service on this node
+		const consumerName = nodeId
+			? `${this.refName}-${nodeId.replace(/[^a-zA-Z0-9_-]/g, "-")}-processor`
+			: `${this.refName}-processor`
 
 		try {
 			await jsm.consumers.add(streamName, {
