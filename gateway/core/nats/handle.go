@@ -14,6 +14,13 @@ func (instance *Instance) HandleOperations(msg *nats.Msg) {
 		return
 	}
 
+	// directed operations are also published on the broadcast subject so
+	// gateways without node routing can still handle them, newer gateways
+	// skip that copy to avoid processing the same operation twice
+	if msg.Subject == "operations" && msg.Header.Get("directed") == "1" {
+		return
+	}
+
 	// handlers run on nats goroutines, a panic there would kill the process
 	defer func() {
 		if recovered := recover(); recovered != nil {

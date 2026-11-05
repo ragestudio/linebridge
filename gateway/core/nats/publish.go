@@ -41,21 +41,40 @@ func (instance *Instance) PublishToIPC(payload *UpstreamPayload) {
 	))
 
 	serviceID, exist := instance.LookupServiceByEventID(payload.Event)
+	nodeID := instance.NodeID
 
+	// no local handler, try the cluster wide registry
 	if !exist {
-		return
+		entry, remote := instance.LookupRemoteServiceByEventID(payload.Event)
+
+		if !remote {
+			instance.logMissingEvent(payload.Event)
+			return
+		}
+
+		serviceID = entry.Service
+		nodeID = entry.Node
 	}
 
 	span.AddEvent("lookup", trace.WithAttributes(
 		attribute.String("service_id", serviceID),
+		attribute.String("node_id", nodeID),
 	))
 
 	if instance.UpstreamTransformer != nil {
 		instance.UpstreamTransformer(payload)
 	}
 
+	// events stay on the node that owns the socket, so handlers see the
+	// same process state for the whole session
+	subject := "ipc." + serviceID
+
+	if nodeID != "" {
+		subject = "ipc." + nodeID + "." + serviceID
+	}
+
 	_, err := instance.Jetstream.PublishMsgAsync(&nats.Msg{
-		Subject: "ipc." + serviceID,
+		Subject: subject,
 		Data:    payload.Data,
 		Header:  payload.Header,
 	})

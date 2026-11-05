@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
 
@@ -30,12 +31,28 @@ type NatsInterface interface {
 	SetOperationHandler()
 }
 
+// registryEntry points an event to the node and service that handle it
+// it is shared across the cluster through a KV bucket, so a gateway can
+// forward an event when no local service registered it
+type registryEntry struct {
+	Node    string `json:"node"`
+	Service string `json:"service"`
+}
+
 type Instance struct {
 	Client    *nats.Conn
 	Jetstream jetstream.JetStream
 
+	// node that owns this gateway, used to scope directed subjects
+	NodeID string
+
+	// cluster wide event registry
+	Registry jetstream.KeyValue
+
 	Mutex             sync.RWMutex
 	ServicesEventsMap map[string]string
+	remoteEvents      map[string]registryEntry
+	missingEvents     sync.Map
 
 	UpstreamTransformer func(*UpstreamPayload)
 	DownstreamHandler   func(*nats.Msg)
@@ -52,11 +69,14 @@ type UpstreamPayload struct {
 
 type NewManagerOptions struct {
 	NatsURL string
+	NodeID  string
 }
 
 func NewManager(options *NewManagerOptions) *Instance {
 	handler := &Instance{
 		ServicesEventsMap: make(map[string]string),
+		remoteEvents:      make(map[string]registryEntry),
+		NodeID:            options.NodeID,
 		natsURL:           options.NatsURL,
 	}
 
@@ -116,10 +136,20 @@ func (instance *Instance) Start() error {
 		MaxAge:    10 * time.Minute,
 		MaxMsgs:   100_000,
 		MaxBytes:  64 * 1024 * 1024,
-		Replicas:  1,
+		Replicas:  streamReplicas(),
 	}); err != nil {
 		return err
 	}
+
+	// cluster wide event registry, lets a gateway forward an event when no
+	// local service registered it
+	if instance.Registry, err = instance.Jetstream.CreateOrUpdateKeyValue(ctx, jetstream.KeyValueConfig{
+		Bucket: "gateway_events",
+	}); err != nil {
+		return err
+	}
+
+	go instance.watchRegistry()
 
 	// start the coroutine to listen downstream & operations
 	go instance.StartListeners()
@@ -127,9 +157,39 @@ func (instance *Instance) Start() error {
 	return nil
 }
 
+// streamReplicas returns the number of replicas for the IPC stream, keeping
+// the default single replica so a standalone broker keeps working
+func streamReplicas() int {
+	raw := os.Getenv("NATS_STREAM_REPLICAS")
+
+	if raw == "" {
+		return 1
+	}
+
+	replicas, err := strconv.Atoi(raw)
+
+	if err != nil || replicas <= 0 {
+		log.Printf("NATS | invalid NATS_STREAM_REPLICAS value [%s], using 1", raw)
+		return 1
+	}
+
+	return replicas
+}
+
 func (instance *Instance) StartListeners() {
 	if _, err := instance.Client.Subscribe("ipc", instance.HandleIPC); err != nil {
 		log.Printf("NATS | failed to subscribe to [ipc]: %v", err)
+	}
+
+	// directed operations only reach the node that owns the socket
+	if instance.NodeID != "" {
+		if _, err := instance.Client.Subscribe("downstream."+instance.NodeID, instance.HandleIPC); err != nil {
+			log.Printf("NATS | failed to subscribe to [downstream.%s]: %v", instance.NodeID, err)
+		}
+
+		if _, err := instance.Client.Subscribe("operations."+instance.NodeID, instance.HandleOperations); err != nil {
+			log.Printf("NATS | failed to subscribe to [operations.%s]: %v", instance.NodeID, err)
+		}
 	}
 
 	if _, err := instance.Client.Subscribe("operations", instance.HandleOperations); err != nil {
@@ -142,7 +202,115 @@ func (instance *Instance) RegisterServiceEvent(serviceID string, eventID string)
 	instance.ServicesEventsMap[eventID] = serviceID
 	instance.Mutex.Unlock()
 
+	instance.publishRegistry(eventID, serviceID)
+
 	log.Printf("NATS | Registered [%s] -> [%s]", eventID, serviceID)
+}
+
+// publishRegistry shares the event routing with the rest of the cluster
+func (instance *Instance) publishRegistry(eventID string, serviceID string) {
+	if instance.Registry == nil {
+		return
+	}
+
+	payload, err := sonic.Marshal(registryEntry{
+		Node:    instance.NodeID,
+		Service: serviceID,
+	})
+
+	if err != nil {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if _, err := instance.Registry.Put(ctx, eventID, payload); err != nil {
+		log.Printf("NATS | failed to publish registry for [%s]: %v", eventID, err)
+	}
+}
+
+// removeRegistry drops the entry only when it belongs to this node
+func (instance *Instance) removeRegistry(eventID string) {
+	if instance.Registry == nil {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	entry, err := instance.Registry.Get(ctx, eventID)
+
+	if err != nil {
+		return
+	}
+
+	var data registryEntry
+
+	if err := sonic.Unmarshal(entry.Value(), &data); err != nil {
+		return
+	}
+
+	if data.Node != instance.NodeID {
+		return
+	}
+
+	_ = instance.Registry.Delete(ctx, eventID)
+}
+
+// watchRegistry keeps the remote event map in sync with the cluster
+func (instance *Instance) watchRegistry() {
+	if instance.Registry == nil {
+		return
+	}
+
+	ctx := context.Background()
+
+	watcher, err := instance.Registry.WatchAll(ctx)
+
+	if err != nil {
+		log.Printf("NATS | failed to watch event registry: %v", err)
+		return
+	}
+
+	defer watcher.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case entry, ok := <-watcher.Updates():
+			if !ok {
+				return
+			}
+
+			if entry == nil {
+				continue
+			}
+
+			instance.handleRegistryEntry(entry)
+		}
+	}
+}
+
+func (instance *Instance) handleRegistryEntry(entry jetstream.KeyValueEntry) {
+	switch entry.Operation() {
+	case jetstream.KeyValuePut:
+		var data registryEntry
+
+		if err := sonic.Unmarshal(entry.Value(), &data); err != nil {
+			return
+		}
+
+		instance.Mutex.Lock()
+		instance.remoteEvents[entry.Key()] = data
+		instance.Mutex.Unlock()
+
+	case jetstream.KeyValueDelete, jetstream.KeyValuePurge:
+		instance.Mutex.Lock()
+		delete(instance.remoteEvents, entry.Key())
+		instance.Mutex.Unlock()
+	}
 }
 
 func (instance *Instance) UnregisterServiceEvent(serviceID string) {
@@ -162,7 +330,6 @@ func (instance *Instance) UnregisterServiceEvent(serviceID string) {
 	}
 
 	instance.Mutex.Lock()
-	defer instance.Mutex.Unlock()
 
 	for _, eventID := range toDelete {
 		if instance.ServicesEventsMap[eventID] == serviceID {
@@ -170,7 +337,13 @@ func (instance *Instance) UnregisterServiceEvent(serviceID string) {
 		}
 	}
 
+	instance.Mutex.Unlock()
+
 	log.Printf("NATS | Service [%s] removed. Events cleared: %d", serviceID, len(toDelete))
+
+	for _, eventID := range toDelete {
+		instance.removeRegistry(eventID)
+	}
 }
 
 func (instance *Instance) LookupServiceByEventID(eventID string) (string, bool) {
@@ -180,6 +353,26 @@ func (instance *Instance) LookupServiceByEventID(eventID string) (string, bool) 
 	serviceID, ok := instance.ServicesEventsMap[eventID]
 
 	return serviceID, ok
+}
+
+// LookupRemoteServiceByEventID returns the node and service that registered
+// an event on another gateway
+func (instance *Instance) LookupRemoteServiceByEventID(eventID string) (registryEntry, bool) {
+	instance.Mutex.RLock()
+	defer instance.Mutex.RUnlock()
+
+	entry, ok := instance.remoteEvents[eventID]
+
+	return entry, ok
+}
+
+// logMissingEvent reports an unroutable event once, not on every message
+func (instance *Instance) logMissingEvent(event string) {
+	if _, loaded := instance.missingEvents.LoadOrStore(event, struct{}{}); loaded {
+		return
+	}
+
+	log.Printf("NATS | no service registered for event [%s] on node [%s]", event, instance.NodeID)
 }
 
 // ServiceEvents returns the events routed to a service through nats
