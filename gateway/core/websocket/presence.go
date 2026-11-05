@@ -48,7 +48,7 @@ const presenceRepairScript = `
 	end
 	redis.call('SADD', KEYS[1], ARGV[1])
 	redis.call('PEXPIRE', KEYS[1], ARGV[3])
-	redis.call('HSET', KEYS[2], 'user_id', ARGV[2], 'connected_at', ARGV[4])
+	redis.call('HSET', KEYS[2], 'user_id', ARGV[2], 'connected_at', ARGV[4], 'node_id', ARGV[6])
 	redis.call('PEXPIRE', KEYS[2], ARGV[3])
 	redis.call('ZADD', 'presence:global_users', ARGV[5], ARGV[2])
 	return 1
@@ -67,7 +67,7 @@ const presenceSwitchUserScript = `
 	if ARGV[3] ~= '' then
 		redis.call('SADD', KEYS[2], ARGV[1])
 		redis.call('PEXPIRE', KEYS[2], ARGV[4])
-		redis.call('HSET', KEYS[3], 'user_id', ARGV[3], 'connected_at', ARGV[6])
+		redis.call('HSET', KEYS[3], 'user_id', ARGV[3], 'connected_at', ARGV[6], 'node_id', ARGV[7])
 		redis.call('PEXPIRE', KEYS[3], ARGV[4])
 		redis.call('ZADD', 'presence:global_users', ARGV[5], ARGV[3])
 	else
@@ -91,12 +91,14 @@ func presenceClosedKey(connID string) string {
 type presenceLiveRef struct {
 	connID      string
 	connectedAt int64
+	nodeID      string
 }
 
 type presenceSocketRef struct {
 	connID      string
 	userID      string
 	connectedAt int64
+	nodeID      string
 	expire      *redis.BoolCmd
 }
 
@@ -149,6 +151,7 @@ func (manager *Instance) presenceTrack(connCtx *structs.WSConnectionCtx) {
 		pipe.HSet(ctx, socketKey, map[string]any{
 			"user_id":      userID,
 			"connected_at": connCtx.ConnectedAt(),
+			"node_id":      connCtx.NodeID,
 		})
 		pipe.PExpire(ctx, socketKey, ttl)
 		pipe.ZAdd(ctx, presenceGlobalUsersKey, redis.Z{
@@ -215,8 +218,76 @@ func (manager *Instance) presenceSwitchUser(connCtx *structs.WSConnectionCtx, ol
 			manager.PresenceTTL.Milliseconds(),
 			expiry,
 			connCtx.ConnectedAt(),
+			connCtx.NodeID,
 		).Err()
 	})
+}
+
+// findPresenceClients returns every socket of a user registered in the
+// presence index, regardless of the gateway that owns it. Returns nil when
+// presence is disabled, so callers fall back to the local connection table.
+func (manager *Instance) findPresenceClients(userID string) []*structs.WSConnectionCtx {
+	if !manager.presenceEnabled() || userID == "" {
+		return nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), presenceTimeout)
+	defer cancel()
+
+	socketIDs, err := manager.Redis.Client.SMembers(ctx, presenceUserKey(userID)).Result()
+
+	if err != nil {
+		if IsDebug {
+			log.Printf("websocket | presence lookup failed for [%s]: %v", userID, err)
+		}
+
+		return nil
+	}
+
+	if len(socketIDs) == 0 {
+		return nil
+	}
+
+	// one pipeline keeps the lookup cheap even with many sockets
+	pipe := manager.Redis.Client.Pipeline()
+	cmds := make([]*redis.MapStringStringCmd, 0, len(socketIDs))
+
+	for _, socketID := range socketIDs {
+		cmds = append(cmds, pipe.HGetAll(ctx, presenceSocketKey(socketID)))
+	}
+
+	if _, err := pipe.Exec(ctx); err != nil && IsDebug {
+		log.Printf("websocket | presence socket lookup failed for [%s]: %v", userID, err)
+	}
+
+	clients := make([]*structs.WSConnectionCtx, 0, len(cmds))
+
+	for index, cmd := range cmds {
+		fields := cmd.Val()
+
+		// a missing hash belongs to a dead socket, the reconciler prunes it
+		if len(fields) == 0 {
+			continue
+		}
+
+		// a local socket missing from the connection table is already closed,
+		// its untrack may still be in flight
+		if fields["node_id"] == manager.NodeID {
+			if _, alive := manager.Connections.Clients.Load(socketIDs[index]); !alive {
+				continue
+			}
+		}
+
+		clients = append(clients, &structs.WSConnectionCtx{
+			ID:     socketIDs[index],
+			NodeID: fields["node_id"],
+			Meta: map[string]string{
+				"user_id": fields["user_id"],
+			},
+		})
+	}
+
+	return clients
 }
 
 // StartPresenceReconciler keeps the presence keys alive and removes entries
@@ -299,12 +370,18 @@ func (manager *Instance) reconcilePresence() {
 			}
 
 			connectedAt := now.Unix()
+			nodeID := manager.NodeID
 
 			if connCtx, ok := manager.Connections.GetConnCtx(connID); ok {
 				connectedAt = connCtx.ConnectedAt()
+				nodeID = connCtx.NodeID
 			}
 
-			live = append(live, presenceLiveRef{connID: connID, connectedAt: connectedAt})
+			live = append(live, presenceLiveRef{
+				connID:      connID,
+				connectedAt: connectedAt,
+				nodeID:      nodeID,
+			})
 		}
 		refs.Mutex.Unlock()
 
@@ -330,6 +407,7 @@ func (manager *Instance) reconcilePresence() {
 				connID:      ref.connID,
 				userID:      userID,
 				connectedAt: ref.connectedAt,
+				nodeID:      ref.nodeID,
 				expire:      expireCmd,
 			})
 
@@ -363,6 +441,7 @@ func (manager *Instance) reconcilePresence() {
 			ttl.Milliseconds(),
 			socket.connectedAt,
 			expiry.Unix(),
+			socket.nodeID,
 		)
 
 		pending++

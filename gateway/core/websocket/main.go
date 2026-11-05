@@ -48,6 +48,7 @@ const (
 )
 
 type Instance struct {
+	NodeID         string
 	Nats           *unats.Instance
 	Redis          *uredis.Instance
 	Connections    *connections.ConnectionManager
@@ -71,6 +72,7 @@ type NewManagerOptions struct {
 	Redis    *uredis.Instance
 	Services *map[string]*services.Service
 	Config   *structs.BaseConfig
+	NodeID   string
 }
 
 func envSeconds(name string, fallback time.Duration) time.Duration {
@@ -129,6 +131,7 @@ func presenceSetting(config *structs.BaseConfig) bool {
 
 func NewManager(options *NewManagerOptions) *Instance {
 	instance := &Instance{
+		NodeID:          options.NodeID,
 		PubSub:          topics.NewManager(envInt("WS_MAX_TOPICS_PER_CONN", defaultMaxTopicsPerConn)),
 		Nats:            options.Nats,
 		Redis:           options.Redis,
@@ -165,11 +168,13 @@ func NewManager(options *NewManagerOptions) *Instance {
 	instance.Connections = &connections.ConnectionManager{
 		InternalEvents: instance.InternalEvents,
 		Config:         options.Config,
+		NodeID:         options.NodeID,
 	}
 
 	natsOperations := &nats_operations.Instance{
-		PubSub:      instance.PubSub,
-		Connections: instance.Connections,
+		PubSub:             instance.PubSub,
+		Connections:        instance.Connections,
+		FindClusterClients: instance.findPresenceClients,
 	}
 
 	instance.NatsOperations = map[string]nats_operations.HandlerFunc{

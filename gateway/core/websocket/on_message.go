@@ -114,6 +114,7 @@ func (manager *Instance) OnMessage(conn *gws.Conn, message *gws.Message) {
 	headers.Add("event", event)
 	headers.Add("token", connCtx.Token)
 	headers.Add("socket_id", connCtx.ID)
+	headers.Add("node_id", connCtx.NodeID)
 
 	// the message buffer is returned to the gws pool when this handler
 	// returns, so the payload is copied before handing it to the async nats

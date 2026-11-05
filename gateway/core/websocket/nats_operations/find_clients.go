@@ -27,32 +27,33 @@ func (context *Instance) FindClientsByUserId(conn *gws.Conn, ctx *structs.WSConn
 		}
 	}
 
-	// lookup for user connections
-	refs := context.Connections.GetUserIDConnections(requestedUserID)
+	// always include the sockets connected to this gateway
+	clients := make([]*structs.WSConnectionCtx, 0, 4)
+	seen := make(map[string]struct{}, 4)
 
-	// if empty, just return empty array
-	if refs == nil {
-		return &structs.OperationResult{
-			Ok:   true,
-			Data: []structs.WSConnectionCtx{},
+	if refs := context.Connections.GetUserIDConnections(requestedUserID); refs != nil {
+		for _, socketID := range refs.Keys() {
+			connCtx, ok := context.Connections.GetConnCtx(socketID)
+
+			if !ok {
+				continue
+			}
+
+			clients = append(clients, connCtx)
+			seen[socketID] = struct{}{}
 		}
 	}
 
-	// create the safecopy
-	socketsIds := refs.Keys()
+	// sockets owned by other gateways come from the shared presence index,
+	// so every gateway answers with the same complete list
+	if context.FindClusterClients != nil {
+		for _, remote := range context.FindClusterClients(requestedUserID) {
+			if _, exists := seen[remote.ID]; exists {
+				continue
+			}
 
-	// preallocate a slice
-	clients := make([]*structs.WSConnectionCtx, 0, len(socketsIds))
-
-	// iterate over the socketsIds, just set the conn context as value
-	for _, socketId := range socketsIds {
-		connCtx, ok := context.Connections.GetConnCtx(socketId)
-
-		if !ok {
-			continue
+			clients = append(clients, remote)
 		}
-
-		clients = append(clients, connCtx)
 	}
 
 	return &structs.OperationResult{

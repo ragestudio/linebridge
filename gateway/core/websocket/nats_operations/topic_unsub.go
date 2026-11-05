@@ -13,7 +13,7 @@ func (context *Instance) TopicUnsubscribe(conn *gws.Conn, connCtx *structs.WSCon
 	if conn == nil || connCtx == nil {
 		return &structs.OperationResult{
 			Ok:    false,
-			Error: "Connection not available",
+			Error: clientNotFoundError,
 		}
 	}
 

@@ -41,10 +41,12 @@ func (manager *Instance) OnOpen(socket *gws.Conn) {
 		Event: "connected",
 		Data: struct {
 			Id            string            `json:"id"`
+			NodeID        string            `json:"node_id,omitempty"`
 			Authenticated bool              `json:"authenticated"`
 			Meta          map[string]string `json:"meta"`
 		}{
 			Id:            ConnCtx.ID,
+			NodeID:        ConnCtx.NodeID,
 			Authenticated: ConnCtx.Token != "",
 			Meta:          ConnCtx.Meta,
 		},

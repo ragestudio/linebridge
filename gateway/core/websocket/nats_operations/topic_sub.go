@@ -13,7 +13,7 @@ func (context *Instance) TopicSubscribe(conn *gws.Conn, connCtx *structs.WSConne
 	if conn == nil || connCtx == nil {
 		return &structs.OperationResult{
 			Ok:    false,
-			Error: "Connection not available",
+			Error: clientNotFoundError,
 		}
 	}
 
