@@ -67,6 +67,10 @@ class TopicsController {
 	): Promise<boolean> => {
 		this.client.logger.log("Unsubscribing from topic:", topic)
 
+		// drop the reference so a reconnection does not subscribe to it again
+		this.subscriptionsRefs.delete(topic)
+		this.subscribed.delete(topic)
+
 		this.client.emit(unsubscribeEventName, topic)
 
 		return true
