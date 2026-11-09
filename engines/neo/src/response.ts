@@ -63,6 +63,10 @@ export default class Response<
 	_status_code!: number
 	/** Custom status message (overrides the default from STATUS_CODES). */
 	_status_message!: string | null
+	/** Cached engine reference to avoid walking route.server on every response. */
+	_engine!: EngineAdaptor | null
+	/** Whether at least one header was queued. Avoids enumerating an empty object. */
+	_has_headers!: boolean
 	/** Response headers (key → value or key → string[]). */
 	_headers!: Record<string, string | string[]>
 	/** Set-Cookie headers (name → serialized cookie string). */
@@ -104,12 +108,21 @@ export default class Response<
 
 		res._raw_response = raw_response
 		res.route = route
+		res._engine = route.engine ?? null
 		res._wrapped_request = request
 		res._upgrade_socket = socket || null
 
-		res._headers = {}
+		res._headers = Object.create(null)
+		res._has_headers = false
+		res._cookies = null
+		res._events = null
+		res._streaming = false
+		res._cork = false
+		res._corked = false
+		res._drain_handler = null
 
 		res._status_code = 200
+		res._status_message = null
 		res._middleware_cursor = -1
 
 		// handle uWS abort (client disconnects before response is sent)
@@ -117,18 +130,20 @@ export default class Response<
 			if (res.completed) return
 			res.completed = true
 
-			res.route?.server.engine._resolve_pending_request()
+			res._engine?._resolve_pending_request()
 			//res._wrapped_request.pause()
 
-			if (res._events?.abort) {
-				for (let i = 0; i < res._events.abort.length; i++) {
-					res._events.abort[i](res._wrapped_request, res)
+			const events = res._events
+
+			if (events?.abort) {
+				for (let i = 0; i < events.abort.length; i++) {
+					events.abort[i](res._wrapped_request, res)
 				}
 			}
 
-			if (res._events?.close) {
-				for (let i = 0; i < res._events.close.length; i++) {
-					res._events.close[i](res._wrapped_request, res)
+			if (events?.close) {
+				for (let i = 0; i < events.close.length; i++) {
+					events.close[i](res._wrapped_request, res)
 				}
 			}
 		})
@@ -233,6 +248,7 @@ export default class Response<
 
 		this._headers["content-type"] =
 			mime_types.contentType(mime_type) || "text/plain"
+		this._has_headers = true
 
 		return this
 	}
@@ -246,6 +262,7 @@ export default class Response<
 
 		if (overwrite || this._headers[name] === undefined) {
 			this._headers[name] = value
+			this._has_headers = true
 			return this
 		}
 
@@ -345,7 +362,7 @@ export default class Response<
 		)
 
 		this.completed = true
-		this.engine?._resolve_pending_request()
+		this._engine?._resolve_pending_request()
 	}
 
 	/**
@@ -358,36 +375,38 @@ export default class Response<
 		this.initiated = true
 
 		const raw = this._raw_response!
+		const status_code = this._status_code
+		const status_message = this._status_message
 
-		if (this._status_message) {
-			raw.writeStatus(`${this._status_code} ${this._status_message}`)
-		} else {
-			raw.writeStatus(
-				STATUS_CACHE[this._status_code] || `${this._status_code} OK`,
-			)
+		if (status_message) {
+			raw.writeStatus(`${status_code} ${status_message}`)
+		} else if (status_code !== 200) {
+			raw.writeStatus(STATUS_CACHE[status_code] || `${status_code} OK`)
 		}
 
-		const headerKeys = Object.keys(this._headers)
+		if (this._has_headers) {
+			const headers = this._headers
 
-		for (let i = 0; i < headerKeys.length; i++) {
-			const name = headerKeys[i]
-			if (name === "content-length") continue
+			for (const name in headers) {
+				if (name === "content-length") continue
 
-			const values = this._headers[name]
+				const values = headers[name]
 
-			if (Array.isArray(values)) {
-				for (let j = 0; j < values.length; j++) {
-					raw.writeHeader(name, values[j])
+				if (Array.isArray(values)) {
+					for (let j = 0; j < values.length; j++) {
+						raw.writeHeader(name, values[j])
+					}
+				} else {
+					raw.writeHeader(name, values as unknown as string)
 				}
-			} else {
-				raw.writeHeader(name, values as unknown as string)
 			}
 		}
 
 		if (this._cookies) {
-			const cookieKeys = Object.keys(this._cookies)
-			for (let i = 0; i < cookieKeys.length; i++) {
-				raw.writeHeader("set-cookie", this._cookies[cookieKeys[i]])
+			const cookies = this._cookies
+
+			for (const name in cookies) {
+				raw.writeHeader("set-cookie", cookies[name])
 			}
 		}
 
@@ -420,76 +439,78 @@ export default class Response<
 	}
 
 	/**
+	 * Marks the response as completed and fires the lifecycle listeners.
+	 * Used by every path that finishes a response, including streaming.
+	 */
+	_mark_completed() {
+		if (this.completed) return
+
+		const events = this._events
+
+		if (!events) {
+			this.completed = true
+			this._engine?._resolve_pending_request()
+			return
+		}
+
+		const finish = events.finish
+
+		if (!this._streaming && finish) {
+			for (let i = 0; i < finish.length; i++) {
+				finish[i](this._wrapped_request, this)
+			}
+		}
+
+		this.completed = true
+		this._engine?._resolve_pending_request()
+
+		const close = events.close
+
+		if (close) {
+			for (let i = 0; i < close.length; i++) {
+				close[i](this._wrapped_request, this)
+			}
+		}
+	}
+
+	/**
 	 * Sends the response body and marks the response as completed.
 	 *
-	 * Supports corked (batched) and uncorked paths, streaming mode, and
-	 * `endWithoutBody` when a custom `content-length` header is set.
+	 * All uWS writes are wrapped in a single cork callback so status,
+	 * headers and body are flushed atomically.
 	 *
 	 * Fires `finish` and `close` event listeners.
 	 */
 	send(body?: any, close_connection?: boolean): this {
 		if (this.completed) return this
 
-		if (this._cork && !this._corked) {
-			this._corked = true
-			this._raw_response!.cork(() => {
-				this._initiate_response()
+		const raw = this._raw_response!
 
-				if (body !== undefined || this._streaming) {
-					this._raw_response!.end(body, close_connection)
-				} else {
-					const custom_length = this._headers["content-length"]
-					if (custom_length) {
-						const content_length =
-							typeof custom_length === "string"
-								? custom_length
-								: custom_length[custom_length.length - 1]
-						this._raw_response!.endWithoutBody(
-							content_length as any,
-							close_connection,
-						)
-					} else {
-						this._raw_response!.end(body, close_connection)
-					}
-				}
-			})
-		} else {
+		raw.cork(() => {
 			this._initiate_response()
-
-			const raw = this._raw_response!
 
 			if (body !== undefined || this._streaming) {
 				raw.end(body, close_connection)
-			} else {
-				const custom_length = this._headers["content-length"]
-				if (custom_length) {
-					const content_length =
-						typeof custom_length === "string"
-							? custom_length
-							: custom_length[custom_length.length - 1]
-					raw.endWithoutBody(content_length as any, close_connection)
-				} else {
-					raw.end(body, close_connection)
-				}
+				return
 			}
-		}
 
-		if (!this._streaming && this.listenerCount("finish") > 0) {
-			const handlers = this._events!.finish
-			for (let i = 0; i < handlers.length; i++) {
-				handlers[i](this._wrapped_request, this)
+			const custom_length = this._headers["content-length"]
+
+			if (!custom_length) {
+				raw.end(body, close_connection)
+				return
 			}
-		}
 
-		this.completed = true
-		this.engine?._resolve_pending_request()
+			const content_length =
+				typeof custom_length === "string"
+					? custom_length
+					: custom_length[custom_length.length - 1]
 
-		if (this.listenerCount("close") > 0) {
-			const handlers = this._events!.close
-			for (let i = 0; i < handlers.length; i++) {
-				handlers[i](this._wrapped_request, this)
-			}
-		}
+			raw.endWithoutBody(content_length as any, close_connection)
+		})
+
+		this._corked = true
+		this._mark_completed()
 
 		return this
 	}
@@ -506,18 +527,20 @@ export default class Response<
 	 * Initiates headers if not yet sent. Returns false under backpressure.
 	 */
 	write(chunk: string): boolean {
-		if (this._cork && !this._corked) {
-			this._corked = true
-			let ok = false
-			this._raw_response!.cork(() => {
-				this._initiate_response()
-				ok = this._raw_response!.write(chunk)
-			})
-			return ok
-		}
+		if (this.completed) return false
 
-		this._initiate_response()
-		return this._raw_response!.write(chunk)
+		const raw = this._raw_response!
+
+		let ok = false
+
+		raw.cork(() => {
+			this._initiate_response()
+			ok = raw.write(chunk)
+		})
+
+		this._corked = true
+
+		return ok
 	}
 
 	/**
@@ -528,32 +551,56 @@ export default class Response<
 		if (this.completed) return Promise.resolve()
 
 		return new Promise((resolve) => {
-			if (this._cork && !this._corked) {
-				this._corked = true
-				this._raw_response!.cork(() => this._initiate_response())
-			} else {
+			const raw = this._raw_response!
+
+			let sent = false
+			let responded = false
+			let write_offset = 0
+
+			raw.cork(() => {
 				this._initiate_response()
+
+				write_offset = raw.getWriteOffset()
+				;[sent, responded] = this._uws_write_chunk(chunk, total_size)
+
+				if (sent || responded) return
+
+				this.drain((offset) => {
+					if (this.completed || !total_size) {
+						resolve()
+						return true
+					}
+
+					const remaining = chunk.slice(offset - write_offset)
+
+					let flushed = false
+					let has_responded = false
+
+					raw.cork(() => {
+						;[flushed, has_responded] = this._uws_write_chunk(
+							remaining,
+							total_size,
+						)
+					})
+
+					if (has_responded) {
+						this._mark_completed()
+						resolve()
+						return true
+					}
+
+					if (flushed) resolve()
+
+					return flushed
+				})
+			})
+
+			if (responded) {
+				this._mark_completed()
+				return resolve()
 			}
 
-			if (this.completed) return resolve()
-
-			const write_offset = this._raw_response!.getWriteOffset()
-			const [sent] = this._uws_write_chunk(chunk, total_size)
-
-			if (sent) return resolve()
-
-			this.drain((offset) => {
-				if (this.completed || !total_size) {
-					resolve()
-					return true
-				}
-
-				const remaining = chunk.slice(offset - write_offset)
-				const [flushed] = this._uws_write_chunk(remaining, total_size)
-
-				if (flushed) resolve()
-				return flushed
-			})
+			if (sent) resolve()
 		})
 	}
 
@@ -590,7 +637,7 @@ export default class Response<
 		}
 
 		if (!this.completed) {
-			if (total_size) this.engine?._resolve_pending_request()
+			if (total_size) this._engine?._resolve_pending_request()
 			else this.send()
 		}
 	}
@@ -602,7 +649,7 @@ export default class Response<
 		if (this.completed) return
 
 		this.completed = true
-		this.engine?._resolve_pending_request()
+		this._engine?._resolve_pending_request()
 		//this._wrapped_request.pause()
 		this._raw_response!.close()
 	}
@@ -617,27 +664,20 @@ export default class Response<
 
 	/**
 	 * Fast-path send used by the `_invokeHandler`.
-	 * Skips cork/uncork logic and writes directly.
+	 * Corks the writes so status, headers and body are flushed atomically.
 	 */
 	_sendFast(body: any): void {
+		if (this.completed) return
+
+		const raw = this._raw_response!
+
+		raw.cork(() => {
+			this._initiate_response()
+			raw.end(body)
+		})
+
 		this._corked = true
-		this._initiate_response()
-		this._raw_response!.end(body)
-
-		this.completed = true
-		this.engine?._resolve_pending_request()
-
-		if (this._events?.finish) {
-			for (let i = 0; i < this._events.finish.length; i++) {
-				this._events.finish[i](this._wrapped_request, this)
-			}
-		}
-
-		if (this._events?.close) {
-			for (let i = 0; i < this._events.close.length; i++) {
-				this._events.close[i](this._wrapped_request, this)
-			}
-		}
+		this._mark_completed()
 	}
 
 	/**
@@ -646,6 +686,7 @@ export default class Response<
 	 */
 	json(body: any): this {
 		this._headers["content-type"] = "application/json"
+		this._has_headers = true
 		return this.send(stringify(body))
 	}
 
@@ -654,6 +695,7 @@ export default class Response<
 	 */
 	html(body: any): this {
 		this._headers["content-type"] = "text/html"
+		this._has_headers = true
 		return this.send(body)
 	}
 
@@ -846,6 +888,7 @@ export default class Response<
 	 */
 	location(path: string) {
 		this._headers["location"] = path as any
+		this._has_headers = true
 		return this
 	}
 
@@ -873,6 +916,7 @@ export default class Response<
 	 */
 	vary(name: string) {
 		this._headers["vary"] = name as any
+		this._has_headers = true
 		return this
 	}
 }

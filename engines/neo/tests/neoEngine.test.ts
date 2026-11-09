@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 
 import { Server } from "linebridge"
 import NeoEngine from "../src/engine"
+import Response from "../src/response"
 import { HandlerKind, Handler } from "linebridge/classes/Handler/index"
 import { Route } from "linebridge/classes/Route/index"
 
@@ -148,5 +149,109 @@ describe("NeoEngine Type Inference", () => {
 		// listen returns Promise<void> or Promise<boolean> (depending on how it was bound)
 		expectTypeOf(engine.listen).returns.resolves.toBeVoid()
 		expectTypeOf(engine.close).returns.resolves.toBeBoolean()
+	})
+})
+
+function createRawResponse(calls: string[]) {
+	return {
+		cork(callback: () => void) {
+			calls.push("cork")
+			callback()
+		},
+		writeStatus(status: string) {
+			calls.push(`status:${status}`)
+		},
+		writeHeader(name: string) {
+			calls.push(`header:${name}`)
+		},
+		write() {
+			calls.push("write")
+			return true
+		},
+		tryEnd() {
+			calls.push("tryEnd")
+			return [true, false] as [boolean, boolean]
+		},
+		end() {
+			calls.push("end")
+		},
+		endWithoutBody() {
+			calls.push("endWithoutBody")
+		},
+		getWriteOffset() {
+			return 0
+		},
+		onWritable() {},
+		onAborted() {},
+	}
+}
+
+function createResponse(raw: any) {
+	const response: any = new Response()
+
+	response._raw_response = raw
+	response._headers = {}
+	response._has_headers = false
+	response._status_code = 200
+	response._status_message = null
+	response._cookies = null
+	response._events = null
+	response._streaming = false
+	response._cork = true
+	response._corked = false
+	response._drain_handler = null
+	response._engine = null
+
+	return response
+}
+
+describe("Response send", () => {
+	it("corks default 200 responses without redundant writeStatus", () => {
+		const calls: string[] = []
+		const response = createResponse(createRawResponse(calls))
+
+		response.send("ok")
+
+		expect(calls).toEqual(["cork", "end"])
+	})
+
+	it("lets the first header write the default status", () => {
+		const calls: string[] = []
+		const response = createResponse(createRawResponse(calls))
+
+		response.header("x-test", "1").send("ok")
+
+		expect(calls).toEqual(["cork", "header:x-test", "end"])
+	})
+
+	it("writes a custom status explicitly", () => {
+		const calls: string[] = []
+		const response = createResponse(createRawResponse(calls))
+
+		response.status(404).send("not found")
+
+		expect(calls).toEqual(["cork", "status:404 Not Found", "end"])
+	})
+
+	it("corks every streamed chunk", async () => {
+		const calls: string[] = []
+		const response = createResponse(createRawResponse(calls))
+
+		await response._stream_chunk(Buffer.from("chunk"), 5)
+
+		expect(calls).toEqual(["cork", "tryEnd"])
+	})
+
+	it("initializes cookie and drain state", () => {
+		const calls: string[] = []
+		const raw = createRawResponse(calls)
+		const engine = { _resolve_pending_request() {} }
+		const route = { engine }
+
+		const response = Response.create(raw as any, route as any, {}, null)
+
+		expect(response._cookies).toBeNull()
+		expect(response._drain_handler).toBeNull()
+		expect(() => response.cookie("x-test", "1")).not.toThrow()
 	})
 })
