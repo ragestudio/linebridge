@@ -44,7 +44,7 @@
 					{
 						"cflags": [
 							"-O3",
-							"-march=native",
+							"-march=x86-64-v3",
 							"-flto",
 							"-fvisibility=hidden",
 							"-fdata-sections",
@@ -57,7 +57,7 @@
 						],
 						"cflags_cc": [
 							"-O3",
-							"-march=native",
+							"-march=x86-64-v3",
 							"-flto",
 							"-fvisibility=hidden",
 							"-fvisibility-inlines-hidden",
